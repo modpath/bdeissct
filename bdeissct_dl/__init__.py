@@ -1,0 +1,66 @@
+import os
+from collections import defaultdict
+
+from bdpn.bd_model import LA, PSI
+from bdpn.bdei_model import F_I
+from bdpn.bdpn_model import UPSILON, PHI
+from bdpn.bdss_model import F_SS, X_SS
+
+import warnings
+
+# Numpy emits a warning for log 0, but we might get it a lot during likelihood calculations
+warnings.filterwarnings('ignore', r'divide by zero encountered in log')
+
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models')
+TRAINING_PATH = os.path.join(os.path.dirname(__file__), 'data')
+MODEL_FINDER_PATH = os.path.join(MODEL_PATH, 'MF')
+
+BDCT1 = 'BDCT1'
+BDCT2 = 'BDCT2'
+BDCT2000 = 'BDCT2000'
+BD = 'BD'
+
+BDEI = 'BDEI'
+BDEICT1 = 'BDEICT1'
+BDEICT2 = 'BDEICT2'
+BDEICT2000 = 'BDEICT2000'
+
+BDSS = 'BDSS'
+BDSSCT1 = 'BDSSCT1'
+BDSSCT2 = 'BDSSCT2'
+BDSSCT2000 = 'BDSSCT2000'
+
+
+BDCT = 'BDCT'
+
+MODEL_FINDER = 'MF'
+
+MODELS = (BD, BDCT1, BDCT2, BDCT2000, \
+          BDEI, BDEICT1, BDEICT2, BDEICT2000, \
+          BDSS, BDSSCT1, BDSSCT2, BDSSCT2000)
+
+DATA_TYPES = ['tree']
+
+
+# TARGET_COLUMNS_BDCT = (REPRODUCTIVE_NUMBER, INFECTIOUS_TIME, REMOVAL_TIME_AFTER_NOTIFICATION, UPSILON)
+# TARGET_COLUMNS_BD = (REPRODUCTIVE_NUMBER, INFECTIOUS_TIME)
+TARGET_COLUMNS_BD = (LA, PSI)
+TARGET_COLUMNS_BDCT = TARGET_COLUMNS_BD + (PHI, UPSILON)
+TARGET_COLUMNS_BDEI = (LA, PSI, F_I)
+TARGET_COLUMNS_BDEICT = TARGET_COLUMNS_BDEI + (PHI, UPSILON)
+TARGET_COLUMNS_BDSS = (LA, PSI, F_SS, X_SS)
+TARGET_COLUMNS_BDSSCT = TARGET_COLUMNS_BDSS + (PHI, UPSILON)
+QUANTILES = (0.025, 0.5, 0.975)
+# QUANTILES = (0.5, )
+
+MODEL2TARGET_COLUMNS = defaultdict(lambda: TARGET_COLUMNS_BDCT)
+MODEL2TARGET_COLUMNS[BD] = TARGET_COLUMNS_BD
+MODEL2TARGET_COLUMNS[BDEI] = TARGET_COLUMNS_BDEI
+for model in (BDEICT1, BDEICT2, BDEICT2000):
+    MODEL2TARGET_COLUMNS[model] = TARGET_COLUMNS_BDEICT
+MODEL2TARGET_COLUMNS[BDSS] = TARGET_COLUMNS_BDSS
+for model in (BDSSCT1, BDSSCT2, BDSSCT2000):
+    MODEL2TARGET_COLUMNS[model] = TARGET_COLUMNS_BDSSCT
+
+

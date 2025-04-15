@@ -1,10 +1,10 @@
 import pandas as pd
 
-from bdpn.dl import MODELS, MODEL_FINDER, BDCT, BD, BDCT1, BDCT2, BDCT2000
-from bdpn.dl.tree_encoder import forest2sumstat_df
+from bdeissct_dl import MODELS, MODEL_FINDER, BDCT, BD, BDCT1, BDCT2, BDCT2000
+from bdeissct_dl.tree_encoder import forest2sumstat_df
 from bdpn.tree_manager import read_forest
-from bdpn.dl.bdct_estimator import predict_parameters
-from bdpn.dl.bdct_model_finder import predict_model
+from bdeissct_dl.bdct_estimator import predict_parameters
+from bdeissct_dl.bdct_model_finder import predict_model
 
 pd.set_option('display.max_columns', None)
 

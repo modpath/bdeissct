@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from bdpn.dl.model_serializer import load_model_keras, load_scaler_joblib
-from bdpn.dl.training import get_train_data, QUANTILES
-from bdpn.dl import MODEL_PATH
-from bdpn.dl.tree_encoder import scale_back, compute_extra_targets, save_forests_as_sumstats
+from bdeissct_dl.model_serializer import load_model_keras, load_scaler_joblib
+from bdeissct_dl.training import get_train_data, QUANTILES
+from bdeissct_dl import MODEL_PATH
+from bdeissct_dl.tree_encoder import scale_back, compute_extra_targets, save_forests_as_sumstats
 
 pd.set_option('display.max_columns', None)
 

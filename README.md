@@ -77,7 +77,7 @@ pip3 install bdeissct_dl
 or alternatively, you could install python (version 3.9 or higher) and bdeissct_dl via [conda](https://conda.io/docs/) (make sure that conda is installed first). 
 Here we will create a conda environment called _phyloenv_:
 ```bash
-conda create --name phyloenv python=3.9
+conda create --name phyloenv python=3.12
 conda activate phyloenv
 pip install bdeissct_dl
 ```

@@ -1,11 +1,11 @@
 import pandas as pd
 
-from bdpn.dl import MODEL_FINDER_PATH
-from bdpn.dl.model_serializer import load_model_keras
-from bdpn.dl.training_model_finder import MODELS, get_test_data
-from bdpn.dl.tree_encoder import forest2sumstat_df
-from bdpn.tree_manager import read_forest
-
+from bdeissct_dl import MODEL_FINDER_PATH
+from bdeissct_dl.model_serializer import load_model_keras
+from bdeissct_dl.training_model_finder import get_test_data
+from bdeissct_dl.tree_encoder import forest2sumstat_df
+from bdeissct_dl.tree_manager import read_forest
+from bdeissct_dl.bdeissct_model import MODELS
 
 
 def predict_model(forest_sumstats):
@@ -23,7 +23,7 @@ def main():
     import argparse
 
     parser = \
-        argparse.ArgumentParser(description="Find the BDCT model flavour that could have generated this forest.")
+        argparse.ArgumentParser(description="Find the BDEISSCT model flavour that could have generated this forest.")
     parser.add_argument('--nwk', required=False, default=None, type=str, help="input tree file")
     parser.add_argument('--p', required=False, default=0, type=float, help='sampling probability')
     parser.add_argument('--log', required=True, type=str, help="output log file")

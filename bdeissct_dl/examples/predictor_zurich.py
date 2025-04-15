@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 
-from bdpn.dl.tree_encoder import forest2sumstat_df, compute_extra_targets
+from bdeissct_dl.tree_encoder import forest2sumstat_df, compute_extra_targets
 from bdpn.tree_manager import read_forest
-from bdpn.dl.bdct_model_finder import predict_model
-from bdpn.dl import MODELS, BD, BDCT2, BDCT, MODEL_FINDER
-from bdpn.dl.bdct_sumstat_checker import check_sumstats
-from bdpn.dl.bdct_estimator import predict_parameters
+from bdeissct_dl.bdct_model_finder import predict_model
+from bdeissct_dl import MODELS, BD, BDCT2, BDCT, MODEL_FINDER
+from bdeissct_dl.bdct_sumstat_checker import check_sumstats
+from bdeissct_dl.bdct_estimator import predict_parameters
 from bdpn.bdpn_model import REMOVAL_TIME_AFTER_NOTIFICATION
 from dl import BDCT1, BDCT2000
 

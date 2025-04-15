@@ -5,15 +5,12 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
-from bdpn.bd_model import LA, PSI
-from bdpn.bdei_model import F_I
-from bdpn.dl import MODEL_PATH, QUANTILES, TARGET_COLUMNS_BDCT
-from bdpn.dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy
-from bdpn.dl.tree_encoder import SCALING_FACTOR, STATS
-from bdpn.dl import MODEL2TARGET_COLUMNS
-from bdpn.dl.pinball_loss import MultiQuantilePinballLoss
-from bdpn.bdpn_model import UPSILON, PHI
-from bdpn.bdss_model import F_SS, X_SS
+from bdeissct_dl import MODEL_PATH
+from bdeissct_dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy
+from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
+from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, QUANTILES, LA, PSI, RHO, UPSILON, X_C, KAPPA, F_E, F_SS, \
+    X_SS, TARGET_COLUMNS_BDCT
+from bdeissct_dl.pinball_loss import MultiQuantilePinballLoss
 
 BATCH_SIZE = 4096
 
@@ -24,8 +21,8 @@ EPOCHS = 10000
 
 FEATURE_COLUMNS = [_ for _ in STATS if _ not in {'n_trees', 'n_tips', 'n_inodes', 'len_forest',
                                                  LA, PSI,
-                                                 PHI, UPSILON,
-                                                 F_I,
+                                                 UPSILON, X_C, KAPPA,
+                                                 F_E,
                                                  F_SS, X_SS,
                                                  SCALING_FACTOR}]
 
@@ -62,8 +59,8 @@ def build_model(n_x, n_y=4, optimizer=None, loss=None, metrics=None, quantiles=Q
         loss = MultiQuantilePinballLoss(quantiles)
     if optimizer is None:
         optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-    # if metrics is None:
-    #     metrics = ['accuracy', 'mape']
+    if metrics is None:
+        metrics = ['accuracy']
 
     model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
     return model

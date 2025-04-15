@@ -5,10 +5,11 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
-from bdpn.dl import MODELS, MODEL_FINDER_PATH
-from bdpn.dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy, load_scaler_numpy
-from bdpn.dl.training import fit_model, get_X_columns
-from bdpn.dl.tree_encoder import SCALING_FACTOR
+from bdeissct_dl import MODEL_FINDER_PATH
+from bdeissct_dl.bdeissct_model import MODELS
+from bdeissct_dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy, load_scaler_numpy
+from bdeissct_dl.training import fit_model, get_X_columns
+from bdeissct_dl.tree_encoder import SCALING_FACTOR
 
 BATCH_SIZE = 4096
 

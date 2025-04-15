@@ -2,11 +2,11 @@ import glob
 
 import numpy as np
 
-from bdpn.dl import MODELS, BD, BDCT1, BDCT2, BDCT2000, BDCT, MODEL_FINDER
-from bdpn.dl.bdct_estimator import predict_parameters
-from bdpn.dl.bdct_model_finder import predict_model
-from bdpn.dl.tree_encoder import compute_extra_targets, STATS, scale, SCALING_FACTOR
-from bdpn.dl.tree_encoder import forest2sumstat_df
+from bdeissct_dl import MODELS, BD, BDCT1, BDCT2, BDCT2000, BDCT, MODEL_FINDER
+from bdeissct_dl.bdct_estimator import predict_parameters
+from bdeissct_dl.bdct_model_finder import predict_model
+from bdeissct_dl.tree_encoder import compute_extra_targets, STATS, scale, SCALING_FACTOR
+from bdeissct_dl.tree_encoder import forest2sumstat_df
 from pastml.tree import read_forest, annotate_dates, remove_certain_leaves
 
 from model_distinguisher import ct_test

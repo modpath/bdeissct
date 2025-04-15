@@ -1,9 +1,7 @@
 import io
 import os
-import re
 from glob import iglob
 
-import numpy as np
 import pandas as pd
 from treesumstats import FeatureCalculator, FeatureRegistry, FeatureManager
 from treesumstats.balance_sumstats import BalanceFeatureCalculator
@@ -14,17 +12,9 @@ from treesumstats.ltt_sumstats import LTTFeatureCalculator
 from treesumstats.subtree_sumstats import SubtreeFeatureCalculator
 from treesumstats.transmission_chain_sumstats import TransmissionChainFeatureCalculator
 
-from bdpn.bd_model import RHO, LA, PSI, REPRODUCTIVE_NUMBER, INFECTIOUS_TIME, SAMPLING_PROBABILITY, TRANSMISSION_RATE, \
-    REMOVAL_RATE
-from bdpn.bdei_model import MU, INCUBATION_PERIOD, F_I
-from bdpn.bdpn_model import PHI, UPSILON, REMOVAL_TIME_AFTER_NOTIFICATION, NOTIFICATION_PROBABILITY
-
-TIME_PARAMETERS = (INFECTIOUS_TIME, REMOVAL_TIME_AFTER_NOTIFICATION, INCUBATION_PERIOD)
-
-RATE_PARAMETERS = (LA, PSI, PHI, MU)
-from bdpn.tree_manager import read_forest, rescale_forest_to_avg_brlen
-from bdpn.dl import QUANTILES, BDCT1, BDEI, BDSS
-from bdpn.bdss_model import SS_FRACTION, SS_TRANSMISSION_RATIO, F_SS, X_SS
+from bdeissct_dl.bdeissct_model import RHO, LA, PSI, F_E, UPSILON, X_C, KAPPA, F_SS, X_SS, RATE_PARAMETERS, \
+    TIME_PARAMETERS, BDCT
+from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
 
 TARGET_AVG_BL = 1
 
@@ -44,60 +34,6 @@ def get_write_handle(path, temp_suffix=''):
         import lzma
         return lzma.open(path + temp_suffix, mode)
     return open(path + temp_suffix, mode)
-
-
-def compute_extra_targets(Y):
-    if REPRODUCTIVE_NUMBER not in Y:
-        Y[REPRODUCTIVE_NUMBER] = Y[LA]
-        Y[REPRODUCTIVE_NUMBER] /= np.where(Y[PSI] <= 0, 1, Y[PSI])
-        Y[REPRODUCTIVE_NUMBER] = np.where(Y[PSI] <= 0, 0, Y[REPRODUCTIVE_NUMBER])
-        if len(QUANTILES) > 1 and f'{LA}_{QUANTILES[0] * 100:.1f}' in Y and f'{PSI}_{QUANTILES[-1] * 100:.1f}' in Y:
-            Y[f'{REPRODUCTIVE_NUMBER}_{QUANTILES[0] * 100:.1f}'] = Y[f'{LA}_{QUANTILES[0] * 100:.1f}']
-            Y[f'{REPRODUCTIVE_NUMBER}_{QUANTILES[0] * 100:.1f}'] /= np.where(Y[f'{PSI}_{QUANTILES[-1] * 100:.1f}'] <= 0, 1, Y[f'{PSI}_{QUANTILES[-1] * 100:.1f}'])
-            Y[f'{REPRODUCTIVE_NUMBER}_{QUANTILES[0] * 100:.1f}'] = np.where(Y[f'{PSI}_{QUANTILES[-1] * 100:.1f}'] <= 0, 0, Y[f'{REPRODUCTIVE_NUMBER}_{QUANTILES[0] * 100:.1f}'])
-        if len(QUANTILES) > 1 and f'{LA}_{QUANTILES[-1] * 100:.1f}' in Y and f'{PSI}_{QUANTILES[0] * 100:.1f}' in Y:
-            Y[f'{REPRODUCTIVE_NUMBER}_{QUANTILES[-1] * 100:.1f}'] = Y[f'{LA}_{QUANTILES[-1] * 100:.1f}']
-            Y[f'{REPRODUCTIVE_NUMBER}_{QUANTILES[-1] * 100:.1f}'] /= np.where(Y[f'{PSI}_{QUANTILES[0] * 100:.1f}'] <= 0, 1, Y[f'{PSI}_{QUANTILES[0] * 100:.1f}'])
-            Y[f'{REPRODUCTIVE_NUMBER}_{QUANTILES[-1] * 100:.1f}'] = np.where(Y[f'{PSI}_{QUANTILES[0] * 100:.1f}'] <= 0, 0, Y[f'{REPRODUCTIVE_NUMBER}_{QUANTILES[-1] * 100:.1f}'])
-
-    if INFECTIOUS_TIME not in Y:
-        Y[INFECTIOUS_TIME] = 1
-        Y[INFECTIOUS_TIME] /= np.where(Y[PSI] <= 0, 1, Y[PSI])
-        Y[INFECTIOUS_TIME] = np.where(Y[PSI] <= 0, 0, Y[INFECTIOUS_TIME])
-        if len(QUANTILES) > 1 and f'{PSI}_{QUANTILES[-1] * 100:.1f}' in Y:
-            Y[f'{INFECTIOUS_TIME}_{QUANTILES[0] * 100:.1f}'] = 1
-            Y[f'{INFECTIOUS_TIME}_{QUANTILES[0] * 100:.1f}'] /= np.where(Y[f'{PSI}_{QUANTILES[-1] * 100:.1f}'] <= 0, 1, Y[f'{PSI}_{QUANTILES[-1] * 100:.1f}'])
-            Y[f'{INFECTIOUS_TIME}_{QUANTILES[0] * 100:.1f}'] = np.where(Y[f'{PSI}_{QUANTILES[-1] * 100:.1f}'] <= 0, 0, Y[f'{INFECTIOUS_TIME}_{QUANTILES[0] * 100:.1f}'])
-        if len(QUANTILES) > 1 and f'{PSI}_{QUANTILES[0] * 100:.1f}' in Y:
-            Y[f'{INFECTIOUS_TIME}_{QUANTILES[-1] * 100:.1f}'] = 1
-            Y[f'{INFECTIOUS_TIME}_{QUANTILES[-1] * 100:.1f}'] /= np.where(Y[f'{PSI}_{QUANTILES[0] * 100:.1f}'] <= 0, 1, Y[f'{PSI}_{QUANTILES[0] * 100:.1f}'])
-            Y[f'{INFECTIOUS_TIME}_{QUANTILES[-1] * 100:.1f}'] = np.where(Y[f'{PSI}_{QUANTILES[0] * 100:.1f}'] <= 0, 0, Y[f'{INFECTIOUS_TIME}_{QUANTILES[-1] * 100:.1f}'])
-
-
-    if REMOVAL_TIME_AFTER_NOTIFICATION not in Y and PHI in Y:
-        Y[REMOVAL_TIME_AFTER_NOTIFICATION] = 1
-        Y[REMOVAL_TIME_AFTER_NOTIFICATION] /= np.where(Y[PHI] <= 0, 1, Y[PHI])
-        Y[REMOVAL_TIME_AFTER_NOTIFICATION] = np.where(Y[PHI] <= 0, 0, Y[REMOVAL_TIME_AFTER_NOTIFICATION])
-        if len(QUANTILES) > 1 and f'{PHI}_{QUANTILES[-1] * 100:.1f}' in Y:
-            Y[f'{REMOVAL_TIME_AFTER_NOTIFICATION}_{QUANTILES[0] * 100:.1f}'] = 1
-            Y[f'{REMOVAL_TIME_AFTER_NOTIFICATION}_{QUANTILES[0] * 100:.1f}'] /= np.where(Y[f'{PHI}_{QUANTILES[-1] * 100:.1f}'] <= 0, 1, Y[f'{PHI}_{QUANTILES[-1] * 100:.1f}'])
-            Y[f'{REMOVAL_TIME_AFTER_NOTIFICATION}_{QUANTILES[0] * 100:.1f}'] = np.where(Y[f'{PHI}_{QUANTILES[-1] * 100:.1f}'] <= 0, 0, Y[f'{REMOVAL_TIME_AFTER_NOTIFICATION}_{QUANTILES[0] * 100:.1f}'])
-        if len(QUANTILES) > 1 and f'{PHI}_{QUANTILES[0] * 100:.1f}' in Y:
-            Y[f'{REMOVAL_TIME_AFTER_NOTIFICATION}_{QUANTILES[-1] * 100:.1f}'] = 1
-            Y[f'{REMOVAL_TIME_AFTER_NOTIFICATION}_{QUANTILES[-1] * 100:.1f}'] /= np.where(Y[f'{PHI}_{QUANTILES[0] * 100:.1f}'] <= 0, 1, Y[f'{PHI}_{QUANTILES[0] * 100:.1f}'])
-            Y[f'{REMOVAL_TIME_AFTER_NOTIFICATION}_{QUANTILES[-1] * 100:.1f}'] = np.where(Y[f'{PHI}_{QUANTILES[0] * 100:.1f}'] <= 0, 0, Y[f'{REMOVAL_TIME_AFTER_NOTIFICATION}_{QUANTILES[-1] * 100:.1f}'])
-
-
-    if PHI not in Y and REMOVAL_TIME_AFTER_NOTIFICATION in Y:
-        Y[PHI] = 1
-        Y[PHI] /= np.where(Y[REMOVAL_TIME_AFTER_NOTIFICATION] == 0, 1, Y[REMOVAL_TIME_AFTER_NOTIFICATION])
-        Y[PHI] = np.where(Y[REMOVAL_TIME_AFTER_NOTIFICATION] == 0, 0, Y[PHI])
-    if PSI not in Y:
-        Y[PSI] = 1
-        Y[PSI] /= np.where(Y[INFECTIOUS_TIME] == 0, 1, Y[INFECTIOUS_TIME])
-        Y[PSI] = np.where(Y[INFECTIOUS_TIME] == 0, 0, Y[PSI])
-    if LA not in Y:
-        Y[LA] = Y[REPRODUCTIVE_NUMBER] * Y[PSI]
 
 
 def scale(Y, SF):
@@ -128,60 +64,43 @@ def scale_back_array(Y, SF, columns):
                 Y[:, i] *= SF
 
 
-def parse_parameters(log, model_name=BDCT1):
-    kappa = int(re.findall(r'[0-9]+', model_name)[0]) if 'CT' in model_name else 0
-
-    la, psi, phi, rho, upsilon, f_i, f_ss, x_ss = None, None, None, 0, 0, 0, 0, 1
+def parse_parameters(log):
+    # BD: R,la_ii,psi_i,p_i,infectious time,tips,hidden_trees,end_time
+    # BDCT: R,la_ii,psi_i,p_i,infectious time,contact tracing probability,pi_i,pi_i-C,removal time after notification,kappa,tips,hidden_trees,end_time
+    # BDEI: R,pi_e,R_e,mu_ei,pi_i,R_i,la_ie,psi_i,p_i,infectious time,incubation period,incubation fraction,tips,hidden_trees,end_time
+    # BDEICT: R,R_e,mu_ei,R_i,la_ie,psi_i,p_i,infectious time,incubation period,incubation fraction,contact tracing probability,pi_e,pi_i,pi_e-C,pi_i-C,removal time after notification,kappa,tips,hidden_trees,end_time
+    # BDSS: R,pi_i,R_i,la_ii,la_is,psi_i,p_i,pi_s,R_s,la_si,la_ss,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,tips,hidden_trees,end_time
+    # BDSSCT: R,R_i,la_ii,la_is,psi_i,p_i,R_s,la_si,la_ss,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,contact tracing probability,pi_i,pi_s,pi_i-C,pi_s-C,removal time after notification,kappa,tips,hidden_trees,end_time
+    # BDEISS: R,pi_e,R_e,mu_ei,mu_es,pi_i,R_i,la_ie,psi_i,p_i,pi_s,R_s,la_se,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,incubation period,incubation fraction,tips,hidden_trees,end_time
+    # BDEISSCT: R,R_e,mu_ei,mu_es,R_i,la_ie,psi_i,p_i,R_s,la_se,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,incubation period,incubation fraction,contact tracing probability,pi_e,pi_i,pi_s,pi_e-C,pi_i-C,pi_s-C,removal time after notification,kappa,tips,hidden_trees,end_time
 
 
     df = pd.read_csv(log)
-    if RHO in df.columns:
-        rho = df.loc[0, RHO]
-    elif SAMPLING_PROBABILITY in df.columns:
-        rho = df.loc[0, SAMPLING_PROBABILITY]
-
-    if PSI in df.columns:
-        psi = df.loc[0, PSI]
-    elif REMOVAL_RATE in df.columns:
-        psi = df.loc[0, REMOVAL_RATE]
-    elif INFECTIOUS_TIME in df.columns:
-        psi = 1 / df.loc[0, INFECTIOUS_TIME]
-
-
-    if LA in df.columns:
-        la = df.loc[0, LA]
-    elif TRANSMISSION_RATE in df.columns:
-        la = df.loc[0, TRANSMISSION_RATE]
-    elif INFECTIOUS_TIME in df.columns and REPRODUCTIVE_NUMBER in df.columns:
-        la = df.loc[0, REPRODUCTIVE_NUMBER] * psi
-
-    if kappa > 0:
-        if UPSILON in df.columns:
-            upsilon = df.loc[0, UPSILON]
-        elif NOTIFICATION_PROBABILITY in df.columns:
-            upsilon = df.loc[0, NOTIFICATION_PROBABILITY]
-
-        if PHI in df.columns:
-            phi = df.loc[0, PHI]
-        elif REMOVAL_TIME_AFTER_NOTIFICATION in df.columns:
-            phi = 1 / df.loc[0, REMOVAL_TIME_AFTER_NOTIFICATION]
-    else:
-        phi = psi
-
-    if BDEI in model_name:
-        if MU in df.columns:
-            mu = df.loc[0, MU]
-        elif INCUBATION_PERIOD in df.columns:
-            mu = 1 / df.loc[0, INCUBATION_PERIOD]
-        f_i = (1 / mu) / (1 / mu + 1 / psi)
-
-    if BDSS in model_name:
-        if SS_FRACTION in df.columns:
-            f_ss = df.loc[0, SS_FRACTION]
-        if SS_TRANSMISSION_RATIO in df.columns:
-            x_ss = df.loc[0, SS_TRANSMISSION_RATIO]
-
-    return la, psi, phi, rho, upsilon, f_i, f_ss, x_ss
+    for i in df.index:
+        psi = df.loc[i, 'psi_i']
+        rho = df.loc[i, 'p_i']
+        la = df.loc[i, 'la_ii' if 'la_ii' in df.columns else 'la_ie'] \
+             + (0 if 'la_is' not in df.columns else df.loc[i, 'la_is'])
+        if 'contact tracing probability' in df.columns:
+            upsilon = df.loc[i, 'contact tracing probability']
+            kappa = df.loc[i, 'kappa']
+            x_c = 1 / df.loc[i, 'removal time after notification'] / psi
+        else:
+            upsilon = 0
+            kappa = 1
+            x_c = 1
+        if 'mu_ei' in df.columns:
+            mu = df.loc[i, 'mu_ei'] + (0 if 'mu_es' not in df.columns else df.loc[i, 'mu_es'])
+            f_e = 1 / mu / (1 / mu + 1 / psi)
+        else:
+            f_e = 0
+        if 'superspreading fraction' in df.columns:
+            f_ss = df.loc[i, 'superspreading fraction']
+            x_ss = df.loc[i, 'superspreading transmission ratio']
+        else:
+            f_ss = 0
+            x_ss = 1
+        yield la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa
 
 
 
@@ -192,7 +111,7 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
         pass
 
     def feature_names(self):
-        return [LA, PSI, RHO, PHI, UPSILON, F_I, F_SS, X_SS, SCALING_FACTOR]
+        return [LA, PSI, RHO, F_E, F_SS, X_SS, UPSILON, X_C, KAPPA, SCALING_FACTOR]
 
     def set_forest(self, forest, **kwargs):
         pass
@@ -205,17 +124,19 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
             return 'transmission rate.'
         if PSI == feature_name:
             return 'removal rate.'
-        if PHI == feature_name:
-            return 'sampling rate once notified.'
         if RHO == feature_name:
             return 'sampling probability.'
         if UPSILON == feature_name:
             return 'notification probability.'
+        if X_C == feature_name:
+            return 'notified-sampling-rate to standard-removal-rate ratio.'
+        if KAPPA == feature_name:
+            return 'maximum number of notified contacts per index case.'
         if X_SS == feature_name:
-            return 'superspreading ratio.'
+            return 'super-spreading ratio.'
         if F_SS == feature_name:
-            return 'fraction of superspreaders.'
-        if F_I == feature_name:
+            return 'fraction of super-spreaders.'
+        if F_E == feature_name:
             return 'fraction of incubation over total infected-to-removed time.'
         if SCALING_FACTOR == feature_name:
             return 'tree scaling factor.'
@@ -308,11 +229,14 @@ STATS = ['n_trees', 'n_tips', 'n_inodes', 'len_forest',
          'time_diff_in_2_random_vs_real_pval_less', 'time_diff_in_3L_random_vs_real_pval_less', 'time_diff_in_4L_random_vs_real_pval_less', 'time_diff_in_4B_random_vs_real_pval_less',
          'time_diff_in_I_random_vs_real_pval_more',
          #
-         LA, PSI, RHO, PHI, UPSILON, F_I, F_SS, X_SS,
+         LA, PSI, RHO,
+         UPSILON, X_C, KAPPA,
+         F_E,
+         F_SS, X_SS,
          SCALING_FACTOR]
 
 
-def forest2sumstat_df(forest, rho, la=0, psi=0, phi=0, upsilon=0, f_i=0, f_ss=0, x_ss=1,
+def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0, f_ss=0, x_ss=1,
                       target_avg_brlen=TARGET_AVG_BL):
     """
     Rescales the input forest to have mean branch lengths of 1, calculates its summary statistics,
@@ -322,15 +246,16 @@ def forest2sumstat_df(forest, rho, la=0, psi=0, phi=0, upsilon=0, f_i=0, f_ss=0,
     :param x_ss: presumed superspreading ratio (how many times superspreader's transmission rate is higher
         than that of a standard spreader, 1 by default)
     :param f_ss: presumed fraction of superspreaders in the infectious population (0 by default)
-    :param f_i: presumed fraction of incubation over total infected-to-removed time (0 by default)
+    :param f_e: presumed fraction of incubation over total infected-to-removed time (0 by default)
     :param forest: list(ete3.Tree) forest to encode
     :param rho: presumed sampling probability
     :param upsilon: presumed notification probability
+    :param kappa: presumed max number of notified contacts
     :param la: presumed transmission rate
     :param psi: presumed removal rate
-    :param phi: presumed notified sampling rate
+    :param x_c: presumed notified sampling rate to standard removal rate ratio
     :param target_avg_brlen: length of the average non-zero branch in the rescaled tree
-    :return: pd.DataFrame containing the summary stats, the presumed BD-CT model parameters (0 if not given)
+    :return: pd.DataFrame containing the summary stats, the presumed BDEISS-CT model parameters (0 if not given)
         and the branch scaling factor
     """
 
@@ -339,16 +264,15 @@ def forest2sumstat_df(forest, rho, la=0, psi=0, phi=0, upsilon=0, f_i=0, f_ss=0,
 
     kwargs = {SCALING_FACTOR: scaling_factor,
               LA: la, PSI: psi, RHO: rho,
-              F_I: f_i,
+              F_E: f_e,
               F_SS: f_ss, X_SS: x_ss,
-              PHI: phi, UPSILON: upsilon}
+              X_C: x_c, UPSILON: upsilon, KAPPA: kappa}
     scale(kwargs, scaling_factor)
 
     return pd.DataFrame.from_records([list(FeatureManager.compute_features(forest, *STATS, **kwargs))], columns=STATS)
 
 
-def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None,
-                             target_avg_brlen=TARGET_AVG_BL, model_name=BDCT1):
+def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target_avg_brlen=TARGET_AVG_BL):
     """
     Rescale each forest given as input to have mean branch lengths of 1, calculate their summary statistics,
     and save them along with BD-CT simulation parameters
@@ -360,8 +284,6 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None,
     :param logs: log files from which to read parameter values (same order as nwks)
     :param output: path to the output table (comma-separated)
     :param target_avg_brlen: length of the average non-zero branch in the rescaled tree
-    :param chain_len: chain length for the chain statistics
-    :param n_ltt_coords: number of coordinates to use for LTT encoding
     :return: void, saves the results to the output file
     """
 
@@ -375,32 +297,47 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None,
                 yield nwk, log
 
 
-    with (get_write_handle(output, '.temp') as f):
+    with get_write_handle(output, '.temp') as f:
         is_text = isinstance(f, io.TextIOBase)
         keys = None
         i = 0
         for nwk, log in get_nwk_log_iterator():
             forest = read_forest(nwk)
 
-            scaling_factor = rescale_forest_to_avg_brlen(forest, target_avg_length=target_avg_brlen)
-            kwargs = {SCALING_FACTOR: scaling_factor}
-            kwargs[LA], kwargs[PSI], kwargs[PHI], kwargs[RHO], kwargs[UPSILON], \
-                kwargs[F_I], kwargs[F_SS], kwargs[X_SS] = parse_parameters(log, model_name)
-            scale(kwargs, scaling_factor)
+            parameters = list(parse_parameters(log))
 
-            if keys is None:
-                keys = STATS
-                line = ','.join(keys) + '\n'
-                f.write(line if is_text else line.encode())
+            # If all the trees in the forest have the same parameters treat them as forest
+            if len(parameters) == 1:
+                forests = [forest]
+            # Otherwise treat them as separate forests of one tree each
+            else:
+                forests = [[tree] for tree in forest]
 
-            line = ','.join(f'{v:.6f}' if v % 1 else f'{v:.0f}'
-                            for v in FeatureManager.compute_features(forest, *STATS, **kwargs)) + '\n'
-            f.write(line if is_text else line.encode())
+            for ps, forest in zip(parameters, forests):
 
-            if 999 == (i % 1000):
-                print(f'saved {(i + 1):10.0f} trees/forests...')
+                scaling_factor = rescale_forest_to_avg_brlen(forest, target_avg_length=target_avg_brlen)
+                la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa = ps
+                kwargs = {SCALING_FACTOR: scaling_factor}
+                kwargs[LA], kwargs[PSI], kwargs[RHO] = la, psi, rho
+                kwargs[UPSILON], kwargs[KAPPA], kwargs[X_C] = upsilon, kappa, x_c
+                kwargs[F_E] = f_e
+                kwargs[F_SS], kwargs[X_SS] = f_ss, x_ss
 
-            i += 1
+                scale(kwargs, scaling_factor)
+
+                if keys is None:
+                    keys = STATS
+                    line = ','.join(keys)
+                    f.write(f'{line}\n' if is_text else line.encode())
+
+                line = ','.join(f'{v:.6f}' if v % 1 else f'{v:.0f}'
+                                for v in FeatureManager.compute_features(forest, *STATS, **kwargs))
+                f.write(f'{line}\n' if is_text else line.encode())
+
+                if 999 == (i % 1000):
+                    print(f'saved {(i + 1):10.0f} trees/forests...')
+
+                i += 1
 
     os.rename(output + '.temp', output)
 
@@ -423,13 +360,10 @@ def main():
                              "considered to be obtainable by replacing .nwk by .log")
     parser.add_argument('--out', required=True, type=str,
                         help="path to the file where the encoded data should be stored")
-    parser.add_argument('--model', type=str, default=BDCT1,
-                        help="name of the model corresponding to these trees/forests.")
     params = parser.parse_args()
 
     os.makedirs(os.path.dirname(params.out), exist_ok=True)
-    save_forests_as_sumstats(nwks=params.nwks, logs=params.logs, patterns=params.patterns, output=params.out,
-                             model_name=params.model)
+    save_forests_as_sumstats(nwks=params.nwks, logs=params.logs, patterns=params.patterns, output=params.out)
 
 
 if '__main__' == __name__:

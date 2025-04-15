@@ -10,11 +10,11 @@ from treesumstats import FeatureManager
 from bdei_model import F_I
 from bdpn.bd_model import REPRODUCTIVE_NUMBER, INFECTIOUS_TIME, RHO
 from bdpn.bdpn_model import REMOVAL_TIME_AFTER_NOTIFICATION
-from bdpn.dl import MODELS, BD, BDCT1, BDCT2, BDCT2000, BDCT, MODEL_FINDER
-from bdpn.dl.bdct_estimator import predict_parameters
-from bdpn.dl.bdct_model_finder import predict_model
-from bdpn.dl.tree_encoder import compute_extra_targets, STATS, scale, SCALING_FACTOR
-from bdpn.dl.tree_encoder import forest2sumstat_df
+from bdeissct_dl import MODELS, BD, BDCT1, BDCT2, BDCT2000, BDCT, MODEL_FINDER
+from bdeissct_dl.bdct_estimator import predict_parameters
+from bdeissct_dl.bdct_model_finder import predict_model
+from bdeissct_dl.tree_encoder import compute_extra_targets, STATS, scale, SCALING_FACTOR
+from bdeissct_dl.tree_encoder import forest2sumstat_df
 from bdpn.tree_manager import read_forest, annotate_forest_with_time, TIME, rescale_forest_to_avg_brlen
 from bdpn_model import UPSILON
 from bdss_model import F_SS, X_SS

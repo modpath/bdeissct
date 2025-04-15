@@ -15,9 +15,6 @@ TIME = 'time'
 
 DATE_REGEX = r'[+-]*[\d]+[.\d]*(?:[e][+-][\d]+){0,1}'
 
-NOTIFIERS = 'notifiers'
-
-DEPTH = "depth"
 
 
 
@@ -123,23 +120,6 @@ def resolve_forest(forest, max_extra_brlen=None):
 
     for tree in forest:
         resolve_tree(tree, max_extra_brlen)
-
-
-def rescale_forest(forest, T_target=1000, T=None):
-    annotate_forest_with_time(forest)
-    T_initial = get_T(T=T, forest=forest)
-
-    if T_initial == T_target:
-        return 1
-
-    scaling_factor = T_target / T_initial
-
-    for tree in forest:
-        for n in tree.traverse():
-            n.add_feature(TIME, getattr(n, TIME) * scaling_factor)
-            n.dist *= scaling_factor
-
-    return scaling_factor
 
 
 def name_tree(tre):
@@ -263,14 +243,6 @@ def annotate_forest_with_time(forest, start_times=None):
             annotate_tree_with_time(tree, start_time)
 
 
-def get_T(T, forest):
-    if T is None:
-        T = 0
-        for tree in forest:
-            T = max(T, max(getattr(_, TIME) for _ in tree))
-    return T
-
-
 def sort_tree(tree, add_root_feature=False, oldest_tip_time_feature=OLDEST_TIP_TIME):
     """
     Reorganise a tree in such a way that for each node its child subtrees are sorted by the time of sampling:
@@ -313,42 +285,6 @@ def sort_forest(forest, oldest_tip_time_feature=OLDEST_TIP_TIME):
     for tree in forest:
         sort_tree(tree, add_root_feature=True, oldest_tip_time_feature=oldest_tip_time_feature)
     return sorted(forest, key=lambda _: getattr(_, oldest_tip_time_feature))
-
-
-def get_total_num_notifiers(tree):
-    return sum(len(getattr(_, NOTIFIERS)) for _ in tree.traverse())
-
-
-def get_max_num_notifiers(tree):
-    n = len(tree)
-    return n ** 2 - 2 * n + 2
-
-
-def get_min_num_notifiers(tree):
-    n = len(tree)
-    return n
-
-
-def preannotate_notifiers(forest):
-    """
-    Preannotates each tree node with potential notifiers from upper subtree
-
-    :param forest: forest of trees to be annotated
-    :return: void, adds NOTIFIERS feature to forest tree nodes.
-        This feature contains a (potentially empty) set of upper tree notifiers
-    """
-    for tree in forest:
-        for tip in tree:
-            if not tip.is_root():
-                parent = tip.up
-                for sis in parent.children:
-                    if sis != tip:
-                        sis.add_feature(NOTIFIERS, getattr(sis, NOTIFIERS, set()) | {tip})
-        tree.add_feature(NOTIFIERS, set())
-        for node in tree.traverse('preorder'):
-            notifiers = getattr(node, NOTIFIERS)
-            for child in node.children:
-                child.add_feature(NOTIFIERS, getattr(child, NOTIFIERS, set()) | notifiers)
 
 
 def tree2vector(tree, sort=True):
@@ -416,52 +352,3 @@ def vector2tree(vector):
         tree = tree.children[0].detach()
     return tree
 
-
-def get_forest_stats(forest):
-    """
-    Returns stats on:
-     * numbers of children per internal node (min, mean, max)
-     * internal branch distances (min, median, max) -- all of those are set to None if there are no internal bracnhes
-     * external branch distances (min, median, max)
-    :param forest: a list of trees (ete3.Tree)
-    :return: a flattened tuple of the above stats
-    """
-    n_children = []
-    internal_dists, external_dists = [], []
-    for tree in forest:
-        for n in tree.traverse():
-            if not n.is_leaf():
-                n_children.append(len(n.children))
-                if n.dist:
-                    external_dists.append(n.dist)
-            elif n.dist:
-                internal_dists.append(n.dist)
-    return (min(n_children), np.mean(n_children), max(n_children),
-            min(internal_dists) if internal_dists else None,
-            np.median(internal_dists) if internal_dists else None,
-            max(internal_dists) if internal_dists else None,
-            min(external_dists), np.median(external_dists), max(external_dists))
-
-
-def annotate_tree_depth(tree):
-    """
-    Annotates the tree nodes with the DEPTH feature, such that the root is at depth 0,
-    its children are at depth 1, and so on.
-
-    :param tree: ete3.Tree, the tree to which depth should be added
-    :return: void, modifies the original tree
-    """
-    for node in tree.traverse('preorder'):
-        parent_depth = -1 if node.is_root() else getattr(node.up, DEPTH)
-        node.add_feature(DEPTH, parent_depth + 1)
-
-def annotate_forest_depth(forest):
-    """
-    Annotates the forest tree nodes with the DEPTH feature, such that the root is at depth 0,
-    its children are at depth 1, and so on.
-
-    :param forest: list(ete3.Tree), the forest of trees to which depth should be added
-    :return: void, modifies the original trees
-    """
-    for tree in forest:
-        annotate_tree_depth(tree)

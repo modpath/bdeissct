@@ -2,11 +2,11 @@ import os
 
 import pandas as pd
 
-from bdpn.dl import BDCT1, MODELS, TRAINING_PATH
-from bdpn.dl.training import get_test_data, get_X_columns
-from bdpn.dl.tree_encoder import forest2sumstat_df
-from bdpn.tree_manager import read_forest
-from bdpn.dl import DATA_TYPES
+from bdeissct_dl import TRAINING_PATH
+from bdeissct_dl.training import get_test_data, get_X_columns
+from bdeissct_dl.tree_encoder import forest2sumstat_df
+from bdeissct_dl.tree_manager import read_forest
+from bdeissct_dl.bdeissct_model import DATA_TYPES, MODELS, BDCT
 
 
 def check_sumstats(forest_sumstats, model_name):
@@ -40,7 +40,7 @@ def main():
                                             "to the training set used for a given model.")
     parser.add_argument('--nwk', required=True, type=str, help="input tree file")
     parser.add_argument('--p', required=True, type=float, help='sampling probability')
-    parser.add_argument('--model_name', choices=MODELS, default=BDCT1, type=str,
+    parser.add_argument('--model_name', choices=MODELS, default=BDCT, type=str,
                         help='phylodynamic model.')
     parser.add_argument('--log', required=True, type=str, help="output log file")
     params = parser.parse_args()

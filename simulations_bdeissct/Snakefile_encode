@@ -1,0 +1,91 @@
+import os
+
+
+# To run locally:
+# snakemake --snakefile Snakefile_encode --config model=BDSS --keep-going --cores 1 --rerun-triggers mtime
+# snakemake --snakefile Snakefile_encode --config model=BDSS --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+# To run on maestro:
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/DEMI_clocks/anna/projects/bdext/simulations_dl
+# snakemake --snakefile Snakefile_encode --config model=BD --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/enc_logs/{params.name}.log -e {folder}/enc_logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 1000
+
+
+localrules: all
+
+
+folder = config.get("folder", '.')
+num = int(config.get("num", 100))
+REPETITIONS = list(range(num))
+os.makedirs('logs', exist_ok=True)
+
+sim_folder = os.path.join(folder, config.get("sf", 'training'), '100_20000')
+MODEL = config.get('model', None)
+MODELS = [MODEL] if MODEL else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+SIZES=['100_200', '1000_2000', '10000_20000']
+
+rule all:
+    input:
+        expand(os.path.join(sim_folder, '{model}', 'trees.csv.xz'), model=MODELS),
+        expand(os.path.join(folder, 'test', '{size}', '{model}', 'trees.csv.xz'), model=MODELS, size=SIZES),
+
+
+rule encode_batch:
+    '''
+    Encodes a simulated tree/forest set as sumstats.
+    '''
+    # input:
+        # log = expand(os.path.join(sim_folder, '{{model}}', '{{k}}', '{{type}}.{i}.log'), i=REPETITIONS),
+        # nwk = expand(os.path.join(sim_folder, '{{model}}', '{{k}}', '{{type}}.{i}.nwk'), i=REPETITIONS),
+    output:
+        stats = os.path.join(sim_folder, '{model,[BDEISCT0-9]+}', '{k,[0-9]+}', 'trees.csv.xz')
+    params:
+        mem=2000,
+        name='enc.{model}.{k}',
+        qos='fast',
+        nwk=os.path.join(sim_folder, '{model}', '{k}', 'trees.*.nwk'),
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.27"
+    shell:
+        """ 
+        echo "bdeissct_encode --patterns '{params.nwk}' --out {output.stats}"     
+        bdeissct_encode --patterns '{params.nwk}' --out {output.stats}
+        """
+
+rule merge_batches:
+    '''
+    Merges several encoded tree/forest sets.
+    '''
+    input:
+        stats=expand(os.path.join(sim_folder, '{{model}}', '{k}', 'trees.csv.xz'), k=range(100)),
+    output:
+        stats = os.path.join(sim_folder, '{model,[BDEISCT0-9]+}', 'trees.csv.xz')
+    params:
+        mem=2000,
+        name='enc.{model}',
+        qos='fast',
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.27"
+    shell:
+        """
+        python py/merge_xz.py --output {output.stats} --input {input.stats}
+        """
+
+
+rule encode:
+    '''
+    Encodes simulated test set as sumstats.
+    '''
+    input:
+        log = expand(os.path.join(folder, 'test', '{{size}}', '{{model}}', 'tree.{i}.log'), i=REPETITIONS),
+        nwk = expand(os.path.join(folder, 'test', '{{size}}', '{{model}}', 'tree.{i}.nwk'), i=REPETITIONS),
+    output:
+        stats = os.path.join(folder, 'test', '{size,[0-9]+_[0-9]+}', '{model,[BDEISCT0-9]+}', 'trees.csv.xz')
+    params:
+        mem=2000,
+        name='enc0',
+        qos='fast',
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.27"
+    shell:
+        """
+        bdeissct_encode --nwks {input.nwk} --out {output.stats} --logs {input.log}
+        """

@@ -8,7 +8,7 @@ from treesimulator.mtbd_models import CTModel, BirthDeathModel, BirthDeathExpose
     BirthDeathWithSuperSpreadingModel, BirthDeathExposedInfectiousWithSuperSpreadingModel
 from treesimulator.generator import generate
 
-TIMEOUT = int(0.5 * 60) # seconds
+TIMEOUT = int(5 * 60) # seconds
 
 
 def random_float(rng: np.random.Generator, min_value=0, max_value=1):
@@ -73,8 +73,7 @@ def generate_tree(params, pid, results):
 
     tips = rng.integers(params.min_tips, params.max_tips + 1)
 
-    [tree], (_, _, T), _ = generate([model], min_tips=tips, max_tips=tips,
-                            max_notified_contacts=kappa)
+    [tree], (_, _, T), _ = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa)
 
     results[pid] = tree, model, kappa, T
 

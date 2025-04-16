@@ -19,6 +19,7 @@ sim_folder = os.path.join(folder, config.get("sf", 'test'))
 model = config.get('model', None)
 MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 SIZES=['100_200', '1000_2000', '10000_20000']
+SIZES=['100_200', '1000_2000']
 
 # ci = "--ci"
 ci = ""
@@ -36,8 +37,9 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
-            model=MODELS, estimator=EST_ML, size=SIZES),
+        expand(os.path.join(sim_folder, '{size}', '{model}', 'estimates.tab'), model=MODELS, size=SIZES),
+        # expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
+        #     model=MODELS, estimator=EST_ML, size=SIZES),
         # expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
         #     model=MODELS, estimator=EST_DL, size=SIZES),
 
@@ -132,3 +134,58 @@ rule estimate_params_bdei:
         
         bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads}
         """
+
+
+
+rule combine_estimates:
+    '''
+    Combine estimates.
+    '''
+    input:
+        log = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.log'), i=REPETITIONS),
+        est_bd = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.est_bd'), i=REPETITIONS),
+        est_bdct = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.est_bdct'), i=REPETITIONS),
+        est_bdei = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.est_bdei'), i=REPETITIONS),
+        # est_bddl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BD.csv.xz')),
+        # est_bdct1dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDCT1.csv.xz')),
+        # est_bdct2dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDCT2.csv.xz')),
+        # est_bdct2000dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDCT2000.csv.xz')),
+        # est_bdeidl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDEI.csv.xz')),
+        # est_bdeict1dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDEICT1.csv.xz')),
+        # est_bdeict2dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDEICT2.csv.xz')),
+        # est_bdeict2000dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDEICT2000.csv.xz')),
+        # est_bdssdl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDSS.csv.xz')),
+        # est_bdssct1dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDSSCT1.csv.xz')),
+        # est_bdssct2dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDSSCT2.csv.xz')),
+        # est_bdssct2000dl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_BDSSCT2000.csv.xz')),
+        # est_mfdl = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_MF.csv.xz')),
+    output:
+        tab = os.path.join(sim_folder, '{size}', '{model,[BDEISCT0-9]+}', 'estimates.tab'),
+    params:
+        mem = 2000,
+        name = 'estimates',
+        qos = 'fast',
+    threads: 1
+    singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
+    shell:
+        """
+        python3 py/summary_table.py --real {input.log} \
+        --estimates_bd {input.est_bd} \
+        --estimates_bdct {input.est_bdct} \
+        --estimates_bdei {input.est_bdei} \
+        --tab {output.tab}
+        """
+
+#         --estimates_bddl {input.est_bddl} \
+#         --estimates_bdct1dl {input.est_bdct1dl} \
+#         --estimates_bdct2dl {input.est_bdct2dl} \
+#         --estimates_bdct2000dl {input.est_bdct2000dl} \
+#         --estimates_bdeidl {input.est_bdeidl} \
+#         --estimates_bdeict1dl {input.est_bdeict1dl} \
+#         --estimates_bdeict2dl {input.est_bdeict2dl} \
+#         --estimates_bdeict2000dl {input.est_bdeict2000dl} \
+#         --estimates_bdssdl {input.est_bdssdl} \
+#         --estimates_bdssct1dl {input.est_bdssct1dl} \
+#         --estimates_bdssct2dl {input.est_bdssct2dl} \
+#         --estimates_bdssct2000dl {input.est_bdssct2000dl} \
+#         --estimates_mfdl {input.est_mfdl} \

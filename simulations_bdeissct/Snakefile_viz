@@ -3,24 +3,25 @@ import os
 # To run locally:
 # snakemake --snakefile Snakefile_viz --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 
-
-
 localrules: all
-ruleorder: combine_estimates > combine_dl_estimates
-
-os.makedirs('logs', exist_ok=True)
-
 
 folder = config.get("folder", '.')
-sim_folder = config.get("sf", 'test')
-n = int(config.get("num", 100))
-REPETITIONS = list(range(n))
-M = int(config.get('max', 1000))
-MODELS = ['BDCT0', 'BDCT1', 'BDCT2', f'BDCT{M}'] \
-         + ['BDEICT0', 'BDEICT1', 'BDEICT2', f'BDEICT{M}'] \
-         + ['BDSSCT0', 'BDSSCT1', 'BDSSCT2', f'BDSSCT{M}']
-# DATA_TYPES = ['forest', 'tree']
-DATA_TYPES = ['tree']
+num = int(config.get("num", 100))
+REPETITIONS = list(range(num))
+os.makedirs('logs', exist_ok=True)
+
+sim_folder = os.path.join(folder, config.get("sf", 'test'))
+model = config.get('model', None)
+MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+SIZES=['100_200', '1000_2000', '10000_20000']
+
+EST_DL = ['MF', 'BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+EST_ML = ['bd', 'bdct', 'bdei']
+
+
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "DEMI_clocks" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+
 
 
 rule all:
@@ -29,155 +30,19 @@ rule all:
         # expand(os.path.join(sim_folder, '{model}', 'error_bars.svg'), model=MODELS),
         # os.path.join(sim_folder, 'error_bars.svg'),
         # expand(os.path.join(sim_folder, '{model}', 'errors_trees.svg'), model=MODELS),
-        expand(os.path.join(sim_folder, '{model}_error_bars.svg'), model=['BD', 'BDEI', 'BDSS']),
-        expand(os.path.join(sim_folder, '{model}', 'CI_stats.txt'), model=MODELS),
+        expand(os.path.join(sim_folder, '{model}_error_bars.svg'), model=MODELS),
+        expand(os.path.join(sim_folder, '{size}', '{model}', 'error_bars.svg'), model=MODELS, size=SIZES),
+        expand(os.path.join(sim_folder, '{size}', 'error_bars.svg'), size=SIZES),
 
-
-rule CI_stats:
-    '''
-    Calculate CI stats for estimated parameters.
-    '''
-    input:
-        tab = os.path.join(sim_folder, '{model}', 'estimates.tab'),
-    output:
-        stats = os.path.join(sim_folder, '{model}', 'CI_stats.txt'),
-    params:
-        mem = 2000,
-        name = 'CIs',
-        qos = 'fast',
-    threads: 1
-    singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
-    shell:
-        """
-        python3 py/assess_CIs.py --estimates {input.tab} --log {output.stats} --model {wildcards.model}
-        """
-
-rule combine_estimates:
-    '''
-    Combine estimates.
-    '''
-    input:
-        log = expand(os.path.join(sim_folder, '{{model}}', '{type}.{i}.log'), i=REPETITIONS, type=DATA_TYPES),
-        est_bd = expand(os.path.join(sim_folder, '{{model}}', '{type}.{i}.est_bd'), i=REPETITIONS, type=DATA_TYPES),
-        est_bdct = expand(os.path.join(sim_folder, '{{model}}', '{type}.{i}.est_bdct'), i=REPETITIONS, type=DATA_TYPES),
-        est_bddl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BD.csv.xz'), type=DATA_TYPES),
-        est_bdct1dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDCT1.csv.xz'), type=DATA_TYPES),
-        est_bdct2dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDCT2.csv.xz'), type=DATA_TYPES),
-        est_bdct2000dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDCT2000.csv.xz'), type=DATA_TYPES),
-        est_bdeidl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDEI.csv.xz'), type=DATA_TYPES),
-        est_bdeict1dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDEICT1.csv.xz'), type=DATA_TYPES),
-        est_bdeict2dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDEICT2.csv.xz'), type=DATA_TYPES),
-        est_bdeict2000dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDEICT2000.csv.xz'), type=DATA_TYPES),
-        est_bdssdl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDSS.csv.xz'), type=DATA_TYPES),
-        est_bdssct1dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDSSCT1.csv.xz'), type=DATA_TYPES),
-        est_bdssct2dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDSSCT2.csv.xz'), type=DATA_TYPES),
-        est_bdssct2000dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDSSCT2000.csv.xz'), type=DATA_TYPES),
-        est_mfdl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_MF.csv.xz'), type=DATA_TYPES),
-    output:
-        tab = os.path.join(sim_folder, '{model}', 'estimates.tab'),
-    params:
-        mem = 2000,
-        name = 'estimates',
-        qos = 'fast',
-    threads: 1
-    singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
-    shell:
-        """
-        python3 py/summary_table.py --real {input.log} \
-        --estimates_bd {input.est_bd} \
-        --estimates_bdct {input.est_bdct} \
-        --estimates_bddl {input.est_bddl} \
-        --estimates_bdct1dl {input.est_bdct1dl} \
-        --estimates_bdct2dl {input.est_bdct2dl} \
-        --estimates_bdct2000dl {input.est_bdct2000dl} \
-        --estimates_bdeidl {input.est_bdeidl} \
-        --estimates_bdeict1dl {input.est_bdeict1dl} \
-        --estimates_bdeict2dl {input.est_bdeict2dl} \
-        --estimates_bdeict2000dl {input.est_bdeict2000dl} \
-        --estimates_bdssdl {input.est_bdssdl} \
-        --estimates_bdssct1dl {input.est_bdssct1dl} \
-        --estimates_bdssct2dl {input.est_bdssct2dl} \
-        --estimates_bdssct2000dl {input.est_bdssct2000dl} \
-        --estimates_mfdl {input.est_mfdl} \
-        --tab {output.tab}
-        """
-
-
-rule combine_dl_estimates:
-    '''
-    Combine estimates.
-    '''
-    input:
-        log = expand(os.path.join(sim_folder, '{{model}}', '{type}.{i}.log'), i=REPETITIONS, type=DATA_TYPES),
-        est_bddl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BD.csv.xz'), type=DATA_TYPES),
-        est_bdct1dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDCT1.csv.xz'), type=DATA_TYPES),
-        est_bdct2dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDCT2.csv.xz'), type=DATA_TYPES),
-        est_bdct2000dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDCT2000.csv.xz'), type=DATA_TYPES),
-        est_bdeidl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDEI.csv.xz'), type=DATA_TYPES),
-        est_bdeict1dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDEICT1.csv.xz'), type=DATA_TYPES),
-        est_bdeict2dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDEICT2.csv.xz'), type=DATA_TYPES),
-        est_bdeict2000dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDEICT2000.csv.xz'), type=DATA_TYPES),
-        est_bdssdl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDSS.csv.xz'), type=DATA_TYPES),
-        est_bdssct1dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDSSCT1.csv.xz'), type=DATA_TYPES),
-        est_bdssct2dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDSSCT2.csv.xz'), type=DATA_TYPES),
-        est_bdssct2000dl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_BDSSCT2000.csv.xz'), type=DATA_TYPES),
-        est_mfdl = expand(os.path.join(sim_folder, '{{model}}', '{type}.estimates_MF.csv.xz'), type=DATA_TYPES),
-    output:
-        tab = os.path.join(sim_folder, '{model}', 'estimates.tab'),
-    params:
-        mem = 2000,
-        name = 'estimates',
-        qos = 'fast',
-    threads: 1
-    singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
-    shell:
-        """
-        python3 py/summary_table.py --real {input.log} \
-        --estimates_bddl {input.est_bddl} \
-        --estimates_bdct1dl {input.est_bdct1dl} \
-        --estimates_bdct2dl {input.est_bdct2dl} \
-        --estimates_bdct2000dl {input.est_bdct2000dl} \
-        --estimates_bdeidl {input.est_bdeidl} \
-        --estimates_bdeict1dl {input.est_bdeict1dl} \
-        --estimates_bdeict2dl {input.est_bdeict2dl} \
-        --estimates_bdeict2000dl {input.est_bdeict2000dl} \
-        --estimates_bdssdl {input.est_bdssdl} \
-        --estimates_bdssct1dl {input.est_bdssct1dl} \
-        --estimates_bdssct2dl {input.est_bdssct2dl} \
-        --estimates_bdssct2000dl {input.est_bdssct2000dl} \
-        --estimates_mfdl {input.est_mfdl} \
-        --tab {output.tab}
-        """
-
-rule plot_errors:
-    '''
-    Plots the errors.
-    '''
-    input:
-        tab = os.path.join(sim_folder, '{model}', 'estimates.tab'),
-    output:
-        pdf = os.path.join(sim_folder, '{model}', 'errors.svg'),
-        tab = os.path.join(sim_folder, '{model}', 'errors.tab'),
-    params:
-        mem = 2000,
-        name = 'errors',
-        qos = 'fast'
-    threads: 1
-    singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
-    shell:
-        """
-        echo "python3 py/plot_error.py --estimates {input.tab} --tab {output.tab} --pdf {output.pdf}"
-        python3 py/plot_error.py --estimates {input.tab} --tab {output.tab} --pdf {output.pdf} 
-        """
 
 rule plot_error_bars:
     '''
     Plots the errors.
     '''
     input:
-        tab = os.path.join(sim_folder, '{model}', 'estimates.tab'),
+        tab = os.path.join(sim_folder, '{size}', '{model}', 'estimates.tab'),
     output:
-        pdf = os.path.join(sim_folder, '{model,(BDSS|BDEI|BD)CT[0-9]+}', 'error_bars.svg'),
+        pdf = os.path.join(sim_folder, '{size}', '{model,[BDCTEIS0-9]+}', 'error_bars.svg'),
     params:
         mem = 2000,
         name = 'errors',
@@ -186,20 +51,17 @@ rule plot_error_bars:
     singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
     shell:
         """
-        python3 py/plot_error_bars.py --estimates {input.tab}  --pdf {output.pdf}  --only_trees
+        python3 py/plot_error_bars.py --estimates {input.tab}  --pdf {output.pdf} 
         """
 
-rule plot_error_bars_model:
+rule plot_error_bars_all_models:
     '''
     Plots the errors.
     '''
     input:
-        tab0 = os.path.join(sim_folder, '{model}CT0', 'estimates.tab'),
-        tab1 = os.path.join(sim_folder, '{model}CT1', 'estimates.tab'),
-        tab2 = os.path.join(sim_folder, '{model}CT2', 'estimates.tab'),
-        tab1000 = os.path.join(sim_folder, '{model}CT1000', 'estimates.tab'),
+        tab = expand(os.path.join(sim_folder, '{{size}}', '{model}', 'estimates.tab'), model=MODELS),
     output:
-        pdf = os.path.join(sim_folder, '{model,BDSS|BDEI|BD}_error_bars.svg'),
+        pdf = os.path.join(sim_folder, '{size}', 'error_bars.svg'),
     params:
         mem = 2000,
         name = 'errors',
@@ -208,17 +70,17 @@ rule plot_error_bars_model:
     singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
     shell:
         """
-        python3 py/plot_error_bars_all.py --estimates {input.tab0} {input.tab1} {input.tab2} {input.tab1000}  --pdf {output.pdf}  --only_trees
+        python3 py/plot_error_bars_all.py --estimates {input.tab} --pdf {output.pdf}
         """
 
-rule plot_error_bars_all:
+rule plot_error_bars_all_sizes:
     '''
     Plots the errors.
     '''
     input:
-        tab = expand(os.path.join(sim_folder, '{model}', 'estimates.tab'), model=MODELS),
+        tab = expand(os.path.join(sim_folder, '{size}', '{{model}}', 'estimates.tab'), size=SIZES),
     output:
-        pdf = os.path.join(sim_folder, 'error_bars.svg'),
+        pdf = os.path.join(sim_folder, '{model}_error_bars.svg'),
     params:
         mem = 2000,
         name = 'errors',
@@ -227,46 +89,5 @@ rule plot_error_bars_all:
     singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
     shell:
         """
-        python3 py/plot_error_bars_all.py --estimates {input.tab} --pdf {output.pdf} --only_trees
+        python3 py/plot_error_bars_all.py --estimates {input.tab} --pdf {output.pdf}
         """
-
-rule plot_errors_trees:
-    '''
-    Plots the errors.
-    '''
-    input:
-        tab = os.path.join(sim_folder, '{model}', 'estimates.tab'),
-    output:
-        pdf = os.path.join(sim_folder, '{model}', 'errors_trees.svg'),
-        tab = os.path.join(sim_folder, '{model}', 'errors_trees.tab'),
-    params:
-        mem = 2000,
-        name = 'errors',
-        qos = 'fast'
-    threads: 1
-    singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
-    shell:
-        """
-        python3 py/plot_error.py --estimates {input.tab} --tab {output.tab} --pdf {output.pdf}  --only_trees
-        """
-
-
-# rule plot_error_boths:
-#     '''
-#     Plots the errors.
-#     '''
-#     input:
-#         tab1 = os.path.join(sim_folder, '{model}', 'estimates.tab'),
-#         tab2 = os.path.join(sim_folder, 'BD', 'estimates.tab'),
-#     output:
-#         pdf = os.path.join(sim_folder, '{model}', 'errors.BDvsBDCT_{p}.svg'),
-#     params:
-#         mem = 2000,
-#         name = 'errors',
-#         qos = 'fast'
-#     threads: 1
-#     singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
-#     shell:
-#         """
-#         python3 py/plot_error_both.py --estimates_bdct {input.tab1} --estimates_bd {input.tab2} --pdf {output.pdf} --fixed {wildcards.p}
-#         """

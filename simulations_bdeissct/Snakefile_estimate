@@ -2,13 +2,11 @@ import os
 
 
 # To run locally:
-# snakemake --snakefile Snakefile_estimate --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+# snakemake --snakefile Snakefile_estimate --rerun-triggers mtime --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 
 # To run on bioevo (change shakemake activation below if you are not Anna ;) :
 # source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p01/Evolbioinfo/users/azhukova/projects/bdext/simulations_ct
 # snakemake --snakefile Snakefile_estimate --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o logs/{params.name}.log -e logs/{params.name}.log --mem {params.mem} -p common --qos={params.qos} -J {params.name}" --jobs 600
-snakemake_settings = "  --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem {params.mem} -p common --qos={params.qos}  -A bioevo -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" "
-
 
 localrules: all
 
@@ -27,19 +25,21 @@ ci = ""
 # bdei_ci = "-c 100"
 bdei_ci = ""
 
-EST_DL = ['MF', 'BD', 'BDCT1', 'BDCT2', 'BDCT2000'] \
-         + ['BDEI', 'BDEICT1', 'BDEICT2', f'BDEICT2000'] \
-         + ['BDSS', 'BDSSCT1', 'BDSSCT2', f'BDSSCT2000']
+EST_DL = ['MF', 'BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
 EST_ML = ['bd', 'bdct', 'bdei']
 
 
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "DEMI_clocks" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+
+
 rule all:
     input:
-        expand(os.path.join(sim_folder, '{model}', '{type}.{i}.est_{estimator}'), i=REPETITIONS,
-            model=MODELS, estimator=EST_ML, type=DATA_TYPE),
-        expand(os.path.join(sim_folder, '{model}','{type}.estimates_{estimator}.csv.xz'),
-            model=MODELS, estimator=EST_DL, type=DATA_TYPE),
+        expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
+            model=MODELS, estimator=EST_ML, size=SIZES),
+        # expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
+        #     model=MODELS, estimator=EST_DL, size=SIZES),
 
 
 rule estimate_params_dl:
@@ -47,9 +47,9 @@ rule estimate_params_dl:
     Estimate parameters.
     '''
     input:
-        stats = os.path.join(sim_folder, '{model}', '{type}.csv.xz')
+        stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz')
     output:
-        est = os.path.join(sim_folder, '{model}', '{type,tree|forest}.estimates_{estimator}.csv.xz')
+        est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT0-9]+}', 'trees.estimates_{estimator}.csv.xz')
     params:
         mem = 2000,
         name = 'dl',
@@ -58,7 +58,7 @@ rule estimate_params_dl:
     singularity: "docker://evolbioinfo/bdext:v0.1.16"
     shell:
         """
-        bdctdl_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci}
+        bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci}
         """
 
 
@@ -67,19 +67,19 @@ rule estimate_params_bd:
     Estimate parameters.
     '''
     input:
-        nwk = os.path.join(sim_folder, '{model}', '{type}.{i}.nwk'),
-        log = os.path.join(sim_folder, '{model}', '{type}.{i}.log'),
+        nwk = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.nwk'),
+        log = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.log'),
     output:
-        est = os.path.join(sim_folder, '{model}', '{type,tree|forest}.{i}.est_bd'),
+        est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT0-9]+}', 'tree.{i}.est_bd'),
     params:
         mem = 2000,
         name = 'bd{i}',
         qos = 'fast'
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.16"
+    singularity: "docker://evolbioinfo/bdct:v0.1.25"
     shell:
         """
-        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "sampling probability") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
+        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_i") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
         
         bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}
         """
@@ -90,19 +90,45 @@ rule estimate_params_bdct:
     Estimate parameters.
     '''
     input:
-        nwk = os.path.join(sim_folder, '{model}', '{type}.{i}.nwk'),
-        log = os.path.join(sim_folder, '{model}', '{type}.{i}.log'),
+        nwk = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.nwk'),
+        log = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.log'),
     output:
-        est = os.path.join(sim_folder, '{model}', '{type,tree|forest}.{i}.est_bdct'),
+        est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT0-9]+}', 'tree.{i}.est_bdct'),
     params:
         mem = 2000,
         name = 'bd{i}',
         qos = 'fast'
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.16"
+    singularity: "docker://evolbioinfo/bdct:v0.1.25"
     shell:
         """
-        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "sampling probability") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
+        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_i") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
         
         bdct_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}
+        """
+
+
+rule estimate_params_bdei:
+    '''
+    Estimate parameters.
+    '''
+    input:
+        nwk = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.nwk'),
+        log = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.log'),
+        bd_est = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_bd'),
+    output:
+        est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT0-9]+}', 'tree.{i}.est_bdei'),
+    params:
+        mem = 2000,
+        name = 'bd{i}',
+        qos = 'fast'
+    threads: 2
+    singularity: "docker://evolbioinfo/bdei:v0.13"
+    shell:
+        """
+        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_i") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
+        la=`awk -F, 'NR==2 {{ print $5 }}' {input.bd_est}`
+        psi=`awk -F, 'NR==2 {{ print $6 }}' {input.bd_est}`
+        
+        bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads}
         """

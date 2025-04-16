@@ -70,7 +70,7 @@ rule merge_batches:
         """
 
 
-rule encode:
+rule encode_test:
     '''
     Encodes simulated test set as sumstats.
     '''

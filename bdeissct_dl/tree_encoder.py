@@ -328,11 +328,13 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
                 if keys is None:
                     keys = STATS
                     line = ','.join(keys)
-                    f.write(f'{line}\n' if is_text else line.encode())
+                    line = f'{line}\n'
+                    f.write(line if is_text else line.encode())
 
                 line = ','.join(f'{v:.6f}' if v % 1 else f'{v:.0f}'
                                 for v in FeatureManager.compute_features(forest, *STATS, **kwargs))
-                f.write(f'{line}\n' if is_text else line.encode())
+                line = f'{line}\n'
+                f.write(line if is_text else line.encode())
 
                 if 999 == (i % 1000):
                     print(f'saved {(i + 1):10.0f} trees/forests...')

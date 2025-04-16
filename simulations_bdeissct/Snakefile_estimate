@@ -12,32 +12,27 @@ snakemake_settings = "  --keep-going --cores 1 --jobs 500 --rerun-incomplete --c
 
 localrules: all
 
-os.makedirs('logs', exist_ok=True)
-
-
 folder = config.get("folder", '.')
-sim_folder = config.get("sf", 'test')
 num = int(config.get("num", 100))
 REPETITIONS = list(range(num))
-M = int(config.get('max', 1000))
+os.makedirs('logs', exist_ok=True)
+
+sim_folder = os.path.join(folder, config.get("sf", 'test'))
+model = config.get('model', None)
+MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+SIZES=['100_200', '1000_2000', '10000_20000']
+
 # ci = "--ci"
 ci = ""
-os.makedirs(os.path.join(folder, 'logs'), exist_ok=True)
-
-
-MODELS = ['BDCT0', 'BDCT1', 'BDCT2', f'BDCT{M}'] \
-         + ['BDEICT0', 'BDEICT1', 'BDEICT2', f'BDEICT{M}'] \
-         + ['BDSSCT0', 'BDSSCT1', 'BDSSCT2', f'BDSSCT{M}']
+# bdei_ci = "-c 100"
+bdei_ci = ""
 
 EST_DL = ['MF', 'BD', 'BDCT1', 'BDCT2', 'BDCT2000'] \
          + ['BDEI', 'BDEICT1', 'BDEICT2', f'BDEICT2000'] \
          + ['BDSS', 'BDSSCT1', 'BDSSCT2', f'BDSSCT2000']
 
-EST_ML = ['bd', 'bdct']
+EST_ML = ['bd', 'bdct', 'bdei']
 
-
-# DATA_TYPE = ['tree', 'forest']
-DATA_TYPE = ['tree']
 
 rule all:
     input:

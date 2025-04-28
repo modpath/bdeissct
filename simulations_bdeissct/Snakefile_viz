@@ -5,7 +5,7 @@ import os
 
 localrules: all
 
-folder = config.get("folder", '.')
+folder = os.path.abspath(config.get("folder", '.'))
 num = int(config.get("num", 100))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
@@ -14,7 +14,6 @@ sim_folder = os.path.join(folder, config.get("sf", 'test'))
 model = config.get('model', None)
 MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 SIZES=['100_200', '1000_2000', '10000_20000']
-SIZES=['100_200', '1000_2000']
 
 EST_DL = ['MF', 'BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 EST_ML = ['bd', 'bdct', 'bdei']
@@ -27,6 +26,10 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
+        # expand(os.path.join(sim_folder, '{model}', 'errors.svg'), model=MODELS),
+        # expand(os.path.join(sim_folder, '{model}', 'error_bars.svg'), model=MODELS),
+        # os.path.join(sim_folder, 'error_bars.svg'),
+        # expand(os.path.join(sim_folder, '{model}', 'errors_trees.svg'), model=MODELS),
         expand(os.path.join(sim_folder, '{model}_error_bars.svg'), model=MODELS),
         expand(os.path.join(sim_folder, '{size}', '{model}', 'error_bars.svg'), model=MODELS, size=SIZES),
         expand(os.path.join(sim_folder, '{size}', 'error_bars.svg'), size=SIZES),

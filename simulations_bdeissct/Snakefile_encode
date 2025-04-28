@@ -12,7 +12,7 @@ import os
 localrules: all
 
 
-folder = config.get("folder", '.')
+folder = os.path.abspath(config.get("folder", '.'))
 num = int(config.get("num", 100))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)

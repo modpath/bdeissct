@@ -3,7 +3,7 @@ import os
 # To run locally:
 # snakemake --snakefile Snakefile_simulate_test --rerun-triggers mtime --config model=BDSS --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 # To run on maestro:
-# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/DEMI_clocks/anna/projects/bdext/simulations_bdeissct
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/DEMI_clocks/anna/projects/bdext/sim_bdeiss
 # snakemake --snakefile Snakefile_simulate_test --rerun-triggers mtime --config model=BDSS --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 300
 
 
@@ -11,7 +11,7 @@ localrules: all
 
 
 
-folder = config.get("folder", '.')
+folder = os.path.abspath(config.get("folder", '.'))
 num = int(config.get("num", 100))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)

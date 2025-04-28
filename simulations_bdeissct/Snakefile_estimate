@@ -10,7 +10,7 @@ import os
 
 localrules: all
 
-folder = config.get("folder", '.')
+folder = os.path.abspath(config.get("folder", '.'))
 num = int(config.get("num", 100))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
@@ -133,7 +133,7 @@ rule estimate_params_bdei:
         la=`awk -F, 'NR==2 {{ print $5 }}' {input.bd_est}`
         psi=`awk -F, 'NR==2 {{ print $6 }}' {input.bd_est}`
         
-        timeout 10m bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads}
+        bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads}
         """
 
 

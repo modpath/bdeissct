@@ -2,8 +2,8 @@ import unittest
 
 from ete3 import Tree
 
-from bdpn.tree_manager import tree2vector, vector2tree, \
-    sort_tree, annotate_tree_with_time, TIME, read_tree, read_forest, annotate_forest_with_time, forest2vector, vector2forest, \
+from bdeissct_dl.tree_manager import tree2vector, vector2tree, \
+    sort_tree, annotate_tree_with_time, TIME, read_forest, annotate_forest_with_time, forest2vector, vector2forest, \
     sort_forest
 
 VEC = [(2.0, 3.0), (2.5, 4.5), (2.5, 5.5), (2.0, 2.5), (0.0, 2.0),

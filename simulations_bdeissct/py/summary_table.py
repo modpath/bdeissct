@@ -63,9 +63,9 @@ if __name__ == "__main__":
             f_e = 1 / mu / (1 / mu + 1 / psi)
         else:
             f_e = 0
-        if 'superspreading fraction' in df.columns:
+        if 'superspreading fraction' in ddf.columns:
             f_ss = ddf.loc[0, 'superspreading fraction']
-            x_ss = ddf.loc[0, 'superspreading transmission ratio']
+            x_ss = ddf.loc[0, 'la_si'] / ddf.loc[0, 'la_ii'] if 'la_si' in ddf.columns else ddf.loc[0, 'la_se'] / ddf.loc[0, 'la_ie']
         else:
             f_ss = 0
             x_ss = 1

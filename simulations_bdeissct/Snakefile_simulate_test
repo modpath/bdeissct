@@ -48,7 +48,7 @@ rule simulate_bdeissct_trees:
         name='{i}.BDEISSCT',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.9"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.10"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -86,7 +86,7 @@ rule simulate_bdeiss_trees:
         name='{i}.BDEISS',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.9"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.10"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -124,7 +124,7 @@ rule simulate_bdeict_trees:
         name='{i}.BDEICT',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.9"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.10"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -162,7 +162,7 @@ rule simulate_bdei_trees:
         name='{i}.BDEI',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.9"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.10"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -200,7 +200,7 @@ rule simulate_bdssct_trees:
         name='{i}.BDSSCT',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.9"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.10"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -238,7 +238,7 @@ rule simulate_bdss_trees:
         name='{i}.BDSS',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.9"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.10"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -276,7 +276,7 @@ rule simulate_bdct_trees:
         name='{i}.BDCT',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.9"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.10"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -314,7 +314,7 @@ rule simulate_bd_trees:
         name='{i}.BD',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.9"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.10"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \

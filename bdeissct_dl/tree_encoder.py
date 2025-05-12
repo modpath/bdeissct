@@ -12,7 +12,7 @@ from treesumstats.ltt_sumstats import LTTFeatureCalculator
 from treesumstats.subtree_sumstats import SubtreeFeatureCalculator
 from treesumstats.transmission_chain_sumstats import TransmissionChainFeatureCalculator
 
-from bdeissct_dl.bdeissct_model import RHO, LA, PSI, F_E, UPSILON, X_C, KAPPA, F_SS, X_SS, RATE_PARAMETERS, \
+from bdeissct_dl.bdeissct_model import RHO, LA, PSI, F_E, UPSILON, X_C, KAPPA, F_S, X_S, RATE_PARAMETERS, \
     TIME_PARAMETERS, BDCT
 from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
 
@@ -77,26 +77,26 @@ def parse_parameters(log):
 
     df = pd.read_csv(log)
     for i in df.index:
-        psi = df.loc[i, 'psi_i']
-        rho = df.loc[i, 'p_i']
-        la = df.loc[i, 'la_ii' if 'la_ii' in df.columns else 'la_ie'] \
-             + (0 if 'la_is' not in df.columns else df.loc[i, 'la_is'])
-        if 'contact tracing probability' in df.columns:
-            upsilon = df.loc[i, 'contact tracing probability']
+        psi = df.loc[i, 'psi_I']
+        rho = df.loc[i, 'p_I']
+        la = df.loc[i, 'la_II' if 'la_II' in df.columns else 'la_IE'] \
+             + (0 if 'la_IS' not in df.columns else df.loc[i, 'la_IS'])
+        if 'upsilon' in df.columns:
+            upsilon = df.loc[i, 'upsilon']
             kappa = df.loc[i, 'kappa']
-            x_c = 1 / df.loc[i, 'removal time after notification'] / psi
+            x_c = df.loc[i, 'phi_I-C'] / psi
         else:
             upsilon = 0
             kappa = 1
             x_c = 1
-        if 'mu_ei' in df.columns:
-            mu = df.loc[i, 'mu_ei'] + (0 if 'mu_es' not in df.columns else df.loc[i, 'mu_es'])
+        if 'mu_EI' in df.columns:
+            mu = df.loc[i, 'mu_EI'] + (0 if 'mu_ES' not in df.columns else df.loc[i, 'mu_ES'])
             f_e = 1 / mu / (1 / mu + 1 / psi)
         else:
             f_e = 0
-        if 'superspreading fraction' in df.columns:
-            f_ss = df.loc[i, 'superspreading fraction']
-            x_ss = df.loc[i, 'superspreading transmission ratio']
+        if 'f_S' in df.columns:
+            f_ss = df.loc[i, 'f_S']
+            x_ss = df.loc[i, 'X_S']
         else:
             f_ss = 0
             x_ss = 1
@@ -111,7 +111,7 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
         pass
 
     def feature_names(self):
-        return [LA, PSI, RHO, F_E, F_SS, X_SS, UPSILON, X_C, KAPPA, SCALING_FACTOR]
+        return [LA, PSI, RHO, F_E, F_S, X_S, UPSILON, X_C, KAPPA, SCALING_FACTOR]
 
     def set_forest(self, forest, **kwargs):
         pass
@@ -132,9 +132,9 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
             return 'notified-sampling-rate to standard-removal-rate ratio.'
         if KAPPA == feature_name:
             return 'maximum number of notified contacts per index case.'
-        if X_SS == feature_name:
+        if X_S == feature_name:
             return 'super-spreading ratio.'
-        if F_SS == feature_name:
+        if F_S == feature_name:
             return 'fraction of super-spreaders.'
         if F_E == feature_name:
             return 'fraction of incubation over total infected-to-removed time.'
@@ -232,7 +232,7 @@ STATS = ['n_trees', 'n_tips', 'n_inodes', 'len_forest',
          LA, PSI, RHO,
          UPSILON, X_C, KAPPA,
          F_E,
-         F_SS, X_SS,
+         F_S, X_S,
          SCALING_FACTOR]
 
 
@@ -265,7 +265,7 @@ def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0
     kwargs = {SCALING_FACTOR: scaling_factor,
               LA: la, PSI: psi, RHO: rho,
               F_E: f_e,
-              F_SS: f_ss, X_SS: x_ss,
+              F_S: f_ss, X_S: x_ss,
               X_C: x_c, UPSILON: upsilon, KAPPA: kappa}
     scale(kwargs, scaling_factor)
 
@@ -321,7 +321,7 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
                 kwargs[LA], kwargs[PSI], kwargs[RHO] = la, psi, rho
                 kwargs[UPSILON], kwargs[KAPPA], kwargs[X_C] = upsilon, kappa, x_c
                 kwargs[F_E] = f_e
-                kwargs[F_SS], kwargs[X_SS] = f_ss, x_ss
+                kwargs[F_S], kwargs[X_S] = f_ss, x_ss
 
                 scale(kwargs, scaling_factor)
 

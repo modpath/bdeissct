@@ -8,8 +8,8 @@ from sklearn.preprocessing import StandardScaler
 from bdeissct_dl import MODEL_PATH
 from bdeissct_dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
-from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, QUANTILES, LA, PSI, RHO, UPSILON, X_C, KAPPA, F_E, F_SS, \
-    X_SS, TARGET_COLUMNS_BDCT
+from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, QUANTILES, LA, PSI, RHO, UPSILON, X_C, KAPPA, F_E, F_S, \
+    X_S, TARGET_COLUMNS_BDCT
 from bdeissct_dl.pinball_loss import MultiQuantilePinballLoss
 
 BATCH_SIZE = 4096
@@ -23,7 +23,7 @@ FEATURE_COLUMNS = [_ for _ in STATS if _ not in {'n_trees', 'n_tips', 'n_inodes'
                                                  LA, PSI,
                                                  UPSILON, X_C, KAPPA,
                                                  F_E,
-                                                 F_SS, X_SS,
+                                                 F_S, X_S,
                                                  SCALING_FACTOR}]
 
 

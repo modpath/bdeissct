@@ -6,14 +6,14 @@ from treesimulator.mtbd_models import (BirthDeathExposedInfectiousModel, BirthDe
                                        BirthDeathExposedInfectiousWithSuperSpreadingModel,
                                        CTModel)
 
-df = pd.read_csv('/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/1000_2000/BDEISSCT/estimates.tab',
-                 sep='\t', index_col=0)[['type', 'lambda', 'psi', 'p', 'x_ss', 'f_ss', 'f_e', 'x_c', 'upsilon']]
+df = pd.read_csv('/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/1000_1000/BDEISSCT/estimates.tab',
+                 sep='\t', index_col=0)[['type', 'lambda', 'psi', 'p', 'X_S', 'f_S', 'f_E', 'X_C', 'upsilon']]
 df['ID'] = df.index
 
 avg_la, avg_psi, avg_R = [], [], []
 for row_id, row in df.iterrows():
     la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c = \
-        row[['lambda', 'psi', 'p', 'f_e', 'f_ss', 'x_ss', 'upsilon', 'x_c']]
+        row[['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C']]
 
     d_i = 1 / psi
     d = d_i / (1 - f_e)

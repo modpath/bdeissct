@@ -73,9 +73,9 @@ def generate_tree(params, pid, results):
 
     tips = rng.integers(params.min_tips, params.max_tips + 1)
 
-    [tree], (_, _, T), _ = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa)
+    [tree], (_, _, T, observed_freqs), _ = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa)
 
-    results[pid] = tree, model, kappa, T
+    results[pid] = tree, model, kappa, T, observed_freqs
 
 
 if __name__ == "__main__":
@@ -135,12 +135,16 @@ if __name__ == "__main__":
         model = return_dict[0][1]
         is_ct = isinstance(model, CTModel)
         keys = model.get_epidemiological_parameters().keys()
-        f.write('{}{},tips,end_time\n'.format(','.join(keys), ',kappa' if is_ct else ''))
-        for tree, model, kappa, T in return_dict.values():
+        f.write('{}{},{},tips,end_time\n' \
+                .format(','.join(keys),
+                        ',kappa' if is_ct else '',
+                        ','.join(f'pi_{s}_observed' for s in model.states)))
+        for tree, model, kappa, T, obs in return_dict.values():
             tips = len(tree)
             ps = model.get_epidemiological_parameters()
-            f.write('{}{},{},{:g}\n'.format(','.join(f'{ps[k]:g}' for k in keys),
+            f.write('{}{},{},{},{:g}\n'.format(','.join(f'{ps[k]:g}' for k in keys),
                                                f',{kappa:g}' if is_ct else '',
+                                               ','.join(f'{o:g}' for o in obs[0]),
                                                tips, T))
 
             forest.append(tree)

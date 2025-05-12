@@ -1,0 +1,77 @@
+import os
+
+# To run locally:
+# snakemake --snakefile Snakefile_train --keep-going --cores 1 --rerun-triggers mtime
+# snakemake --snakefile Snakefile_train --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+
+
+localrules: all
+
+
+folder = config.get("folder", '.')
+num = int(config.get("num", 100))
+REPETITIONS = list(range(num))
+os.makedirs('logs', exist_ok=True)
+
+sim_folder = os.path.join(folder, config.get("sf", 'training'), '1000_1000')
+MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+
+rule all:
+    input:
+        expand(os.path.join(folder, '..', 'bdeissct_dl', 'models', '{model}', 'ffnn.keras'), model=MODELS + ['MF'])
+
+rule copy_data:
+    input:
+        stats = os.path.join(sim_folder, '{model}', 'trees.csv.xz')
+    output:
+        stats = os.path.join(folder, '..', 'bdeissct_dl', 'data', '{model,[BDEISCT0-9]+}', 'trees.csv.xz')
+    params:
+        mem=2000,
+        name='cp_{model}',
+        qos='fast',
+    threads: 1
+    shell:
+        """        
+        cp {input} {output}
+        """
+
+rule train_model:
+    '''
+    Trains a model.
+    '''
+    input:
+        stats_trees = os.path.join(folder, '..', 'bdeissct_dl', 'data', '{model}', 'trees.csv.xz')
+    output:
+        model = os.path.join(folder, '..', 'bdeissct_dl', 'models', '{model}', 'ffnn.keras')
+    params:
+        mem=2000,
+        name='train_{model}',
+        qos='fast',
+        path = os.path.join(folder, '..', 'bdeissct_dl', 'models')
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.29"
+    shell:
+        """        
+        bdeissct_train --model_name {wildcards.model} --train_data {input.stats_trees} --model_path {params.path}
+        """
+
+rule train_mf:
+    '''
+    Trains a BDCT model finder.
+    '''
+    input:
+        stats_trees = expand(os.path.join(folder, '..', 'bdeissct_dl', 'data', '{model}', 'trees.csv.xz'), model=MODELS),
+    output:
+        model = os.path.join(folder, '..', 'bdeissct_dl', 'models', 'MF', 'ffnn.keras')
+    params:
+        mem=2000,
+        name='train_mf',
+        qos='fast',
+        path = os.path.join(folder, '..', 'bdeissct_dl', 'models', 'MF'),
+        labels = MODELS
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.29"
+    shell:
+        """        
+        bdeissct_train_model_finder --train_data {input.stats_trees} --train_labels {params.labels} --model_path {params.path}
+        """

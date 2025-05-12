@@ -1,0 +1,69 @@
+import os
+
+
+# To run locally:
+# snakemake --snakefile Snakefile_combine_estimates --rerun-triggers mtime --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+
+localrules: all
+
+folder = os.path.abspath(config.get("folder", '.'))
+num = int(config.get("num", 100))
+REPETITIONS = list(range(num))
+os.makedirs('logs', exist_ok=True)
+
+sim_folder = os.path.join(folder, config.get("sf", 'test'))
+model = config.get('model', None)
+MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+SIZES=['1000_1000']
+
+
+
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "DEMI_clocks" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+
+
+rule all:
+    input:
+        expand(os.path.join(sim_folder, '{size}', '{model}', 'estimates.tab'), model=MODELS, size=SIZES),
+
+
+rule combine_estimates:
+    '''
+    Combine estimates.
+    '''
+    input:
+        log = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.log'), i=REPETITIONS),
+        est_bddl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BD.csv.xz'),
+        est_bdeidl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEI.csv.xz'),
+        est_bdssdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDSS.csv.xz'),
+        est_bdeissdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEISS.csv.xz'),
+        est_bdctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDCT.csv.xz'),
+        est_bdeictdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEICT.csv.xz'),
+        est_bdssctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDSSCT.csv.xz'),
+        est_bdeissctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEISSCT.csv.xz'),
+        est_mfdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_MF.csv.xz'),
+    output:
+        tab = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'estimates.tab'),
+    params:
+        mem = 2000,
+        name = 'estimates',
+        qos = 'fast',
+    threads: 1
+    singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
+    shell:
+        """
+        python3 py/summary_table.py --real {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.log \
+        --estimates_bd {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bd \
+        --estimates_bdct {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bdct \
+        --estimates_bdei {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bdei \
+        --tab {output.tab} \
+        --estimates_bddl {input.est_bddl} \
+        --estimates_bdctdl {input.est_bdctdl} \
+        --estimates_bdeidl {input.est_bdeidl} \
+        --estimates_bdeictdl {input.est_bdeictdl} \
+        --estimates_bdssdl {input.est_bdssdl} \
+        --estimates_bdssctdl {input.est_bdssctdl} \
+        --estimates_bdeissdl {input.est_bdeissdl} \
+        --estimates_bdeissctdl {input.est_bdeissctdl} \
+        --estimates_mfdl {input.est_mfdl} 
+        """

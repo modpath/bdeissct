@@ -18,14 +18,14 @@ os.makedirs('logs', exist_ok=True)
 sim_folder = os.path.join(folder, config.get("sf", 'test'))
 model = config.get('model', None)
 MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['1000_1000']
+SIZES=['500_1000']
 
 # ci = "--ci"
 ci = ""
 # bdei_ci = "-c 100"
 bdei_ci = ""
 
-EST_DL = ['MF', 'BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+EST_DL = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
 EST_ML = ['bd', 'bdct', 'bdei']
 
@@ -48,18 +48,21 @@ rule estimate_params_dl:
     Estimate parameters.
     '''
     input:
-        stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz')
+        stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
+        dl_model= os.path.join(sim_folder, '..', 'training', '{size}', '{estimator}', 'ffnn.keras')
     output:
         est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'trees.estimates_{estimator}.csv.xz')
     params:
         mem = 2000,
         name = 'dl',
-        qos = 'fast'
+        qos = 'fast',
+        pattern = os.path.join(sim_folder, '..', 'training', '{size}', '{}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.16"
+    singularity: "docker://evolbioinfo/bdext:v0.1.36"
     shell:
         """
-        bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci}
+        bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \
+        --model_path_pattern {params.pattern}
         """
 
 

@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
 from bdeissct_dl.bdeissct_model import F_E, RHO, PSI, UPSILON, PHI, MODEL2TARGET_COLUMNS, BDCT, BD, BDEI, BDSS, BDEISS, MODELS, QUANTILES, MODEL_FINDER, F_S, X_S, X_C
-from bdeissct_dl import MODEL_PATH, MODEL_FINDER_PATH
+from bdeissct_dl import MODEL_PATH
 
 from bdeissct_dl.training import get_test_data
 from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back_array
@@ -86,14 +86,14 @@ def estimate_cis(forest_sumstats, model_name, Y_pred):
     return Y_pred
 
 
-def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, ci=False):
+def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, ci=False, model_path=MODEL_PATH):
     n_forests = len(forest_sumstats)
     n_models = len(MODELS)
 
     if MODEL_FINDER == model_name:
         import bdeissct_dl.training_model_finder
         X = bdeissct_dl.training_model_finder.get_test_data(df=forest_sumstats)
-        model_weights = load_model_keras(MODEL_FINDER_PATH).predict(X)
+        model_weights = load_model_keras(model_path.format(model_name)).predict(X)
     else:
         model_weights = np.zeros((n_forests, n_models), dtype=float)
         model_weights[:, MODELS.index(model_name)] = 1
@@ -110,7 +110,7 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, ci=False):
     for model_id in model_ids:
         model_name = MODELS[model_id]
 
-        model_path = os.path.join(MODEL_PATH, model_name)
+        model_path = model_path.format(model_name)
 
         X_cur, SF_cur = np.array(X), np.array(SF)
 
@@ -118,19 +118,19 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, ci=False):
         if scaler_x:
             X_cur = scaler_x.transform(X_cur)
 
-        Y_pred = load_model_keras(model_path).predict(X_cur)
+        model = load_model_keras(model_path)
+        Y_pred = model.predict(X_cur)
         scaler_y = load_scaler_numpy(model_path, suffix='y')
-        n_quant = len(QUANTILES)
-        target_columns = MODEL2TARGET_COLUMNS[model_name]
-        for i in range(n_quant):
-            Y_pred[:, i::n_quant] = scaler_y.inverse_transform(Y_pred[:, i::n_quant])
+        if scaler_y:
+            n_quant = len(QUANTILES)
+            for i in range(n_quant):
+                Y_pred[:, i::n_quant] = scaler_y.inverse_transform(Y_pred[:, i::n_quant])
 
+        target_columns = MODEL2TARGET_COLUMNS[model_name]
         tc_cis = tuple((f'{_}_{q * 100:.1f}' if q != 0.5 else _) for _ in target_columns
                        for q in QUANTILES)
         Y_pred = np.maximum(Y_pred, 0)
         scale_back_array(Y_pred, SF_cur, tc_cis)
-        idx = [i for i in range(len(tc_cis)) if tc_cis[i].startswith(UPSILON)]
-        Y_pred[:, idx] = np.minimum(Y_pred[:, idx], 1)
         results.append(pd.DataFrame(Y_pred, columns=tc_cis))
 
     if len(model_ids) == 1:
@@ -180,6 +180,18 @@ def main():
     parser.add_argument('--model_name', choices=MODELS + (MODEL_FINDER,), default=MODEL_FINDER, type=str,
                         help=f'BDEISSCT model flavour. If {MODEL_FINDER} is specified, '
                              f'model finder will be used to pick the model.')
+    parser.add_argument('--model_path_pattern', default=MODEL_PATH,
+                        help='By default our pretrained BD(EI)(SS)(CT) models are used, '
+                             'but it is possible to specify a pattern of a path to a custom folder here, '
+                             'containing files "ffnn.keras" (with the model), '
+                             'and scaler-related files to rescale the input data X, and the output Y: '
+                             'for X: "data_scalerx_mean.npy", "data_scalerx_scale.npy", "data_scalerx_var.npy" '
+                             '(unpickled numpy-saved arrays), '
+                             'and "data_scalerx_n_samples_seen.txt" '
+                             'a text file containing the number of examples in the training set). '
+                             'For Y the file names are the same, just x replaced by y, e.g., "data_scalery_mean.npy". '
+                             'The path pattern should contain a part "{}", which will be replaced by the model name, '
+                             'e.g., "/home/user/models/{}/", which for a model BD will point to "/home/user/models/BD/"')
     parser.add_argument('--p', default=0, type=float, help='sampling probability')
     parser.add_argument('--log', required=True, type=str, help="output log file")
     parser.add_argument('--nwk', default=None, type=str, help="input tree file")
@@ -196,7 +208,8 @@ def main():
         forest_df = forest2sumstat_df(forest, rho=params.p)
     else:
         forest_df = pd.read_csv(params.sumstats)
-    predict_parameters(forest_df, model_name=params.model_name, ci=params.ci).to_csv(params.log, header=True)
+    predict_parameters(forest_df, model_name=params.model_name, ci=params.ci, model_path=params.model_path_pattern)\
+        .to_csv(params.log, header=True)
 
 
 if '__main__' == __name__:

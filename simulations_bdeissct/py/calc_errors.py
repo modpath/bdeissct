@@ -1,13 +1,17 @@
 from collections import defaultdict
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox, VPacker
+# import seaborn as sns
+# from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox, VPacker
 from treesimulator.mtbd_models import *
 
 import re
+
+WEIGHTED_F_S = 'avg_f_S'
+
+WEIGHTED_F_E = 'avg_f_E'
 
 D_I = 'd_I'
 
@@ -51,14 +55,19 @@ MU = u'\u03BC'
 
 
 R_PARAMETERS = ['R_I', 'R0', 'R1', 'R2', 'R3', 'R4', 'R5']
+R_PARAMETERS = ['R0', 'R1']
 D_PARAMETERS = [D_I, D_E, ONE_BY_WEIGHTED_PSI, ONE_BY_STATE_WEIGHTED_PSI, WEIGHTED_D]
 LA_PARAMETERS = ['lambda', WEIGHTED_LA, STATE_WEIGHTED_LA]
+LA_PARAMETERS = [WEIGHTED_LA]
 PSI_PARAMETERS = ['psi', WEIGHTED_PSI, STATE_WEIGHTED_PSI, WEIGHTED_EXIT_RATE]
+PSI_PARAMETERS = [WEIGHTED_PSI, STATE_WEIGHTED_PSI]
 EPI_PARAMETERS = R_PARAMETERS + D_PARAMETERS
 CT_PARAMETERS = ['upsilon', 'X_C']
 BD_PARAMETERS = EPI_PARAMETERS + LA_PARAMETERS + PSI_PARAMETERS
-EI_PARAMETERS = ['f_E', 'avg_f_E']
-SS_PARAMETERS = ['f_S', 'avg_f_S', 'X_S']
+EI_PARAMETERS = ['f_E', WEIGHTED_F_E]
+EI_PARAMETERS = ['f_E']
+SS_PARAMETERS = ['f_S', WEIGHTED_F_S, 'X_S']
+SS_PARAMETERS = ['f_S', 'X_S']
 ALL_PARAMETERS = BD_PARAMETERS + EI_PARAMETERS + SS_PARAMETERS + CT_PARAMETERS
 ALL_PARAMETERS = BD_PARAMETERS
 
@@ -130,62 +139,35 @@ def get_avg_la_by_er(model):
 
 def extend_df(df):
 
-    wla, swla, wpsi, swpsi, wd, r0, wer, rids = [], [], [], [], [], [], [], []
-    print(df.columns)
+    wla, swla, wpsi, swpsi, wd, r0, wer, rids, avg_fe, avg_fs, rrrs = [], [], [], [], [], [], [], [], [], [], []
 
-    for row_id, row in df[['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C']].iterrows():
-        la, psi, rho, f_E, f_S, X_S, upsilon, X_C = \
-            row[['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C']]
+    for row_id, row in df.iterrows():
+        la, psi, rho, f_E, f_S, X_S, upsilon, X_C,\
+            pi_E, pi_I, pi_S, pi_EC, pi_IC, pi_SC = \
+            row[['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C',
+                 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']]
 
         if not psi:
             print(df.loc[row_id, :])
             raise ValueError('weird estimates')
-            continue
-
-        rids.append(row_id)
-
-        model = get_model(f_E, f_S, la, psi, rho, upsilon, X_C, X_S)
-
-        pi_E, pi_I, pi_S, pi_EC, pi_IC, pi_SC = 0, 0, 0, 0, 0, 0
-
-        if isinstance(model, CTModel):
-            if EXPOSED in model.states:
-                if len(model.states) == 6:
-                    pi_E, pi_I, pi_S, pi_EC, pi_IC, pi_SC = model.state_frequencies
-                else:
-                    pi_E, pi_I, pi_EC, pi_IC = model.state_frequencies
-            elif SUPERSPREADER in model.states:
-                pi_I, pi_S, pi_IC, pi_SC = model.state_frequencies
-            else:
-                pi_I, pi_IC = model.state_frequencies
-        else:
-            if EXPOSED in model.states:
-                if len(model.states) == 3:
-                    pi_E, pi_I, pi_S = model.state_frequencies
-                else:
-                    pi_E, pi_I = model.state_frequencies
-            elif SUPERSPREADER in model.states:
-                pi_I, pi_S = model.state_frequencies
-            else:
-                pi_I = 1
 
         d_i = 1 / psi
         d = d_i / (1 - f_E)
         d_e = d - d_i
-        phi = X_C * psi
+        phi = max(X_C * psi, 1e-6)
         d_c = 1 / phi
+        mu = 1 / max(d_e, 1e-6)
 
+        avg_fs.append(pi_S + pi_SC)
+        avg_fe.append(pi_E / (pi_E + pi_EC) * f_E + pi_EC / (pi_E + pi_EC) * d_e / (d_e + d_c) if pi_E or pi_EC else 0)
 
-        LA_I_ = model.transmission_rates.sum(axis=1)
-        MU_I_ = model.transition_rates.sum(axis=1)
-
-        wla.append(model.state_frequencies.dot(LA_I_))
+        wla.append((pi_I + pi_IC) * la + (pi_S + pi_SC) * X_S * la)
         swla.append((pi_E * d_i / d * (1 - f_S) + pi_I) * la \
                                             + (pi_E * d_i / d * f_S + pi_S) * X_S * la \
                                             + (pi_EC * d_c / (d_e + d_c) * (1 - f_S) + pi_IC) * la \
                                             + (pi_EC * d_c / (d_e + d_c) * f_S + pi_SC) * X_S * la)
-        wpsi.append(model.state_frequencies.dot(model.removal_rates))
-        swpsi.append((pi_E * d_i / d + pi_I + pi_S) * psi \
+        wpsi.append((pi_I + pi_S) * psi + (pi_IC + pi_SC) * phi)
+        swpsi.append((pi_E * d_i / d + pi_I + pi_S) * psi
                                             + (pi_EC * d_c / (d_e + d_c) + pi_IC + pi_SC) * phi)
 
         wd.append(pi_E * d + (pi_I + pi_S) * d_i \
@@ -194,27 +176,36 @@ def extend_df(df):
         r0.append((pi_E + pi_I + X_S * pi_S) * (la / psi)\
                                      + (pi_EC + pi_IC + X_S * pi_SC) * (la / phi))
 
-        wer.append(model.state_frequencies.dot(LA_I_ + MU_I_))
+        wer.append((pi_E + pi_EC) * mu + (pi_I + pi_S) * psi + (pi_IC + pi_SC) * phi)
 
-    df.loc[rids, 'R0'] = r0
-    df.loc[rids, WEIGHTED_LA] = wla
-    df.loc[rids, STATE_WEIGHTED_LA] = swla
-    df.loc[rids, WEIGHTED_PSI] = wpsi
-    df.loc[rids, STATE_WEIGHTED_PSI] = swpsi
-    df.loc[rids, WEIGHTED_D] = wd
-    df.loc[rids, WEIGHTED_EXIT_RATE] = wer
+        rrrs.append((pi_E * (1 - f_S) + pi_I) * la / psi \
+                    + (pi_E * f_S + pi_S) * X_S * la / psi \
+                    + (pi_EC * (1 - f_S) + pi_IC) * la / phi \
+                    + (pi_EC * f_S + pi_SC) * X_S * la / phi)
+
+    df[ 'R0'] = rrrs
+    df[ WEIGHTED_LA] = wla
+    df[ STATE_WEIGHTED_LA] = swla
+    df[ WEIGHTED_PSI] = wpsi
+    df[ STATE_WEIGHTED_PSI] = swpsi
+    df[ WEIGHTED_D] = wd
+    df[ WEIGHTED_EXIT_RATE] = wer
 
 
-    df.loc[rids, 'R1'] = 1 / df.loc[rids, WEIGHTED_PSI]
-    df.loc[rids, 'R2'] = df.loc[rids, WEIGHTED_LA] * df.loc[rids, WEIGHTED_D]
-    df.loc[rids, 'R3'] = df.loc[rids, WEIGHTED_LA] / df.loc[rids, WEIGHTED_PSI]
-    df.loc[rids, 'R4'] = df.loc[rids, STATE_WEIGHTED_LA] / df.loc[rids, STATE_WEIGHTED_PSI]
-    df.loc[rids, 'R5'] = df.loc[rids, STATE_WEIGHTED_LA] * df.loc[rids, WEIGHTED_D]
-    df.loc[rids, 'R_I'] = df.loc[rids, 'lambda'] / df.loc[rids, 'psi']
-    df.loc[rids, D_I] = 1 / df.loc[rids, 'psi']
-    df.loc[rids, D_E] = (1 / df.loc[rids, 'psi']) / (1 - df.loc[rids, 'f_E'])
-    df.loc[rids, ONE_BY_WEIGHTED_PSI] = 1 / df.loc[rids, WEIGHTED_PSI]
-    df.loc[rids, ONE_BY_STATE_WEIGHTED_PSI] = 1 / df.loc[rids, STATE_WEIGHTED_PSI]
+    df[ 'R1'] = df[ WEIGHTED_LA] / df[ STATE_WEIGHTED_PSI]
+    df[ 'R2'] = df[ WEIGHTED_LA] * df[ WEIGHTED_D]
+    df[ 'R3'] = df[ WEIGHTED_LA] / df[ WEIGHTED_PSI]
+    df[ 'R4'] = df[ STATE_WEIGHTED_LA] / df[ STATE_WEIGHTED_PSI]
+    df[ 'R5'] = df[ STATE_WEIGHTED_LA] * df[ WEIGHTED_D]
+    df[ 'R_I'] = df[ 'lambda'] / df[ 'psi']
+
+    df[ D_I] = 1 / df[ 'psi']
+    df[ D_E] = (1 / df[ 'psi']) / (1 - df[ 'f_E'])
+    df[ ONE_BY_WEIGHTED_PSI] = 1 / df[ WEIGHTED_PSI]
+    df[ ONE_BY_STATE_WEIGHTED_PSI] = 1 / df[ STATE_WEIGHTED_PSI]
+
+    df[WEIGHTED_F_E] = avg_fe
+    df[WEIGHTED_F_S] = avg_fs
 
 
 def get_model(f_E, f_S, la, psi, rho, upsilon, X_C, X_S):
@@ -269,10 +260,11 @@ if __name__ == "__main__":
     parser.add_argument('--pdf', type=str, help="plot")
     params = parser.parse_args()
 
-    estimators = np.array(['bd', 'bddl', 'bdct', 'bdctdl', 'bdei', 'bdeidl', 'bdss', 'bdssdl', 'mfdl'])
+    # estimators = np.array(['bd', 'bdei', 'bdssdl', 'bdeissdl', 'bdct', 'bdeictdl', 'bdssctdl', 'bdeissctdl'])
+    estimators = np.array(['bd', 'bdei', 'bdssdl', 'bdeissdl', 'bdct', 'bdeictdl', 'bdssctdl', 'bdeissctdl', 'bddl', 'bdeidl'])
     generators = np.array(['BD', 'BDEI' , 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT'])
     parameters = np.array(R_PARAMETERS + D_PARAMETERS + LA_PARAMETERS + PSI_PARAMETERS)
-    parameters = np.array(LA_PARAMETERS + PSI_PARAMETERS)
+    parameters = np.array(R_PARAMETERS + LA_PARAMETERS + PSI_PARAMETERS + CT_PARAMETERS + EI_PARAMETERS + SS_PARAMETERS)
 
     estimator_generator_parameter_repetition_error_bias = np.zeros(shape=(len(estimators), len(generators), len(parameters), 100, 2), dtype=float)
 
@@ -280,9 +272,12 @@ if __name__ == "__main__":
     for estimates in params.estimates:
 
         generator_idx = np.argwhere(re.findall(r'BDEISSCT|BDEISS|BDEICT|BDEI|BDSSCT|BDSS|BDCT|BD', estimates)[0] == generators)
+        print(generators[generator_idx])
 
         df = pd.read_csv(estimates, sep='\t', index_col=0)
         df = df[[_ for _ in df.columns if '_min' not in _ and '_max' not in _]]
+        df['psi'] = np.maximum(df['psi'], 1e-6)
+        df['lambda'] = np.maximum(df['lambda'], 1e-6)
         extend_df(df)
 
         real_df = df.loc[df['type'] == 'real', :]
@@ -307,7 +302,7 @@ if __name__ == "__main__":
                         = (df.loc[mask, par] - real_df.loc[idx, par])
                 if 'X_C' in par:
                     estimator_generator_parameter_repetition_error_bias[estimator_idx, generator_idx, par_idx, \
-                        np.abs(df.loc[mask, 'upsilon']) <= 1e-3, 1] = np.nan
+                        df.loc[idx, :][np.abs(df.loc[idx, 'upsilon']) <= 1e-3].index, 1] = np.nan
 
     estimator_generator_parameter_repetition_error_bias[:, :, :, :, 0] \
         = np.abs(estimator_generator_parameter_repetition_error_bias[:, :, :, :, 1])
@@ -318,33 +313,59 @@ if __name__ == "__main__":
         print('\t{}\tnon-CT\tALL'.format('\t'.join(generators)))
 
         for par_idx, par in enumerate(parameters):
-            if (('X_C' in par or 'upsilon' in par) and 'ct' not in estimator_type.lower()) \
-                    or (('f_E' in par) and 'ei' not in estimator_type.lower()) \
-                    or (('f_S' in par or 'X_S' in par) and 'ss' not in estimator_type.lower()):
+            if par == LA_PARAMETERS[0] or par == PSI_PARAMETERS[0] or par == CT_PARAMETERS[0] or par == EI_PARAMETERS[0] or par == SS_PARAMETERS[0]:
+                print()
+
+            if par in R_PARAMETERS and estimator_idx == 0:
+                res_err = f'{par}-best'
+                res_bias = f'{par}:bias-best'
+                for generator_idx, generator in enumerate(generators):
+                    errors = estimator_generator_parameter_repetition_error_bias[generator_idx, generator_idx, par_idx,
+                             :, 0]
+                    biases = estimator_generator_parameter_repetition_error_bias[generator_idx, generator_idx, par_idx,
+                             :, 1]
+                    avg_error = np.nanmean(errors)
+                    avg_bias = np.nanmean(biases)
+                    res_err += f'\t{avg_error:.3f}'
+                    res_bias += f'\t{avg_bias:.3f}'
+
+
+                print(res_err)
+                print(res_bias)
+
+            if ((estimator_type.lower() != 'mfdl') and
+                    ((('X_C' in par or 'upsilon' in par) and 'ct' not in estimator_type.lower()) \
+                     or (('f_E' in par) and 'ei' not in estimator_type.lower()) \
+                     or (('f_S' in par or 'X_S' in par) and 'ss' not in estimator_type.lower()))):
                 continue
 
-            res = f'{par}'
+            res_err = f'{par}'
+            res_bias = f'{par}:bias'
 
             for generator_idx, generator in enumerate(generators):
                 errors = estimator_generator_parameter_repetition_error_bias[estimator_idx, generator_idx, par_idx, :, 0]
                 biases = estimator_generator_parameter_repetition_error_bias[estimator_idx, generator_idx, par_idx, :, 1]
                 avg_error = np.nanmean(errors)
                 avg_bias = np.nanmean(biases)
-                res += f'\t{avg_error:.3f} ({avg_bias:.3f})'
+                res_err += f'\t{avg_error:.3f}'
+                res_bias += f'\t{avg_bias:.3f}'
 
             # Across all non-CT trees
             errors = estimator_generator_parameter_repetition_error_bias[estimator_idx, :int(len(generators) / 2), par_idx, :, 0]
             biases = estimator_generator_parameter_repetition_error_bias[estimator_idx, :int(len(generators) / 2), par_idx, :, 1]
             avg_error = np.nanmean(errors)
             avg_bias = np.nanmean(biases)
-            res += f'\t{avg_error:.3f} ({avg_bias:.3f})'
+            res_err += f'\t{avg_error:.3f}'
+            res_bias += f'\t{avg_bias:.3f}'
 
             # Across all trees
             errors = estimator_generator_parameter_repetition_error_bias[estimator_idx, :, par_idx, :, 0]
             biases = estimator_generator_parameter_repetition_error_bias[estimator_idx, :, par_idx, :, 1]
             avg_error = np.nanmean(errors)
             avg_bias = np.nanmean(biases)
-            res += f'\t{avg_error:.3f} ({avg_bias:.3f})'
+            res_err += f'\t{avg_error:.3f}'
+            res_bias += f'\t{avg_bias:.3f}'
 
-            print(res)
+            print(res_err)
+            print(res_bias)
 

@@ -5,6 +5,8 @@ import numpy as np
 
 import pandas as pd
 
+from treesimulator.mtbd_models import *
+
 
 if __name__ == "__main__":
     import argparse
@@ -38,7 +40,8 @@ if __name__ == "__main__":
                                'X_S', 'X_S_min', 'X_S_max',
                                'upsilon', 'upsilon_min', 'upsilon_max',
                                'X_C', 'X_C_min', 'X_C_max',
-                               'kappa', 'kappa_min', 'kappa_max'])
+                               'kappa', 'kappa_min', 'kappa_max',
+                               'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C'])
 
     for real in params.real:
         i = int(re.findall(r'[0-9]+', real)[-1])
@@ -47,10 +50,16 @@ if __name__ == "__main__":
         rho = ddf.loc[0, 'p_I']
         la = ddf.loc[0, 'la_II' if 'la_II' in ddf.columns else 'la_IE'] \
              + (0 if 'la_IS' not in ddf.columns else ddf.loc[0, 'la_IS'])
-        if 'contact tracing probability' in ddf.columns:
-            upsilon = ddf.loc[0, 'contact tracing probability']
+        pi_I = ddf.loc[0, 'pi_I_observed'] if 'pi_I_observed' in ddf.columns else 1
+        pi_I_C = ddf.loc[0, 'pi_I-C_observed'] if 'pi_I-C_observed' in ddf.columns else 0
+        pi_E = ddf.loc[0, 'pi_E_observed'] if 'pi_E_observed' in ddf.columns else 0
+        pi_E_C = ddf.loc[0, 'pi_E-C_observed'] if 'pi_E-C_observed' in ddf.columns else 0
+        pi_S = ddf.loc[0, 'pi_S_observed'] if 'pi_S_observed' in ddf.columns else 0
+        pi_S_C = ddf.loc[0, 'pi_S-C_observed'] if 'pi_S-C_observed' in ddf.columns else 0
+        if 'upsilon' in ddf.columns:
+            upsilon = ddf.loc[0, 'upsilon']
             kappa = ddf.loc[0, 'kappa']
-            X_C = 1 / ddf.loc[0, 'removal time after notification'] / psi
+            X_C = ddf.loc[0, 'phi_I-C'] / psi
         else:
             upsilon = 0
             kappa = 1
@@ -70,8 +79,10 @@ if __name__ == "__main__":
         tips = ddf.loc[0, 'tips']
 
         df.loc[f'{i}.real',
-        ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'tips', 'type']] \
-            = [la, psi, rho, f_E, f_S, X_S, upsilon, X_C, kappa, tips, 'real']
+        ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'tips', 'type',
+         'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
+            = [la, psi, rho, f_E, f_S, X_S, upsilon, X_C, kappa, tips, 'real',
+               pi_E, pi_I, pi_S, pi_E_C, pi_I_C, pi_S_C]
 
     if params.estimates_bdct:
         for est in params.estimates_bdct:
@@ -79,9 +90,13 @@ if __name__ == "__main__":
             ddf = pd.read_csv(est, index_col=0)
             est_label = 'bdct'
             R0, rt, rho, upsilon, prt, la, psi, phi = ddf.loc['value', :]
+            model = CTModel(BirthDeathModel(la=la, psi=psi, p=rho), upsilon=upsilon, phi=phi)
+            pi_I, pi_I_C = model.state_frequencies
             df.loc[f'{i}.{est_label}',
-            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'type']] \
-                = [la, psi, rho, 0, 0, 1, upsilon, phi / psi, 1, est_label]
+            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'type',
+             'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
+                = [la, psi, rho, 0, 0, 1, upsilon, phi / psi, 1, est_label,
+                   0, pi_I, 0, 0, pi_I_C, 0]
             if 'CI_min' in ddf.index:
                 R0, rt, rho, upsilon, prt, la, psi, phi = ddf.loc['CI_min', :]
                 df.loc[f'{i}.{est_label}',
@@ -101,8 +116,10 @@ if __name__ == "__main__":
             est_label = 'bd'
             R0, rt, rho, la, psi = ddf.loc['value', :]
             df.loc[f'{i}.{est_label}',
-            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'type']] \
-                = [la, psi, rho, 0, 0, 1, 0, 1, 1, est_label]
+            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'type',
+             'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
+                = [la, psi, rho, 0, 0, 1, 0, 1, 1, est_label,
+                   0, 1, 0, 0, 0, 0]
             if 'CI_min' in ddf.index:
                 R0, rt, rho, la, psi = ddf.loc['CI_min', :]
                 df.loc[f'{i}.{est_label}',
@@ -122,9 +139,15 @@ if __name__ == "__main__":
             ddf = pd.read_csv(est, sep='\t')
             est_label = 'bdei'
             mu, mu_CI, la, la_CI, psi, psi_CI, rho, rho_CI, R_naught, incubation_period, infectious_time = ddf.loc[0, :]
+
+            model = BirthDeathExposedInfectiousModel(mu=mu, la=la, psi=psi, p=rho)
+            pi_E, pi_I = model.state_frequencies
+
             df.loc[f'{i}.{est_label}',
-            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'type']] \
-                = [la, psi, rho, 1 / mu / (1 / mu + 1 / psi), 0, 1, 0, 1, 1, est_label]
+            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'type',
+             'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
+                = [la, psi, rho, 1 / mu / (1 / mu + 1 / psi), 0, 1, 0, 1, 1, est_label,
+                   pi_E, pi_I, 0, 0, 0, 0]
             if not pd.isna(mu_CI) and mu_CI is not None and mu_CI != 'None':
                 mu_CI, psi_CI, la_CI, rho_CI = \
                     mu_CI.strip('(').strip(')'), psi_CI.strip('(').strip(')'), la_CI.strip('(').strip(')'), rho_CI.strip('(').strip(')')
@@ -146,19 +169,197 @@ if __name__ == "__main__":
     for est_list, est_label in ((params.estimates_bdctdl, 'bdctdl'), (params.estimates_bddl, 'bddl'),
                                 (params.estimates_bdeictdl, 'bdeictdl'), (params.estimates_bdeidl, 'bdeidl'),
                                 (params.estimates_bdssctdl, 'bdssctdl'), (params.estimates_bdssdl, 'bdssdl'),
-                                (params.estimates_bdssctdl, 'bdeissctdl'), (params.estimates_bdssdl, 'bdeissdl'),
+                                (params.estimates_bdeissctdl, 'bdeissctdl'), (params.estimates_bdeissdl, 'bdeissdl'),
                                 (params.estimates_mfdl, 'mfdl')):
         for est in est_list:
             ddf = pd.read_csv(est, index_col=0)
             ddf.index = ddf.index.map(lambda i: f'{i}.{est_label}')
             ddf.columns = [c.replace('_2.5', '_min').replace('_97.5', '_max').replace('la', 'lambda') for c in ddf.columns]
-            ddf['p'] = np.array(df.loc[ddf.index.map(lambda _: _.replace(est_label, 'real')), ['p']])
+            ddf['p'] = np.array(df.loc[ddf.index.map(lambda _: _.replace(est_label, 'real')), ['p']], dtype=float)
             ddf['type'] = est_label
+
+            if est_label in ['bdeissctdl', 'mfdl']:
+                pi_Es, pi_ECs, pi_Is, pi_ICs, pi_Ss, pi_SCs = [], [], [], [], [], []
+                print(ddf.columns)
+                for row_id, row in ddf.iterrows():
+                    la, psi, rho, f_E, f_S, X_S, upsilon, X_C = \
+                        row[['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C']]
+                    la = np.maximum(la, 1e-6)
+                    psi = np.maximum(psi, 1e-6)
+                    f_S = max(0, min(f_S, 1 - 1e-6))
+
+                    if f_E > 0:
+                        mu = 1 / (1 / psi / (1 - f_E) * f_E)
+
+                        model = BirthDeathExposedInfectiousWithSuperSpreadingModel(
+                            mu_n=mu * (1 - f_S), mu_s=mu * f_S,
+                            la_n=la, la_s=X_S * la,
+                            psi=psi, p=rho)
+                        model = CTModel(model, upsilon=upsilon, phi=psi * X_C)
+                        pi_E, pi_I, pi_S, pi_EC, pi_IC, pi_SC = model.state_frequencies
+                    else:
+                        model = BirthDeathWithSuperSpreadingModel(
+                            la_nn=la * (1 - f_S), la_ns=la * f_S,
+                            la_sn=X_S * la * (1 - f_S), la_ss=X_S * la * f_S,
+                            psi=psi, p=rho)
+                        model = CTModel(model, upsilon=upsilon, phi=psi * X_C)
+                        pi_I, pi_S, pi_IC, pi_SC = model.state_frequencies
+                        pi_E, pi_EC = 0, 0
+
+                    pi_Is.append(pi_I)
+                    pi_Es.append(pi_E)
+                    pi_Ss.append(pi_S)
+                    pi_ICs.append(pi_IC)
+                    pi_ECs.append(pi_EC)
+                    pi_SCs.append(pi_SC)
+                ddf['pi_E'] = pi_Es
+                ddf['pi_I'] = pi_Is
+                ddf['pi_S'] = pi_Ss
+                ddf['pi_I-C'] = pi_ICs
+                ddf['pi_E-C'] = pi_ECs
+                ddf['pi_S-C'] = pi_SCs
+            elif est_label == 'bdeictdl':
+                pi_Es, pi_ECs, pi_Is, pi_ICs = [], [], [], []
+                for row_id, row in ddf.iterrows():
+                    la, psi, rho, f_E, upsilon, X_C = \
+                        row[['lambda', 'psi', 'p', 'f_E', 'upsilon', 'X_C']]
+                    la = np.maximum(la, 1e-6)
+                    psi = np.maximum(psi, 1e-6)
+
+                    if f_E > 0:
+                        mu = 1 / (1 / psi / (1 - f_E) * f_E)
+
+                        model = BirthDeathExposedInfectiousModel(
+                            mu=mu,
+                            la=la,
+                            psi=psi, p=rho)
+                        model = CTModel(model, upsilon=upsilon, phi=psi * X_C)
+                        pi_E, pi_I, pi_EC, pi_IC = model.state_frequencies
+                    else:
+                        model = BirthDeathModel(
+                            la=la,
+                            psi=psi, p=rho)
+                        model = CTModel(model, upsilon=upsilon, phi=psi * X_C)
+                        pi_I, pi_IC = model.state_frequencies
+                        pi_E, pi_EC = 0, 0
+
+                    pi_Is.append(pi_I)
+                    pi_Es.append(pi_E)
+                    pi_ICs.append(pi_IC)
+                    pi_ECs.append(pi_EC)
+                ddf['pi_E'] = pi_Es
+                ddf['pi_I'] = pi_Is
+                ddf['pi_I-C'] = pi_ICs
+                ddf['pi_E-C'] = pi_ECs
+            elif est_label == 'bdeidl':
+                pi_Es, pi_Is = [], []
+                for row_id, row in ddf.iterrows():
+                    la, psi, rho, f_E = \
+                        row[['lambda', 'psi', 'p', 'f_E']]
+                    la = np.maximum(la, 1e-6)
+                    psi = np.maximum(psi, 1e-6)
+
+                    if f_E > 0:
+                        mu = 1 / (1 / psi / (1 - f_E) * f_E)
+
+                        model = BirthDeathExposedInfectiousModel(
+                            mu=mu,
+                            la=la,
+                            psi=psi, p=rho)
+
+                        pi_E, pi_I = model.state_frequencies
+                    else:
+                        pi_E, pi_I = 0, 1
+
+                    pi_Is.append(pi_I)
+                    pi_Es.append(pi_E)
+                ddf['pi_E'] = pi_Es
+                ddf['pi_I'] = pi_Is
+            elif est_label == 'bdssctdl':
+                pi_Is, pi_ICs, pi_Ss, pi_SCs = [], [], [], []
+                for row_id, row in ddf.iterrows():
+                    la, psi, rho, f_S, X_S, upsilon, X_C = \
+                        row[['lambda', 'psi', 'p', 'f_S', 'X_S', 'upsilon', 'X_C']]
+                    la = np.maximum(la, 1e-6)
+                    psi = np.maximum(psi, 1e-6)
+                    f_S = max(0, min(f_S, 1 - 1e-6))
+
+                    model = BirthDeathWithSuperSpreadingModel(
+                        la_nn=la * (1 - f_S), la_ns=la * f_S,
+                        la_sn=la * (1 - f_S) * X_S, la_ss=la * f_S * X_S,
+                        psi=psi, p=rho)
+                    model = CTModel(model, upsilon=upsilon, phi=psi * X_C)
+                    pi_I, pi_S, pi_IC, pi_SC = model.state_frequencies
+                    pi_Is.append(pi_I)
+                    pi_Ss.append(pi_S)
+                    pi_ICs.append(pi_IC)
+                    pi_SCs.append(pi_SC)
+                ddf['pi_I'] = pi_Is
+                ddf['pi_S'] = pi_Ss
+                ddf['pi_I-C'] = pi_ICs
+                ddf['pi_S-C'] = pi_SCs
+            elif est_label == 'bdssdl':
+                pi_Is, pi_Ss = [], []
+                for row_id, row in ddf.iterrows():
+                    la, psi, rho, f_S, X_S = \
+                        row[['lambda', 'psi', 'p', 'f_S', 'X_S']]
+                    la = np.maximum(la, 1e-6)
+                    psi = np.maximum(psi, 1e-6)
+                    f_S = max(0, min(f_S, 1 - 1e-6))
+
+                    model = BirthDeathWithSuperSpreadingModel(
+                        la_nn=la * (1 - f_S), la_ns=la * f_S,
+                        la_sn=la * (1 - f_S) * X_S, la_ss=la * f_S * X_S,
+                        psi=psi, p=rho)
+                    pi_I, pi_S = model.state_frequencies
+                    pi_Is.append(pi_I)
+                    pi_Ss.append(pi_S)
+                ddf['pi_I'] = pi_Is
+                ddf['pi_S'] = pi_Ss
+            elif est_label == 'bdeissdl':
+                pi_Es, pi_Is, pi_Ss = [], [], []
+                for row_id, row in ddf.iterrows():
+                    la, psi, rho, f_E, f_S, X_S = \
+                        row[['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S']]
+                    la = np.maximum(la, 1e-6)
+                    psi = np.maximum(psi, 1e-6)
+                    f_S = max(0, min(f_S, 1 - 1e-6))
+
+                    if f_E > 0:
+                        mu = 1 / (1 / psi / (1 - f_E) * f_E)
+
+                        model = BirthDeathExposedInfectiousWithSuperSpreadingModel(
+                            mu_n=mu * (1 - f_S), mu_s=mu * f_S,
+                            la_n=la, la_s=X_S * la,
+                            psi=psi, p=rho)
+                        pi_E, pi_I, pi_S = model.state_frequencies
+                    else:
+                        model = BirthDeathWithSuperSpreadingModel(
+                            la_nn=la * (1 - f_S), la_ns=la * f_S,
+                            la_sn=X_S * la * (1 - f_S), la_ss=X_S * la * f_S,
+                            psi=psi, p=rho)
+                        pi_I, pi_S = model.state_frequencies
+                        pi_E = 0, 0
+
+                    pi_Is.append(pi_I)
+                    pi_Es.append(pi_E)
+                    pi_Ss.append(pi_S)
+                ddf['pi_E'] = pi_Es
+                ddf['pi_I'] = pi_Is
+                ddf['pi_S'] = pi_Ss
+
             df = pd.concat((df, ddf))
 
 
+    df.loc[pd.isna(df['pi_I']) , 'pi_I'] = 1
+
     df.loc[pd.isna(df['upsilon']) , 'upsilon'] = 0
     df.loc[pd.isna(df['X_C']) , 'X_C'] = 1
+    df.loc[pd.isna(df['pi_I-C']) , 'pi_I-C'] = 0
+    df.loc[pd.isna(df['pi_E']) , 'pi_E'] = 0
+    df.loc[pd.isna(df['pi_E-C']) , 'pi_E-C'] = 0
+    df.loc[pd.isna(df['pi_S']) , 'pi_S'] = 0
+    df.loc[pd.isna(df['pi_S-C']) , 'pi_S-C'] = 0
 
     df.loc[pd.isna(df['f_E']) , 'f_E'] = 0
     df.loc[pd.isna(df['f_S']) , 'f_S'] = 0

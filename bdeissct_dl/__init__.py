@@ -6,10 +6,13 @@ import warnings
 warnings.filterwarnings('ignore', r'divide by zero encountered in log')
 
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models', '{}')
 TRAINING_PATH = os.path.join(os.path.dirname(__file__), 'data')
-MODEL_FINDER_PATH = os.path.join(MODEL_PATH, 'MF')
 
+
+
+EPOCHS = 10000
+BATCH_SIZE = 1024
 
 
 

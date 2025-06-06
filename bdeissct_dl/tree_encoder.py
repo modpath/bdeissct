@@ -13,7 +13,7 @@ from treesumstats.subtree_sumstats import SubtreeFeatureCalculator
 from treesumstats.transmission_chain_sumstats import TransmissionChainFeatureCalculator
 
 from bdeissct_dl.bdeissct_model import RHO, LA, PSI, F_E, UPSILON, X_C, KAPPA, F_S, X_S, RATE_PARAMETERS, \
-    TIME_PARAMETERS, BDCT
+    TIME_PARAMETERS, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC
 from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
 
 TARGET_AVG_BL = 1
@@ -100,7 +100,16 @@ def parse_parameters(log):
         else:
             f_ss = 0
             x_ss = 1
-        yield la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa
+
+
+        pi_E = df.loc[i, 'pi_E_observed'] if 'pi_E_observed' in df.columns else 0
+        pi_I = df.loc[i, 'pi_I_observed'] if 'pi_I_observed' in df.columns else 1
+        pi_S = df.loc[i, 'pi_S_observed'] if 'pi_S_observed' in df.columns else 0
+        pi_I_C = df.loc[i, 'pi_I-C_observed'] if 'pi_I-C_observed' in df.columns else 0
+        pi_E_C = df.loc[i, 'pi_E-C_observed'] if 'pi_E-C_observed' in df.columns else 0
+        pi_S_C = df.loc[i, 'pi_S-C_observed'] if 'pi_S-C_observed' in df.columns else 0
+
+        yield la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa, pi_E, pi_I, pi_S, pi_E_C, pi_I_C, pi_S_C
 
 
 
@@ -111,7 +120,9 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
         pass
 
     def feature_names(self):
-        return [LA, PSI, RHO, F_E, F_S, X_S, UPSILON, X_C, KAPPA, SCALING_FACTOR]
+        return [LA, PSI, RHO, F_E, F_S, X_S, UPSILON, X_C, KAPPA, \
+                PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, \
+                SCALING_FACTOR]
 
     def set_forest(self, forest, **kwargs):
         pass
@@ -138,6 +149,18 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
             return 'fraction of super-spreaders.'
         if F_E == feature_name:
             return 'fraction of incubation over total infected-to-removed time.'
+        if PI_E == feature_name:
+            return 'fraction of unnotified exposed individuals'
+        if PI_EC == feature_name:
+            return 'fraction of notified exposed individuals'
+        if PI_I == feature_name:
+            return 'fraction of unnotified infectious regular spreaders'
+        if PI_IC == feature_name:
+            return 'fraction of notified infectious regular spreaders'
+        if PI_S == feature_name:
+            return 'fraction of unnotified infectious superpreaders'
+        if PI_SC == feature_name:
+            return 'fraction of notified infectious superspreaders'
         if SCALING_FACTOR == feature_name:
             return 'tree scaling factor.'
         return None
@@ -152,7 +175,7 @@ FeatureRegistry.register(BalanceFeatureCalculator())
 FeatureRegistry.register(SubtreeFeatureCalculator())
 FeatureRegistry.register(BDEISSCTFeatureCalculator())
 
-STATS = ['n_trees', 'n_tips', 'n_inodes', 'len_forest',
+STATS = ['n_tips',
          #
          'brlen_inode_mean', 'brlen_inode_median', 'brlen_inode_var',
          'brlen_tip_mean', 'brlen_tip_median', 'brlen_tip_var',
@@ -233,10 +256,12 @@ STATS = ['n_trees', 'n_tips', 'n_inodes', 'len_forest',
          UPSILON, X_C, KAPPA,
          F_E,
          F_S, X_S,
+         PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC,
          SCALING_FACTOR]
 
 
 def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0, f_ss=0, x_ss=1,
+                      pi_e=0, pi_i=1, pi_s=0, pi_ec=0, pi_ic=0, pi_sc=0,
                       target_avg_brlen=TARGET_AVG_BL):
     """
     Rescales the input forest to have mean branch lengths of 1, calculates its summary statistics,
@@ -266,7 +291,9 @@ def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0
               LA: la, PSI: psi, RHO: rho,
               F_E: f_e,
               F_S: f_ss, X_S: x_ss,
-              X_C: x_c, UPSILON: upsilon, KAPPA: kappa}
+              X_C: x_c, UPSILON: upsilon, KAPPA: kappa,
+              PI_E: pi_e, PI_I: pi_i, PI_S: pi_s,
+              PI_EC: pi_ec, PI_IC: pi_ic, PI_SC: pi_sc}
     scale(kwargs, scaling_factor)
 
     return pd.DataFrame.from_records([list(FeatureManager.compute_features(forest, *STATS, **kwargs))], columns=STATS)
@@ -297,7 +324,7 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
                 yield nwk, log
 
 
-    with get_write_handle(output, '.temp') as f:
+    with (get_write_handle(output, '.temp') as f):
         is_text = isinstance(f, io.TextIOBase)
         keys = None
         i = 0
@@ -316,12 +343,15 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
             for ps, forest in zip(parameters, forests):
 
                 scaling_factor = rescale_forest_to_avg_brlen(forest, target_avg_length=target_avg_brlen)
-                la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa = ps
+                la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa, \
+                    pi_e, pi_i, pi_s, pi_ec, pi_ic, pi_sc = ps
                 kwargs = {SCALING_FACTOR: scaling_factor}
                 kwargs[LA], kwargs[PSI], kwargs[RHO] = la, psi, rho
                 kwargs[UPSILON], kwargs[KAPPA], kwargs[X_C] = upsilon, kappa, x_c
                 kwargs[F_E] = f_e
                 kwargs[F_S], kwargs[X_S] = f_ss, x_ss
+                kwargs[PI_E], kwargs[PI_I], kwargs[PI_S] = pi_e, pi_i, pi_s
+                kwargs[PI_EC], kwargs[PI_IC], kwargs[PI_SC] = pi_ec, pi_ic, pi_sc
 
                 scale(kwargs, scaling_factor)
 

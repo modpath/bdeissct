@@ -34,13 +34,13 @@ rule combine_estimates:
     input:
         log = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.log'), i=REPETITIONS),
         est_bddl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BD.csv.xz'),
-        est_bdeidl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEI.csv.xz'),
-        est_bdssdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDSS.csv.xz'),
-        est_bdeissdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEISS.csv.xz'),
         est_bdctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDCT.csv.xz'),
+        # est_bdeidl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEI.csv.xz'),
         # est_bdeictdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEICT.csv.xz'),
-        # est_bdssctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDSSCT.csv.xz'),
-        est_bdeissctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEISSCT.csv.xz'),
+        est_bdssdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDSS.csv.xz'),
+        est_bdssctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDSSCT.csv.xz'),
+        # est_bdeissdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEISS.csv.xz'),
+        # est_bdeissctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEISSCT.csv.xz'),
     output:
         tab = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'estimates.tab'),
     params:
@@ -58,14 +58,12 @@ rule combine_estimates:
         --tab {output.tab} \
         --estimates_bddl {input.est_bddl}  \
         --estimates_bdctdl {input.est_bdctdl} \
-        --estimates_bdeidl {input.est_bdeidl} \
         --estimates_bdssdl {input.est_bdssdl} \
-        --estimates_bdeissdl {input.est_bdeissdl} \
-        --estimates_bdeissctdl {input.est_bdeissctdl}
+        --estimates_bdssctdl {input.est_bdssctdl} 
         """
 
 # \
-#         --estimates_bdctdl {input.est_bdctdl} \
+#         --estimates_bdeidl {input.est_bdeidl} \
 #         --estimates_bdeidl {input.est_bdeidl} \
 #         --estimates_bdeictdl {input.est_bdeictdl} \
 #         --estimates_bdssdl {input.est_bdssdl} \

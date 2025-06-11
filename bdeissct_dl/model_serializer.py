@@ -5,6 +5,7 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
+from bdeissct_dl.dl_model import OutputTransformLayer, RelAbsLoss
 
 np.random.seed(239)
 tf.random.set_seed(239)
@@ -15,7 +16,7 @@ def save_model_keras(model, prefix):
     model.save(os.path.join(prefix, 'ffnn.keras'), overwrite=True, zipped=True)
 
 def load_model_keras(prefix):
-    return tf.keras.models.load_model(os.path.join(prefix, 'ffnn.keras'))
+    return tf.keras.models.load_model(os.path.join(prefix, 'ffnn.keras'), custom_objects={"OutputTransformLayer": OutputTransformLayer, "RelAbsLoss": RelAbsLoss})
 
 def save_model_h5(model, prefix):
     model.save(os.path.join(prefix, 'ffnn.h5'), overwrite=True, zipped=True)

@@ -11,7 +11,7 @@ TRAINING_PATH = os.path.join(os.path.dirname(__file__), 'data')
 
 
 
-EPOCHS = 10000
+EPOCHS = 1000
 BATCH_SIZE = 1024
 
 

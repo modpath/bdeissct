@@ -4,10 +4,11 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
-from bdeissct_dl.bdeissct_model import F_E, RHO, PSI, UPSILON, PHI, MODEL2TARGET_COLUMNS, BDCT, BD, BDEI, BDSS, BDEISS, MODELS, QUANTILES, MODEL_FINDER, F_S, X_S, X_C
 from bdeissct_dl import MODEL_PATH
-
+from bdeissct_dl.dl_model import QUANTILES
+from bdeissct_dl.bdeissct_model import F_E, RHO, UPSILON, MODEL2TARGET_COLUMNS, BD, BDEI, BDSS, BDEISS, MODELS, \
+    MODEL_FINDER, F_S, X_S, X_C
+from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
 from bdeissct_dl.training import get_test_data
 from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back_array
 from bdeissct_dl.tree_manager import read_forest
@@ -176,8 +177,8 @@ def main():
     import argparse
 
     parser = \
-        argparse.ArgumentParser(description="Estimate BDCT parameters.")
-    parser.add_argument('--model_name', choices=MODELS + (MODEL_FINDER,), default=MODEL_FINDER, type=str,
+        argparse.ArgumentParser(description="Estimate BD(EI)(SS)(CT) model parameters.")
+    parser.add_argument('--model_name', choices=MODELS + (MODEL_FINDER,), default=BD, type=str,
                         help=f'BDEISSCT model flavour. If {MODEL_FINDER} is specified, '
                              f'model finder will be used to pick the model.')
     parser.add_argument('--model_path_pattern', default=MODEL_PATH,
@@ -193,7 +194,7 @@ def main():
                              'The path pattern should contain a part "{}", which will be replaced by the model name, '
                              'e.g., "/home/user/models/{}/", which for a model BD will point to "/home/user/models/BD/"')
     parser.add_argument('--p', default=0, type=float, help='sampling probability')
-    parser.add_argument('--log', required=True, type=str, help="output log file")
+    parser.add_argument('--log', default='/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/500_1000/BD/trees.estimates_BD', type=str, help="output log file")
     parser.add_argument('--nwk', default=None, type=str, help="input tree file")
     parser.add_argument('--sumstats', default=None, type=str, help="input tree file(s) encoded as sumstats")
     parser.add_argument('--ci', action='store_true', help="calculate CIs")

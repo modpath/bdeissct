@@ -148,7 +148,7 @@ def main():
     os.makedirs(model_path, exist_ok=True)
     scaler_x = StandardScaler()
 
-    x_indices, _, n_columns, n_examples = get_data_characteristics(paths=params.train_data, scaler_x=scaler_x)
+    x_indices, _, n_columns = get_data_characteristics(paths=params.train_data, scaler_x=scaler_x)
 
     ds_train = get_train_data(n_columns, x_indices, params.train_labels, filenames=params.train_data, \
                               scaler_x=scaler_x, batch_size=BATCH_SIZE, shuffle=False)

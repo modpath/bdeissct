@@ -24,7 +24,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.1.37',
+    version='0.1.38',
     description='Estimation of BDEISS-CT(k) parameters from phylogenetic trees.',
     author='Anna Zhukova',
     author_email='anna.zhukova@pasteur.fr',

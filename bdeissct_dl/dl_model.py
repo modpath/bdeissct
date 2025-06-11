@@ -223,11 +223,11 @@ def build_model(n_x, n_y=4, optimizer=None, loss=None, metrics=None, quantiles=Q
     outputs = {
         "la": la_out,
         "psi": psi_out,
+        "ups": ups_out,
+        "X_C": X_C_out,
         "f_E": f_E_out,
         "f_S": f_S_out,
         "X_S": X_S_out,
-        "ups": ups_out,
-        "X_C": X_C_out,
         "pi": pi_out
     }
 
@@ -259,21 +259,21 @@ def build_model(n_x, n_y=4, optimizer=None, loss=None, metrics=None, quantiles=Q
                   loss={
                       "la": "mean_absolute_percentage_error",
                       "psi": "mean_absolute_percentage_error",
+                      "ups": 'mae',
+                      "X_C": "mean_absolute_percentage_error",
                       "f_E": 'mae',
                       "f_S": 'mae',
                       "X_S": "mean_absolute_percentage_error",
-                      "ups": 'mae',
-                      "X_C": "mean_absolute_percentage_error",
                       "pi": 'mae'
                   },
                   loss_weights={
                       "la": 1,
                       "psi": 1,
+                      "ups": 100,
+                      "X_C": 1,
                       "f_E": 100,
                       "f_S": 200, # as it is within [0, 0.5], we multiply by 200 to scale it to [0, 100]
                       "X_S": 1,
-                      "ups": 100,
-                      "X_C": 1,
                       "pi": 600  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
                   },
                   metrics=metrics)

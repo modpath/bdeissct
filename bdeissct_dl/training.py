@@ -107,11 +107,11 @@ def get_train_data(n_input, columns_x, columns_y, file_pattern=None, filenames=N
         train_labels = {
             "la": Y[0],
             "psi": Y[1],
-            "f_E": Y[2],
-            "f_S": Y[3],
-            "X_S": Y[4],
-            "ups": Y[5],
-            "X_C": Y[6],
+            "ups": Y[2],
+            "X_C": Y[3],
+            "f_E": Y[4],
+            "f_S": Y[5],
+            "X_S": Y[6],
             "pi": Y[7:]
         }
 
@@ -132,6 +132,7 @@ def get_train_data(n_input, columns_x, columns_y, file_pattern=None, filenames=N
                 for line in f:
                     line = line.strip()
                     if line:
+                        # print([_ for (i, _) in enumerate(line.split(',')) if i in columns_y])
                         yield line
 
     dataset = tf.data.Dataset.from_generator(
@@ -171,16 +172,16 @@ def main():
     parser = \
         argparse.ArgumentParser(description="Train a BD(EI)(SS)(CT) model.")
     parser.add_argument('--train_data', type=str, nargs='+',
-                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSS/{i}/trees.csv.xz' for i in range(100)],
+                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSS/{i}/trees.csv.xz' for i in range(20)],
                         help="path to the files where the encoded training data are stored")
     parser.add_argument('--val_data', type=str, nargs='+',
-                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSS/{i}/trees.csv.xz' for i in range(100, 128)],
+                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSS/{i}/trees.csv.xz' for i in range(124, 128)],
                         help="path to the files where the encoded validation data are stored")
 
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='number of epochs to train the model')
     parser.add_argument('--base_model_name', type=str, default=None,
                         help="base model name to use for training, if not specified, the model will be trained from scratch")
-    parser.add_argument('--model_name', type=str, default=BDSS, help="model name")
+    parser.add_argument('--model_name', type=str, help="model name")
     parser.add_argument('--model_path', default=None, type=str,
                         help="path to the folder where the trained model should be stored. "
                              "The model will be stored at this path in the folder corresponding to the model name.")

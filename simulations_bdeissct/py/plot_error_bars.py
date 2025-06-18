@@ -5,145 +5,234 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox, VPacker
+import itertools
 
 import re
 
-PARAMETERS = ['lambda', 'psi', 'p', 'f_e', 'f_ss', 'x_ss', 'upsilon', 'x_c']
+
+# PARAMETERS = ['lambda', 'avg la', 'psi', 'avg psi', 'avg psi 2', 'R', 'R2'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
+PARAMETERS = ['avg la', 'avg psi 2', 'R2', 'avg d'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
 par2greek = {'lambda': u'\u03bb', 'psi': u'\u03c8', 'phi': u'\u03c6',
              'p': '\u03c1', 'upsilon': '\u03c5',
              'R_naught': u'\u0052\u2080' + '=' + u'\u03bb\u002F\u03c8',
-             'infectious_time': '1' + u'\u002F\u03c8', 'partner_removal_time': '1' + u'\u002F\u03c6',
-             'x_ss': 'x' + u'\u209B\u209B', 'f_ss': 'f' + u'\u209B\u209B',
-             'x_c': 'x_c',
-             'f_e': 'f' + u'\u1D62'}
+             'infectious_time': '1' + u'\u002F\u03c8', 'partner_removal_time': '1' + u'\u002F\u03c6'}
+for p in PARAMETERS:
+    if p not in par2greek:
+        par2greek[p] = p
 
-# EST_ORDER = ['bd', 'bddl', 'bdct1ml', 'bdct1dl', 'bdct2dl', 'bdct2000dl', 'bdctdl', 'bdctmfdl']
-EST_ORDER = ['bd', 'bdei', 'bdct']
+greek2par = {v: k for k, v in par2greek.items()}
+
+EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdct', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
+
+BIAS_COL = 'bias'
+ERROR_COL = 'error'
+
+palette1 = sns.color_palette("pastel")
+palette2 = sns.color_palette()
+# EST_ORDER =   ['bd'] + ['bddl'] + ['bdei'] + ['bdeidl',  'bdssdl', 'bdeissdl'] + ['bdct'] + ['bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
+# total_palette = [palette1[0]] + [palette2[0]] + [palette1[1]] + palette2[1:4] \
+#                 + [palette1[0]] + palette2[0:]
+palette = sns.color_palette("colorblind")
+total_palette = [palette[0]] + [palette[0]] + [palette[1]] + palette[1:3] + [palette[4]] \
+                + [palette[0]] + palette[0:3] + [palette[4]]
+
+
+# palette = sns.color_palette("colorblind")
+
+
+def pertinent_estimators(model, palette):
+    ei_model = 'ei' in model.lower()
+    ss_model = 'ss' in model.lower()
+    ct_model = 'ct' in model.lower()
+
+    result = []
+    res_palette = []
+
+    for estimator, col in zip(EST_ORDER, palette):
+        ei_estimator = 'ei' in estimator.lower()
+        ss_estimator = 'ss' in estimator.lower()
+        ct_estimator = 'ct' in estimator.lower()
+        bd_estimator = estimator.lower() in {'bd', 'bddl'}
+
+        if not bd_estimator:
+            if (ei_model and not ss_model) and not ei_estimator \
+                    or (ss_model and not ei_model) and not ss_estimator \
+                    or (not ei_model and ct_model) and (ei_estimator and not ct_estimator)\
+                    or (not ss_model and ct_model) and (ss_estimator and not ct_estimator):
+                continue
+        result.append(estimator)
+        res_palette.append(col)
+    return result, res_palette
+
+
+def need_to_skip(par, estimator_type, model):
+
+    if estimator_type.lower() in ['bd', 'bddl'] and par.startswith('pi'):
+        return True
+    if ('X_C' in par or 'upsilon' in par or par.startswith('pi') and par.endswith('C')) and ('ct' not in estimator_type.lower() or 'ct' not in model.lower()):
+        return True
+    if ('f_E' in par or par.startswith('pi_E')) and ('ei' not in estimator_type.lower() or 'ei' not in model.lower()):
+        return True
+    if ('f_S' in par or 'X_S' in par or par.startswith('pi_S')) and ('ss' not in estimator_type.lower() or 'ss' not in model.lower()):
+        return True
+    return False
+
+
+estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/500_1000/{model}/estimates.tab' for model in ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
+
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Plots errors.")
-    parser.add_argument('--estimates', type=str, help="estimated parameters")
-    parser.add_argument('--pdf', type=str, help="plot")
+    parser.add_argument('--estimates', default=estimate_files, type=str, nargs='+', help="estimated parameters")
+    parser.add_argument('--pdf', default='/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/500_1000/estimates.svg', type=str, help="plot")
     params = parser.parse_args()
-
-
-    model = re.findall(r'BDEISSCT|BDEISS|BDEICT|BDEI|BDSSCT|BDSS|BDCT|BD', params.estimates)[0]
-    fig_title = model
-
-    print(f'\n\n==========================={fig_title}==============\n')
-
-    df = pd.read_csv(params.estimates, sep='\t', index_col=0)
-    real_df = df.loc[df['type'] == 'real', :]
-    df = df.loc[df['type'] != 'real', :]
-    estimator_types = [_ for _ in sorted(df['type'].unique(), key=lambda _: EST_ORDER.index(_)) if 'real' != _]
-
-    for estimator_type in estimator_types:
-        mask = df['type'] == estimator_type
-        idx = df.loc[mask, :].index
-        for par in PARAMETERS:
-            if ('x_c' in par or 'upsilon' in par) and 'ct' not in estimator_type.lower():
-                continue
-            if ('f_e' in par) and 'ei' not in estimator_type.lower():
-                continue
-            if ('f_ss' in par or 'x_ss' in par) and 'ss' not in estimator_type.lower():
-                continue
-            if par != 'p' and par != 'upsilon' and par != 'f_e' and par != 'f_ss':
-                df.loc[mask, f'{par}_error'] = (df.loc[mask, par] - real_df.loc[idx, par]) / real_df.loc[idx, par]
-            else:
-                df.loc[mask, f'{par}_error'] = (df.loc[mask, par] - real_df.loc[idx, par])
 
     plt.clf()
     rc = {'font.size': 14, 'axes.labelsize': 12, 'legend.fontsize': 12, 'axes.titlesize': 12, 'xtick.labelsize': 12,
           'ytick.labelsize': 12}
     # sns.set(style="whitegrid")
     sns.axes_style(style="whitegrid", rc=rc)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
+    fig, axs = plt.subplots(len(params.estimates), 2, figsize=(56, 5 * len(params.estimates)))
 
-    data = []
-    par2type2avg_error = defaultdict(lambda: dict())
-    par2type2bias = defaultdict(lambda: dict())
 
-    est_labels = []
-    for estimator_type in estimator_types:
-            estimator_type_label = f'{estimator_type}'
-            est_labels.append(estimator_type_label)
+    order = ['', ' ']
+    for i, _ in enumerate(PARAMETERS, start=1):
+        order.append(par2greek[_])
+        order.append(' ' * (2 * i))
+        order.append(' ' * (2 * i + 1))
 
+
+    for num_est, estimate in enumerate(params.estimates):
+
+        model = re.findall(r'BDEISSCT|BDEISS|BDEICT|BDEI|BDSSCT|BDSS|BDCT|BD', estimate)[0]
+        fig_title = model
+
+
+
+        print(f'\n\n==========================={fig_title}==============\n')
+
+        df = pd.read_csv(estimate, sep='\t', index_col=0)
+        real_df = df.loc[df['type'] == 'real', :]
+        df = df.loc[df['type'] != 'real', :]
+        estimator_types, palette = pertinent_estimators(model, total_palette)
+        # estimator_types = [_ for _ in sorted(df['type'].unique(), key=lambda _: EST_ORDER.index(_)) if 'real' != _]
+
+        for estimator_type in estimator_types:
+            mask = df['type'] == estimator_type
+            idx = df.loc[mask, :].index
             for par in PARAMETERS:
+                if need_to_skip(par, estimator_type, model):
+                    continue
 
-                if ('x_c' in par or 'upsilon' in par) and 'ct' not in estimator_type.lower():
-                    par2type2avg_error[par][estimator_type_label] = '     '
-                    par2type2bias[par][estimator_type_label] = '     '
-                elif ('f_e' in par) and 'ei' not in estimator_type.lower():
-                    par2type2avg_error[par][estimator_type_label] = '     '
-                    par2type2bias[par][estimator_type_label] = '     '
-                elif ('f_ss' in par or 'x_ss' in par) and 'ss' not in estimator_type.lower():
-                    par2type2avg_error[par][estimator_type_label] = '     '
-                    par2type2bias[par][estimator_type_label] = '     '
-                else:
-                    cur_mask = (df['type'] == estimator_type)
-                    if 'x_c' in par:
-                        cur_mask &= (np.abs(df['upsilon']) > 1e-3)
-                        data.extend([[par2greek[par], _, estimator_type_label]
-                                     for _ in np.where(np.abs(df.loc[cur_mask, 'upsilon']) <= 1e-3, 0,
-                                                       df.loc[cur_mask, f'{par}_error'])])
+                df.loc[mask, f'{par}_error'] = df.loc[mask, par] - real_df.loc[idx, par]
+                df.loc[mask, f'{par}_error'] /= np.where(real_df.loc[idx, par] > 0, real_df.loc[idx, par], 1)
+
+                # if par != 'p' and par != 'upsilon' and par != 'f_E' and par != 'f_S' and not par.startswith('pi'):
+                #     df.loc[mask, f'{par}_error'] = (df.loc[mask, par] - real_df.loc[idx, par]) / real_df.loc[idx, par]
+                # else:
+                #     df.loc[mask, f'{par}_error'] = (df.loc[mask, par] - real_df.loc[idx, par])
+
+
+        data = []
+        par2type2avg_error = defaultdict(lambda: dict())
+        par2type2bias = defaultdict(lambda: dict())
+
+        est_labels = []
+        for estimator_type in estimator_types:
+                estimator_type_label = f'{estimator_type}'
+                est_labels.append(estimator_type_label)
+
+                for par in PARAMETERS:
+                    if need_to_skip(par, estimator_type, model):
+                        par2type2avg_error[par][estimator_type_label] = '   '
+                        par2type2bias[par][estimator_type_label] = '   '
                     else:
-                        data.extend([[par2greek[par], _, estimator_type_label]
-                                     for _ in df.loc[cur_mask, f'{par}_error']])
-                    par2type2avg_error[par][estimator_type_label] = \
-                        f'{np.mean(np.abs(df.loc[cur_mask, f"{par}_error"])):.2f}'
-                    par2type2bias[par][estimator_type_label] = \
-                        f'{np.mean(df.loc[cur_mask, f"{par}_error"]):.2f}'
+                        cur_mask = (df['type'] == estimator_type)
+                        if 'X_C' in par:
+                            data.extend([[par2greek[par], _, estimator_type_label]
+                                         for _ in np.where(df.loc[cur_mask, 'upsilon'] <= 0.02, 0,
+                                                           df.loc[cur_mask, f'{par}_error'])])
+                        else:
+                            data.extend([[par2greek[par], _, estimator_type_label]
+                                         for _ in df.loc[cur_mask, f'{par}_error']])
+                        if 'X_C' in par:
+                            cur_mask &= df['upsilon'] > 0.02
+                        if cur_mask.sum() == 0:
+                            par2type2avg_error[par][estimator_type_label] = '   '
+                            par2type2bias[par][estimator_type_label] = '   '
+                        else:
+                            par2type2avg_error[par][estimator_type_label] = \
+                                f'{100 * np.mean(np.abs(df.loc[cur_mask, f"{par}_error"])):3.0f}'
+                            par2type2bias[par][estimator_type_label] = \
+                                f'{100 * np.mean(df.loc[cur_mask, f"{par}_error"]):3.0f}'
 
-    small_ps = ', '.join((par2greek['upsilon'], par2greek['f_e'], par2greek['f_ss']))
-    BIAS_COL = 'relative or absolute (for {}) bias'.format(small_ps)
-    ERROR_COL = 'relative or absolute (for {}) error'.format(small_ps)
-    plot_df = pd.DataFrame(data=data, columns=['parameter', BIAS_COL, 'config'])
-    plot_df[ERROR_COL] = np.abs(plot_df[BIAS_COL])
-
-
-    palette = sns.color_palette("colorblind")
-
-    for ax, col in ((ax1, ERROR_COL), (ax2, BIAS_COL), ):
-        ax = sns.barplot(data=plot_df, x="parameter", y=col, hue="config", estimator='mean', palette=palette, ax=ax)
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)
-
-        if BIAS_COL == col:
-            ax.axhline(y=0, xmin=0, xmax=1)
-        ticks = list(np.arange(-1 if BIAS_COL == col else 0, 1.1, 0.1).astype(float))
-        ax.set_yticks(ticks)
-        ax.set_ylim(-1.1 if BIAS_COL == col else 0, 1.1)
-
-        def get_xbox(par):
-
-            def get_ta(color, text):
-                return TextArea(text,
-                                textprops=dict(color=color, ha='center', va='center', fontsize=10,
-                                               fontweight='bold'))
-
-            return HPacker(children=[get_ta(color, text_err) if col == ERROR_COL else get_ta(color, text_bias)
-                                     for (text_err, text_bias, color)
-                                     in zip((par2type2avg_error[par][_] for _ in est_labels),
-                                            (par2type2bias[par][_] for _ in est_labels),
-                                            palette)],
-                           align="center", pad=0, sep=1)
+        plot_df = pd.DataFrame(data=data, columns=['parameter', BIAS_COL, 'config'])
+        plot_df[ERROR_COL] = np.abs(plot_df[BIAS_COL])
 
 
+        for ax, col in zip(axs[num_est] if len(params.estimates) > 1 else axs, (ERROR_COL, BIAS_COL)):
+            ax = sns.barplot(data=plot_df, x="parameter", y=col, hue="config", estimator='mean', palette=total_palette, ax=ax, order=order, errorbar=None, gap=0.1, width=2.4, hue_order=EST_ORDER)
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+
+            # Add hatches on CT bars
+            plot_pars = [t.get_text() for t in ax.get_xticklabels() if t.get_text().strip()]
+            plot_estimators = [t.get_text() for t in ax.get_legend().get_texts()]
+            for par_bars, plot_est in zip(ax.containers, plot_estimators):
+                if plot_est not in estimator_types:
+                    continue
+                bar_idx = 0
+                for plot_par in plot_pars:
+                    if not need_to_skip(greek2par[plot_par], plot_est, model):
+                        hatch = ''
+                        if 'ct' in plot_est.lower():
+                            hatch += '----'
+                        if 'dl' in plot_est.lower():
+                            hatch += '////'
+                        if hatch:
+                            par_bars[bar_idx].set_hatch(hatch)
+                        bar_idx += 1
+
+            if BIAS_COL == col:
+                ax.axhline(y=0, xmin=0, xmax=1)
+            ticks = list(np.arange(-1 if BIAS_COL == col else 0, 1.1, 0.1).astype(float))
+            ax.set_yticks(ticks)
+            ax.set_ylim(-1.1 if BIAS_COL == col else 0, 1.1)
+
+            def get_xbox(par):
+
+                def get_ta(color, text):
+                    return TextArea(text,
+                                    textprops=dict(color=color, ha='center', va='center', fontsize=6,
+                                                   fontweight='bold'))
+
+                return HPacker(children=[get_ta(color, text_err) if col == ERROR_COL else get_ta(color, text_bias)
+                                         for (text_err, text_bias, color)
+                                         in zip((par2type2avg_error[par][_] for _ in est_labels),
+                                                (par2type2bias[par][_] for _ in est_labels),
+                                                palette + palette)],
+                               align="center", pad=0, sep=1)
 
 
-        xbox = HPacker(children=[get_xbox(par) for par in PARAMETERS], align="center", pad=0, sep=10)
-        anchored_xbox = AnchoredOffsetbox(loc=3, child=xbox, pad=0, frameon=False,
-                                          bbox_to_anchor=(0, -0.12),
-                                          bbox_transform=ax.transAxes, borderpad=0.)
-        ax.set_xlabel('')
-        ax.add_artist(anchored_xbox)
 
-        leg = ax.legend()
+
+            xbox = HPacker(children=[get_xbox(par) for par in PARAMETERS], align="center", pad=0, sep=14)
+            anchored_xbox = AnchoredOffsetbox(loc=3, child=xbox, pad=0, frameon=False,
+                                              bbox_to_anchor=(0, -0.12),
+                                              bbox_transform=ax.transAxes, borderpad=0.)
+            ax.set_xlabel('')
+            ax.add_artist(anchored_xbox)
+
+            leg = ax.legend()
+            if num_est > 0 or col == BIAS_COL:
+                leg.remove()
+
+            ax.set_title(fig_title)
 
     # plt.tight_layout()
     # fig.set_size_inches(9, 9)
     # plt.show()
-    plt.title(fig_title)
-    plt.savefig(params.pdf, dpi=300)
+    # plt.title(fig_title)
+    plt.savefig(params.pdf, dpi=100)

@@ -140,30 +140,46 @@ if __name__ == "__main__":
             est_label = 'bdei'
             mu, mu_CI, la, la_CI, psi, psi_CI, rho, rho_CI, R_naught, incubation_period, infectious_time = ddf.loc[0, :]
 
+            if not pd.isna(mu_CI) and mu_CI is not None and mu_CI != 'None':
+                min_mu = float(mu_CI.split(', ')[0])
+            else:
+                min_mu = mu
+
+            d_E = 1 / mu
+            d_I = 1 / psi
+            f_E = d_E / (d_E + d_I)
+
+
             model = BirthDeathExposedInfectiousModel(mu=mu, la=la, psi=psi, p=rho)
             pi_E, pi_I = model.state_frequencies
 
             df.loc[f'{i}.{est_label}',
             ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'kappa', 'type',
              'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
-                = [la, psi, rho, 1 / mu / (1 / mu + 1 / psi), 0, 1, 0, 1, 1, est_label,
+                = [la, psi, rho, f_E, 0, 1, 0, 1, 1, est_label,
                    pi_E, pi_I, 0, 0, 0, 0]
             if not pd.isna(mu_CI) and mu_CI is not None and mu_CI != 'None':
                 mu_CI, psi_CI, la_CI, rho_CI = \
                     mu_CI.strip('(').strip(')'), psi_CI.strip('(').strip(')'), la_CI.strip('(').strip(')'), rho_CI.strip('(').strip(')')
-                mu, la, psi, rho = (float(mu_CI.split(', ')[1]), float(la_CI.split(', ')[0]),
+                mu, la, psi, rho = (float(mu_CI.split(', ')[0]), float(la_CI.split(', ')[0]),
                                     float(psi_CI.split(', ')[0]), float(rho_CI.split(', ')[0]))
+                d_E = 1 / mu
+                d_I = 1 / psi
+                f_E = d_E / (d_E + d_I)
                 df.loc[f'{i}.{est_label}',
                 ['lambda_min', 'psi_min', 'p_min', 'f_E_min', 'f_S_min', 'X_S_min',
                  'upsilon_min', 'X_C_min', 'kappa_min', 'type']] \
-                    = [la, psi, rho, 1 / mu / (1 / mu + 1 / psi), 0, 1, 0, 1, 1, est_label]
+                    = [la, psi, rho, f_E, 0, 1, 0, 1, 1, est_label]
 
                 mu, la, psi, rho = (float(mu_CI.split(', ')[1]), float(la_CI.split(', ')[1]),
                                     float(psi_CI.split(', ')[1]), float(rho_CI.split(', ')[1]))
+                d_E = 1 / mu
+                d_I = 1 / psi
+                f_E = d_E / (d_E + d_I)
                 df.loc[f'{i}.{est_label}',
                 ['lambda_max', 'psi_max', 'p_max', 'f_E_max', 'f_S_max', 'X_S_max',
                  'upsilon_max', 'X_C_max', 'kappa_max', 'type']] \
-                    = [la, psi, rho, 1 / mu / (1 / mu + 1 / psi), 0, 1, 0, 1, 1, est_label]
+                    = [la, psi, rho, f_E, 0, 1, 0, 1, 1, est_label]
 
 
     for est_list, est_label in ((params.estimates_bdctdl, 'bdctdl'), (params.estimates_bddl, 'bddl'),
@@ -194,6 +210,27 @@ if __name__ == "__main__":
     df.loc[pd.isna(df['f_E']) , 'f_E'] = 0
     df.loc[pd.isna(df['f_S']) , 'f_S'] = 0
     df.loc[pd.isna(df['X_S']) , 'X_S'] = 1
+
+    df['avg la'] = (df['pi_I'] + df['pi_I-C']) * df['lambda'] + (df['pi_S'] + df['pi_S-C']) * df['lambda'] * df['X_S']
+    # df['avg psi'] = (df['pi_I'] + df['pi_S']) * df['psi'] + (df['pi_I-C'] + df['pi_S-C']) * df['psi'] * df['X_C']
+
+    e_coefficient = 1 - df['f_E']
+
+    # df['avg la 2'] = (df['pi_I'] + df['pi_I-C']) * df['lambda'] + (df['pi_S'] + df['pi_S-C']) * df['lambda'] * df['X_S'] \
+    #                  + (df['pi_E'] + df['pi_E-C']) * df['lambda'] * e_coefficient * ((1 - df['f_E']) +  df['f_E'] * df['X_S'])
+    df['avg psi 2'] = (df['pi_I'] + df['pi_S'] + df['pi_E'] * e_coefficient) * df['psi'] \
+                      + (df['pi_I-C'] + df['pi_S-C'] + df['pi_E-C'] * e_coefficient) * df['psi'] * df['X_C']
+    df['avg d'] = (df['pi_I'] + df['pi_S'] + df['pi_E'] / e_coefficient) / df['psi']  \
+                      + (df['pi_I-C'] + df['pi_S-C'] + df['pi_E-C'] / e_coefficient) / (df['psi'] * df['X_C'])
+
+    # df['avg psi'] = 1 / df['avg d']
+
+    # df['R'] = (df['pi_I'] + df['pi_I-C'] / df['X_C']) * df['lambda'] / df['psi'] \
+    #           + (df['pi_S'] + df['pi_S-C'] / df['X_C']) * df['lambda'] / df['psi'] * df['X_S']
+    df['R2'] = (df['pi_E'] * (1 - df['f_S'])  + df['pi_I'] + (df['pi_I-C'] + df['pi_E-C']* (1 - df['f_S']))/ df['X_C']) * df['lambda'] / df['psi'] \
+              + (df['pi_E'] * df['f_S'] + df['pi_S'] + (df['pi_S-C'] + df['pi_E-C'] * df['f_S'] ) / df['X_C']) * df['lambda'] / df['psi'] * df['X_S']
+
+    # df['R'] = df['avg la'] * df['avg d']
 
     df.sort_index(inplace=True)
     df.index = df.index.map(lambda _: int(_.split('.')[0]))

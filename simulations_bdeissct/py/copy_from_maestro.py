@@ -21,7 +21,7 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
 
         # Check each file in the current directory
         for file_name in files:
-            if file_name == target_filename:
+            if target_filename in file_name:
                 # Define full source and destination file paths
                 src_file = os.path.join(root, file_name)
                 dst_file = os.path.join(new_root, file_name)
@@ -32,8 +32,8 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
 
 
 
-source_directory = "/home/azhukova/Demi/anna/projects/bdext/sim_bdeiss/training/500_1000/"
-destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/"
-filename_to_copy = "trees.csv.xz"
+source_directory = "/home/azhukova/Demi/anna/projects/bdext/sim_bdeiss/test/500_1000/"
+destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/500_1000/"
+filename_to_copy = ".est_bd"
 
 copy_files_with_name(source_directory, destination_directory, filename_to_copy)

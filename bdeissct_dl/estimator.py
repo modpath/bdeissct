@@ -5,12 +5,11 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl import MODEL_PATH
-from bdeissct_dl.dl_model import QUANTILES
 from bdeissct_dl.bdeissct_model import F_E, RHO, UPSILON, MODEL2TARGET_COLUMNS, BD, BDEI, BDSS, BDEISS, MODELS, \
-    MODEL_FINDER, F_S, X_S, X_C
+    MODEL_FINDER, F_S, X_S, X_C, PI_I, PI_IC, PI_EC, PI_S, PI_E, PI_SC, LA, PSI, UPSILON, PIS
 from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
 from bdeissct_dl.training import get_test_data
-from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back_array
+from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
 from bdeissct_dl.tree_manager import read_forest
 
 
@@ -121,43 +120,56 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, ci=False, model
 
         model = load_model_keras(model_path)
         Y_pred = model.predict(X_cur)
-        scaler_y = load_scaler_numpy(model_path, suffix='y')
-        if scaler_y:
-            n_quant = len(QUANTILES)
-            for i in range(n_quant):
-                Y_pred[:, i::n_quant] = scaler_y.inverse_transform(Y_pred[:, i::n_quant])
 
         target_columns = MODEL2TARGET_COLUMNS[model_name]
-        tc_cis = tuple((f'{_}_{q * 100:.1f}' if q != 0.5 else _) for _ in target_columns
-                       for q in QUANTILES)
-        Y_pred = np.maximum(Y_pred, 0)
-        scale_back_array(Y_pred, SF_cur, tc_cis)
-        results.append(pd.DataFrame(Y_pred, columns=tc_cis))
+        Y_pred[PI_E] = Y_pred[PIS][:, 0]
+        Y_pred[PI_I] = Y_pred[PIS][:, 1]
+        Y_pred[PI_S] = Y_pred[PIS][:, 2]
+        Y_pred[PI_EC] = Y_pred[PIS][:, 3]
+        Y_pred[PI_IC] = Y_pred[PIS][:, 4]
+        Y_pred[PI_SC] = Y_pred[PIS][:, 5]
+
+        del Y_pred[PIS]
+
+        # patch for old models
+        if 'ups' in Y_pred.keys():
+            Y_pred[UPSILON] = Y_pred['ups']
+            del Y_pred['ups']
+
+
+        for col in target_columns:
+            if len(Y_pred[col].shape) == 2 and Y_pred[col].shape[1] == 1:
+                Y_pred[col] = Y_pred[col].squeeze(axis=1)
+
+        scale_back(Y_pred, SF_cur)
+
+
+        results.append(pd.DataFrame.from_dict(Y_pred, orient='columns'))
 
     if len(model_ids) == 1:
         result = results[0]
     else:
-        if any('CT' in MODELS[_] for _ in model_ids):
-            ups_cols = [(f'{UPSILON}_{q * 100:.1f}' if q != 0.5 else UPSILON) for q in QUANTILES]
-            x_c_cols = [(f'{X_C}_{q * 100:.1f}' if q != 0.5 else X_C) for q in QUANTILES]
-            bdeiss_ids = {_[0] for _ in enumerate(model_ids) if MODELS[_[1]] in (BD, BDEI, BDSS, BDEISS)}
-            for idx in bdeiss_ids:
-                results[idx].loc[:, ups_cols] = np.zeros((n_forests, len(ups_cols)), dtype=float)
-                results[idx].loc[:, x_c_cols] = np.ones((n_forests, len(ups_cols)), dtype=float)
-        bdei_ids = {_[0] for _ in enumerate(model_ids) if 'EI' in MODELS[_[1]]}
-        if bdei_ids and len(bdei_ids) < len(model_ids):
-            f_cols = [(f'{F_E}_{q * 100:.1f}' if q != 0.5 else F_E) for q in QUANTILES]
-            for idx in range(len(model_ids)):
-                if not idx in bdei_ids:
-                    results[idx].loc[:, f_cols] = np.zeros((n_forests, len(f_cols)), dtype=float)
-        bdss_ids = {_[0] for _ in enumerate(model_ids) if 'SS' in MODELS[_[1]]}
-        if bdss_ids and len(bdss_ids) < len(model_ids):
-            f_cols = [(f'{F_S}_{q * 100:.1f}' if q != 0.5 else F_S) for q in QUANTILES]
-            x_cols = [(f'{X_S}_{q * 100:.1f}' if q != 0.5 else X_S) for q in QUANTILES]
-            for idx in range(len(model_ids)):
-                if not idx in bdss_ids:
-                    results[idx].loc[:, f_cols] = np.zeros((n_forests, len(f_cols)), dtype=float)
-                    results[idx].loc[:, x_cols] = np.ones((n_forests, len(f_cols)), dtype=float)
+        # if any('CT' in MODELS[_] for _ in model_ids):
+        #     ups_cols = [(f'{UPSILON}_{q * 100:.1f}' if q != 0.5 else UPSILON) for q in QUANTILES]
+        #     x_c_cols = [(f'{X_C}_{q * 100:.1f}' if q != 0.5 else X_C) for q in QUANTILES]
+        #     bdeiss_ids = {_[0] for _ in enumerate(model_ids) if MODELS[_[1]] in (BD, BDEI, BDSS, BDEISS)}
+        #     for idx in bdeiss_ids:
+        #         results[idx].loc[:, ups_cols] = np.zeros((n_forests, len(ups_cols)), dtype=float)
+        #         results[idx].loc[:, x_c_cols] = np.ones((n_forests, len(ups_cols)), dtype=float)
+        # bdei_ids = {_[0] for _ in enumerate(model_ids) if 'EI' in MODELS[_[1]]}
+        # if bdei_ids and len(bdei_ids) < len(model_ids):
+        #     f_cols = [(f'{F_E}_{q * 100:.1f}' if q != 0.5 else F_E) for q in QUANTILES]
+        #     for idx in range(len(model_ids)):
+        #         if not idx in bdei_ids:
+        #             results[idx].loc[:, f_cols] = np.zeros((n_forests, len(f_cols)), dtype=float)
+        # bdss_ids = {_[0] for _ in enumerate(model_ids) if 'SS' in MODELS[_[1]]}
+        # if bdss_ids and len(bdss_ids) < len(model_ids):
+        #     f_cols = [(f'{F_S}_{q * 100:.1f}' if q != 0.5 else F_S) for q in QUANTILES]
+        #     x_cols = [(f'{X_S}_{q * 100:.1f}' if q != 0.5 else X_S) for q in QUANTILES]
+        #     for idx in range(len(model_ids)):
+        #         if not idx in bdss_ids:
+        #             results[idx].loc[:, f_cols] = np.zeros((n_forests, len(f_cols)), dtype=float)
+        #             results[idx].loc[:, x_cols] = np.ones((n_forests, len(f_cols)), dtype=float)
 
         columns = results[0].columns
         result = pd.DataFrame(index=forest_sumstats.index)

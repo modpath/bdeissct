@@ -20,6 +20,8 @@ PI_SC = 'pi_SC'
 PI_E = 'pi_E'
 PI_EC = 'pi_EC'
 
+PIS = 'pi'
+
 
 X_C = 'X_C'
 UPSILON = 'upsilon'

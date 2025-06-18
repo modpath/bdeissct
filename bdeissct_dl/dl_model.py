@@ -1,6 +1,8 @@
 import tensorflow as tf
 from tensorflow.python.keras.utils.generic_utils import register_keras_serializable
 
+from bdeissct_dl.bdeissct_model import LA, PSI, F_E, F_S, X_S, UPSILON, X_C, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, PIS
+
 
 # QUANTILES = (0.025, 0.5, 0.975)
 QUANTILES = (0.5, )
@@ -202,7 +204,7 @@ def build_model(n_x, n_y=4, optimizer=None, loss=None, metrics=None, quantiles=Q
 
     # logits = tf.keras.layers.Dense(n_out, activation=None)(x)
 
-    la_out = tf.keras.layers.Dense(1, activation="softplus", name="la")(x) # positive values only
+    la_out = tf.keras.layers.Dense(1, activation="softplus", name=LA)(x) # positive values only
     psi_out = tf.keras.layers.Dense(1, activation="softplus", name="psi")(x) # positive values only
 
     f_E_out = tf.keras.layers.Dense(1, activation="sigmoid", name="f_E")(x)
@@ -221,14 +223,14 @@ def build_model(n_x, n_y=4, optimizer=None, loss=None, metrics=None, quantiles=Q
     # outputs = OutputTransformLayer()(logits)
 
     outputs = {
-        "la": la_out,
-        "psi": psi_out,
-        "ups": ups_out,
-        "X_C": X_C_out,
-        "f_E": f_E_out,
-        "f_S": f_S_out,
-        "X_S": X_S_out,
-        "pi": pi_out
+        LA: la_out,
+        PSI: psi_out,
+        UPSILON: ups_out,
+        X_S: X_C_out,
+        F_E: f_E_out,
+        F_S: f_S_out,
+        X_S: X_S_out,
+        PIS: pi_out
     }
 
     model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
@@ -257,24 +259,24 @@ def build_model(n_x, n_y=4, optimizer=None, loss=None, metrics=None, quantiles=Q
 
     model.compile(optimizer=optimizer,
                   loss={
-                      "la": "mean_absolute_percentage_error",
-                      "psi": "mean_absolute_percentage_error",
-                      "ups": 'mae',
-                      "X_C": "mean_absolute_percentage_error",
-                      "f_E": 'mae',
-                      "f_S": 'mae',
-                      "X_S": "mean_absolute_percentage_error",
-                      "pi": 'mae'
+                      LA: "mean_absolute_percentage_error",
+                      PSI: "mean_absolute_percentage_error",
+                      UPSILON: 'mae',
+                      X_C: "mean_absolute_percentage_error",
+                      F_E: 'mae',
+                      F_S: 'mae',
+                      X_S: "mean_absolute_percentage_error",
+                      PIS: 'mae'
                   },
                   loss_weights={
-                      "la": 1,
-                      "psi": 1,
-                      "ups": 100,
-                      "X_C": 1,
-                      "f_E": 100,
-                      "f_S": 200, # as it is within [0, 0.5], we multiply by 200 to scale it to [0, 100]
-                      "X_S": 1,
-                      "pi": 600  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
+                      LA: 1,
+                      PSI: 1,
+                      UPSILON: 100,
+                      X_C: 1,
+                      F_E: 100,
+                      F_S: 200, # as it is within [0, 0.5], we multiply by 200 to scale it to [0, 100]
+                      X_S: 1,
+                      PIS: 600  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
                   },
                   metrics=metrics)
     return model

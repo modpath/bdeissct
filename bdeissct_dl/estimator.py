@@ -12,81 +12,7 @@ from bdeissct_dl.training import get_test_data
 from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
 from bdeissct_dl.tree_manager import read_forest
 
-
-def estimate_cis(forest_sumstats, model_name, Y_pred):
-    target_columns = list(MODEL2TARGET_COLUMNS[model_name])
-    train_sumstats = pd.read_csv(os.path.join(TRAINING_PATH, f'{model_name}.csv.xz'))[target_columns + [RHO, 'n_trees', 'n_tips']]
-    train_results = pd.read_csv(os.path.join(TRAINING_PATH, f'{model_name}.estimates_{model_name}.csv.xz'), index_col=0)[target_columns]
-    Y_pred = Y_pred[target_columns]
-
-    scaler_y = StandardScaler()
-    train_results = scaler_y.fit_transform(train_results.to_numpy(dtype=float, na_value=0))
-    Y_pred = scaler_y.transform(Y_pred.to_numpy(dtype=float, na_value=0))
-
-    Y_pred = pd.DataFrame(Y_pred, columns=target_columns, index=forest_sumstats.index)
-    train_results = pd.DataFrame(train_results, columns=target_columns)
-
-    n_train_examples = len(train_sumstats)
-    tip_threshold = 200_000 if n_train_examples > 200_000 else 40_000
-    tree_threshold = 100_000 if n_train_examples > 200_000 else 20_000
-    rho_threshold = 10_000
-    param_threshold = 1000
-
-
-    for index in forest_sumstats.index:
-        rho, n_trees, n_tips = forest_sumstats.loc[index, [RHO, 'n_trees', 'n_tips']]
-        cur_sumstats = train_sumstats
-        cur_results = train_results
-        # print('tips', n_tips, np.percentile(train_sumstats['n_tips'], [0, 5, 50, 95, 100]))
-        cur_ids = cur_sumstats.iloc[np.abs(cur_sumstats[RHO] - rho).argsort(), :].index[:tip_threshold]
-        cur_sumstats = cur_sumstats.loc[cur_ids, :]
-        cur_results = cur_results.loc[cur_ids, :]
-        # print('tips', n_tips, np.percentile(cur_sumstats['n_tips'], [0, 5, 50, 95, 100]))
-        # print('trees', n_trees, np.percentile(cur_sumstats['n_trees'], [0, 5, 50, 95, 100]))
-        cur_ids = cur_sumstats.iloc[np.abs(cur_sumstats['n_trees'] - n_trees).argsort(), :].index[:tree_threshold]
-        cur_sumstats = cur_sumstats.loc[cur_ids, :]
-        cur_results = cur_results.loc[cur_ids, :]
-        # print('trees', n_trees, np.percentile(cur_sumstats['n_trees'], [0, 5, 50, 95, 100]))
-        # print(RHO, rho, np.percentile(cur_sumstats[RHO], [0, 5, 50, 95, 100]))
-        cur_ids = cur_sumstats.iloc[np.abs(cur_sumstats['n_tips'] - n_tips).argsort(), :].index[:rho_threshold]
-        cur_sumstats = cur_sumstats.loc[cur_ids, :]
-        cur_results = cur_results.loc[cur_ids, :]
-        # print(RHO, rho, np.percentile(cur_sumstats[RHO], [0, 5, 50, 95, 100]))
-
-        loss = np.abs(cur_sumstats[target_columns] - Y_pred.loc[index, target_columns]).sum(axis=1)
-        cur_ids = cur_sumstats.iloc[loss.argsort(), :].index[:param_threshold]
-        cur_sumstats = cur_sumstats.loc[cur_ids, :]
-        cur_results = cur_results.loc[cur_ids, :]
-
-
-        for col in target_columns:
-            val = Y_pred.loc[index, col]
-            # # print(col, val, np.percentile(cur_sumstats[col], [0, 5, 50, 95, 100]), np.percentile(cur_results[col], [0, 5, 50, 95, 100]))
-            # par_ids = cur_sumstats.iloc[np.abs(cur_sumstats[col] - val).argsort(), :].index[:param_threshold]
-            # true_vals = cur_sumstats.loc[par_ids, col]
-            # pred_vals = cur_results.loc[par_ids, col]
-            # # print(col, val, np.percentile(true_vals, [0, 5, 50, 95, 100]), np.percentile(pred_vals, [0, 5, 50, 95, 100]))
-            # errors = pred_vals - true_vals
-            errors = cur_results[col] - cur_sumstats[col]
-            dist = val + errors - np.median(errors)
-            # dist = np.maximum(dist, 0)
-            # if UPSILON == col:
-            #     dist = np.minimum(dist, 1)
-            Y_pred.loc[index, f'{col}_2.5'] = np.percentile(dist, 2.5)
-            Y_pred.loc[index, f'{col}_97.5'] = np.percentile(dist, 97.5)
-    for suffix in ('', '_2.5', '_97.5'):
-        Y_pred[[f'{col}{suffix}' for col in target_columns]] = \
-            scaler_y.inverse_transform(Y_pred[[f'{col}{suffix}' for col in target_columns]].to_numpy(dtype=float, na_value=0))
-
-
-    Y_pred = np.maximum(Y_pred, 0)
-    ups_cols = [col for col in Y_pred.columns if UPSILON in col]
-    if ups_cols:
-        Y_pred[ups_cols] = np.minimum(Y_pred[ups_cols], 1)
-    return Y_pred
-
-
-def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, ci=False, model_path=MODEL_PATH):
+def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODEL_PATH):
     n_forests = len(forest_sumstats)
     n_models = len(MODELS)
 
@@ -131,18 +57,11 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, ci=False, model
 
         del Y_pred[PIS]
 
-        # patch for old models
-        if 'ups' in Y_pred.keys():
-            Y_pred[UPSILON] = Y_pred['ups']
-            del Y_pred['ups']
-
-
         for col in target_columns:
             if len(Y_pred[col].shape) == 2 and Y_pred[col].shape[1] == 1:
                 Y_pred[col] = Y_pred[col].squeeze(axis=1)
 
         scale_back(Y_pred, SF_cur)
-
 
         results.append(pd.DataFrame.from_dict(Y_pred, orient='columns'))
 
@@ -221,7 +140,7 @@ def main():
         forest_df = forest2sumstat_df(forest, rho=params.p)
     else:
         forest_df = pd.read_csv(params.sumstats)
-    predict_parameters(forest_df, model_name=params.model_name, ci=params.ci, model_path=params.model_path_pattern)\
+    predict_parameters(forest_df, model_name=params.model_name, model_path=params.model_path_pattern)\
         .to_csv(params.log, header=True)
 
 

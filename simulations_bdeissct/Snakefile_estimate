@@ -5,8 +5,8 @@ import os
 # snakemake --snakefile Snakefile_estimate --rerun-triggers mtime --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 
 # To run on bioevo (change shakemake activation below if you are not Anna ;) :
-# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p01/Evolbioinfo/users/azhukova/projects/bdext/simulations_ct
-# snakemake --snakefile Snakefile_estimate --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o logs/{params.name}.log -e logs/{params.name}.log --mem {params.mem} -p common --qos={params.qos} -J {params.name}" --jobs 600
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/DEMI_clocks/anna/projects/bdext/sim_bdeiss/
+# snakemake --snakefile Snakefile_estimate --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o logs/{params.name}.log -e logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast -J {params.name}" --jobs 600
 
 localrules: all
 
@@ -37,10 +37,10 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
-            model=MODELS, estimator=EST_ML, size=SIZES),
-        # expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
-        #     model=MODELS, estimator=EST_DL, size=SIZES),
+        # expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
+        #     model=MODELS, estimator=EST_ML, size=SIZES),
+        expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
+            model=MODELS, estimator=EST_DL, size=SIZES),
 
 
 rule estimate_params_dl:
@@ -49,14 +49,14 @@ rule estimate_params_dl:
     '''
     input:
         stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
-        dl_model= os.path.join(sim_folder, '..', 'training', '{size}', '{estimator}', 'ffnn.keras')
+        dl_model= os.path.join(sim_folder, '..', 'models', '{size}', '{estimator}', 'ffnn.keras')
     output:
         est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'trees.estimates_{estimator}.csv.xz')
     params:
         mem = 2000,
         name = 'dl',
         qos = 'fast',
-        pattern = os.path.join(sim_folder, '..', 'training', '{size}', '{}')
+        pattern = os.path.join(sim_folder, '..', 'models', '{size}', '{}')
     threads: 1
     singularity: "docker://evolbioinfo/bdext:v0.1.37"
     shell:
@@ -85,7 +85,7 @@ rule estimate_params_bd:
         """
         p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_I") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
 
-        bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci} --upper_bounds 10000 20000 0.99 --lower_bounds 0.04 0.08 0.01
+        bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci} --upper_bounds 2520 1010 0.5 --lower_bounds 0.04 0.08 0.05
         """
 
 
@@ -108,7 +108,7 @@ rule estimate_params_bdct:
         """
         p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_I") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
 
-        bdct_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}  --upper_bounds 10000 40 20000 0.75 0.75 --lower_bounds 0.04 0.08 0.8 0.01 0.01
+        bdct_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}  --upper_bounds 2520 20 2000 0.5 0.5 --lower_bounds 0.04 0.08 0.8 0.05 0
         """
 
 
@@ -134,6 +134,6 @@ rule estimate_params_bdei:
         la=`awk -F, 'NR==2 {{ print $5 }}' {input.bd_est}`
         psi=`awk -F, 'NR==2 {{ print $6 }}' {input.bd_est}`
 
-        bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads} --upper_bounds 40 10000 20000 0.99
+        bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads} --upper_bounds 2500 2520 1010 0.5
         """
 

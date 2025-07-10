@@ -211,24 +211,47 @@ if __name__ == "__main__":
     df.loc[pd.isna(df['f_S']) , 'f_S'] = 0
     df.loc[pd.isna(df['X_S']) , 'X_S'] = 1
 
+    pi_nonE = 1 - df['pi_E']
+    pi_anyI = df['pi_I'] + df['pi_I-C']
+    pi_anyS = df['pi_S'] + df['pi_S-C']
+    df['pi_1'] = df['pi_I'] / pi_anyI * (df['pi_I'] / pi_nonE)
+    df['pi_5'] = df['pi_I-C'] / pi_anyI * (df['pi_I-C'] / pi_nonE)
+    pi_anyS_or_1 = np.where(pi_anyS <= 0, 1, pi_anyS)
+    df['pi_2'] = df['pi_S'] / pi_anyS_or_1 * (df['pi_S'] / pi_nonE)
+    df['pi_6'] = df['pi_S-C'] / pi_anyS_or_1 * (df['pi_S-C'] / pi_nonE)
+    df['pi_3'] = df['pi_I-C'] / pi_nonE
+    df['pi_4'] = df['pi_S-C'] / pi_nonE
+
+    df['f_C'] = df['pi_E-C'] + df['pi_I-C'] + df['pi_S-C']
+
+    df['la-tilde'] = df['lambda'] * (df['f_S'] * df['X_S'] + (1 - df['f_S']))
+    df['psi-tilde'] = df['psi'] * (df['f_C'] * df['X_C'] + (1 - df['f_C']))
+
+    dE = 1 / df['psi'] * df['f_E'] / (1 - df['f_E'])
+    df['inc'] = dE
+    df['d1'] = df['inc'] + 1/df['psi-tilde']
+
     df['avg la'] = (df['pi_I'] + df['pi_I-C']) * df['lambda'] + (df['pi_S'] + df['pi_S-C']) * df['lambda'] * df['X_S']
     # df['avg psi'] = (df['pi_I'] + df['pi_S']) * df['psi'] + (df['pi_I-C'] + df['pi_S-C']) * df['psi'] * df['X_C']
 
-    e_coefficient = 1 - df['f_E']
+    # e_coefficient = 1 - df['f_E']
 
-    # df['avg la 2'] = (df['pi_I'] + df['pi_I-C']) * df['lambda'] + (df['pi_S'] + df['pi_S-C']) * df['lambda'] * df['X_S'] \
-    #                  + (df['pi_E'] + df['pi_E-C']) * df['lambda'] * e_coefficient * ((1 - df['f_E']) +  df['f_E'] * df['X_S'])
-    df['avg psi 2'] = (df['pi_I'] + df['pi_S'] + df['pi_E'] * e_coefficient) * df['psi'] \
-                      + (df['pi_I-C'] + df['pi_S-C'] + df['pi_E-C'] * e_coefficient) * df['psi'] * df['X_C']
-    df['avg d'] = (df['pi_I'] + df['pi_S'] + df['pi_E'] / e_coefficient) / df['psi']  \
-                      + (df['pi_I-C'] + df['pi_S-C'] + df['pi_E-C'] / e_coefficient) / (df['psi'] * df['X_C'])
+    # df['avg psi 2'] = (df['pi_I'] + df['pi_S'] + df['pi_E'] * e_coefficient) * df['psi'] \
+    #                   + (df['pi_I-C'] + df['pi_S-C'] + df['pi_E-C'] * e_coefficient) * df['psi'] * df['X_C']
+    # df['avg d'] = (df['pi_I'] + df['pi_S'] + df['pi_E'] / e_coefficient) / df['psi']  \
+    #                   + (df['pi_I-C'] + df['pi_S-C'] + df['pi_E-C'] / e_coefficient) / (df['psi'] * df['X_C'])
+    df['d'] = dE + 1 / df['psi']  * (df['pi_1'] + df['pi_2'] + (df['pi_5'] + df['pi_6']) / 2 + 1 / df['X_C'] * (df['pi_3'] + df['pi_4'] + (df['pi_5'] + df['pi_6']) / 2))
+
+    df['R'] = df['lambda'] / df['psi'] * (df['pi_1'] + df['X_S'] * df['pi_2'] + 1 / df['X_C'] * df['pi_3'] + df['X_S'] / df['X_C'] * df['pi_4'] \
+                                          + 1 / 2 * (1 + 1 / df['X_C']) * df['pi_5'] + df['X_S'] / 2 * (1 + 1 / df['X_C']) * df['pi_5'])
+
 
     # df['avg psi'] = 1 / df['avg d']
 
     # df['R'] = (df['pi_I'] + df['pi_I-C'] / df['X_C']) * df['lambda'] / df['psi'] \
     #           + (df['pi_S'] + df['pi_S-C'] / df['X_C']) * df['lambda'] / df['psi'] * df['X_S']
-    df['R2'] = (df['pi_E'] * (1 - df['f_S'])  + df['pi_I'] + (df['pi_I-C'] + df['pi_E-C']* (1 - df['f_S']))/ df['X_C']) * df['lambda'] / df['psi'] \
-              + (df['pi_E'] * df['f_S'] + df['pi_S'] + (df['pi_S-C'] + df['pi_E-C'] * df['f_S'] ) / df['X_C']) * df['lambda'] / df['psi'] * df['X_S']
+    # df['R2'] = (df['pi_E'] * (1 - df['f_S'])  + df['pi_I'] + (df['pi_I-C'] + df['pi_E-C']* (1 - df['f_S']))/ df['X_C']) * df['lambda'] / df['psi'] \
+    #           + (df['pi_E'] * df['f_S'] + df['pi_S'] + (df['pi_S-C'] + df['pi_E-C'] * df['f_S'] ) / df['X_C']) * df['lambda'] / df['psi'] * df['X_S']
 
     # df['R'] = df['avg la'] * df['avg d']
 

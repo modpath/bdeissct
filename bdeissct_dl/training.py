@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, LA, PSI, UPSILON, X_C, KAPPA, F_E, F_S, \
-    X_S, TARGET_COLUMNS_BDCT, PI_E, PI_I, PI_S, PI_IC, PI_SC, PI_EC
+    X_S, TARGET_COLUMNS_BDCT, PI_E, PI_I, PI_S, PI_IC, PI_SC, PI_EC, PIS
 from bdeissct_dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy, load_scaler_numpy, \
     load_model_keras
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
@@ -151,11 +151,6 @@ def get_train_data(n_input, columns_x, columns_y, file_pattern=None, filenames=N
 
         dataset = dataset.map(scale, num_parallel_calls=tf.data.AUTOTUNE)
     else:
-        X = np.random.rand(100, 10).astype(np.float32)
-        Y = np.random.randint(0, 5, size=(100,)).astype(np.int32)
-
-
-
         if file_pattern is not None:
             filenames = glob.glob(filenames)
 
@@ -190,8 +185,8 @@ def get_train_data(n_input, columns_x, columns_y, file_pattern=None, filenames=N
             PSI: Y[:, 1],
             UPSILON: Y[:, 2],
             X_C: Y[:, 3],
-            f_E: Y[:, 4],
-            f_S: Y[:, 5],
+            F_E: Y[:, 4],
+            F_S: Y[:, 5],
             X_S: Y[:, 6],
             PIS: Y[:, 7:]
         }
@@ -217,24 +212,20 @@ def main():
     parser = \
         argparse.ArgumentParser(description="Train a BD(EI)(SS)(CT) model.")
     parser.add_argument('--train_data', type=str, nargs='+',
-                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSSCT/{i}/trees.csv.xz' for i in range(116)]
-                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(16)]
-                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSS/{i}/trees.csv.xz' for i in range(16)]
-                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDCT/{i}/trees.csv.xz' for i in range(16)]
-                        # ,
+                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(116)]
+                        ,
                         help="path to the files where the encoded training data are stored")
     parser.add_argument('--val_data', type=str, nargs='+',
-                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSSCT/{i}/trees.csv.xz' for i in range(116, 128)]
-                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(116, 116 + 2)]
-                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSS/{i}/trees.csv.xz' for i in range(116, 116 + 2)]
-                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDCT/{i}/trees.csv.xz' for i in range(116, 116 + 2)]
-                        # ,
+                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(116, 128)]
+                        ,
                         help="path to the files where the encoded validation data are stored")
 
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='number of epochs to train the model')
     parser.add_argument('--base_model_name', type=str, default=None,
                         help="base model name to use for training, if not specified, the model will be trained from scratch")
-    parser.add_argument('--model_name', type=str, help="model name")
+    parser.add_argument('--model_name',
+                        default='BD',
+                        type=str, help="model name")
     parser.add_argument('--model_path', default=None, type=str,
                         help="path to the folder where the trained model should be stored. "
                              "The model will be stored at this path in the folder corresponding to the model name.")

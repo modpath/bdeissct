@@ -29,7 +29,7 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), model=MODELS, k=range(num)),
+        # expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), model=MODELS, k=range(num)),
         # expand(os.path.join(sim_folder, '{model}', 'trees.csv.xz'), model=MODELS),
         expand(os.path.join(folder, 'test', '{size}', '{model}', 'trees.csv.xz'), model=MODELS, size=SIZES),
     shell:

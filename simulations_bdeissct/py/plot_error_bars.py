@@ -11,7 +11,9 @@ import re
 
 
 # PARAMETERS = ['lambda', 'avg la', 'psi', 'avg psi', 'avg psi 2', 'R', 'R2'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
-PARAMETERS = ['avg la', 'avg psi 2', 'R2', 'avg d'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
+PARAMETERS = ['lambda', 'psi', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C'] #, 'f_E', 'f_S', 'X_S', 'X_C', 'upsilon']
+# PARAMETERS = ['avg la', 'R', 'd', 'd1'] #, 'f_E', 'f_S', 'X_S', 'X_C', 'upsilon']
+# PARAMETERS = ['pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
 par2greek = {'lambda': u'\u03bb', 'psi': u'\u03c8', 'phi': u'\u03c6',
              'p': '\u03c1', 'upsilon': '\u03c5',
              'R_naught': u'\u0052\u2080' + '=' + u'\u03bb\u002F\u03c8',
@@ -23,6 +25,7 @@ for p in PARAMETERS:
 greek2par = {v: k for k, v in par2greek.items()}
 
 EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdct', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
+EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdct', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
 
 BIAS_COL = 'bias'
 ERROR_COL = 'error'
@@ -35,6 +38,9 @@ palette2 = sns.color_palette()
 palette = sns.color_palette("colorblind")
 total_palette = [palette[0]] + [palette[0]] + [palette[1]] + palette[1:3] + [palette[4]] \
                 + [palette[0]] + palette[0:3] + [palette[4]]
+total_palette = [palette[0]] + palette[0:2] + palette[1:]
+
+# total_palette = palette
 
 
 # palette = sns.color_palette("colorblind")
@@ -54,12 +60,12 @@ def pertinent_estimators(model, palette):
         ct_estimator = 'ct' in estimator.lower()
         bd_estimator = estimator.lower() in {'bd', 'bddl'}
 
-        if not bd_estimator:
-            if (ei_model and not ss_model) and not ei_estimator \
-                    or (ss_model and not ei_model) and not ss_estimator \
-                    or (not ei_model and ct_model) and (ei_estimator and not ct_estimator)\
-                    or (not ss_model and ct_model) and (ss_estimator and not ct_estimator):
-                continue
+        # if not bd_estimator:
+        #     if (ei_model and not ss_model) and not ei_estimator \
+        #             or (ss_model and not ei_model) and not ss_estimator \
+        #             or (not ei_model and ct_model) and (ei_estimator and not ct_estimator)\
+        #             or (not ss_model and ct_model) and (ss_estimator and not ct_estimator):
+        #         continue
         result.append(estimator)
         res_palette.append(col)
     return result, res_palette
@@ -90,11 +96,11 @@ if __name__ == "__main__":
     params = parser.parse_args()
 
     plt.clf()
-    rc = {'font.size': 14, 'axes.labelsize': 12, 'legend.fontsize': 12, 'axes.titlesize': 12, 'xtick.labelsize': 12,
-          'ytick.labelsize': 12}
+    rc = {'font.size': 20, 'axes.labelsize': 20, 'legend.fontsize': 20, 'axes.titlesize': 22, 'xtick.labelsize': 20,
+          'ytick.labelsize': 20}
     # sns.set(style="whitegrid")
     sns.axes_style(style="whitegrid", rc=rc)
-    fig, axs = plt.subplots(len(params.estimates), 2, figsize=(56, 5 * len(params.estimates)))
+    fig, axs = plt.subplots(len(params.estimates), 2, figsize=(46, 4 * len(params.estimates)))
 
 
     order = ['', ' ']
@@ -146,8 +152,8 @@ if __name__ == "__main__":
 
                 for par in PARAMETERS:
                     if need_to_skip(par, estimator_type, model):
-                        par2type2avg_error[par][estimator_type_label] = '   '
-                        par2type2bias[par][estimator_type_label] = '   '
+                        par2type2avg_error[par][estimator_type_label] = '___'
+                        par2type2bias[par][estimator_type_label] = '___'
                     else:
                         cur_mask = (df['type'] == estimator_type)
                         if 'X_C' in par:
@@ -160,8 +166,8 @@ if __name__ == "__main__":
                         if 'X_C' in par:
                             cur_mask &= df['upsilon'] > 0.02
                         if cur_mask.sum() == 0:
-                            par2type2avg_error[par][estimator_type_label] = '   '
-                            par2type2bias[par][estimator_type_label] = '   '
+                            par2type2avg_error[par][estimator_type_label] = '___'
+                            par2type2bias[par][estimator_type_label] = '___'
                         else:
                             par2type2avg_error[par][estimator_type_label] = \
                                 f'{100 * np.mean(np.abs(df.loc[cur_mask, f"{par}_error"])):3.0f}'
@@ -189,8 +195,10 @@ if __name__ == "__main__":
                         hatch = ''
                         if 'ct' in plot_est.lower():
                             hatch += '----'
-                        if 'dl' in plot_est.lower():
+                        if 'ei' in plot_est.lower():
                             hatch += '////'
+                        if 'ss' in plot_est.lower():
+                            hatch += '\\\\\\\\'
                         if hatch:
                             par_bars[bar_idx].set_hatch(hatch)
                         bar_idx += 1
@@ -205,7 +213,7 @@ if __name__ == "__main__":
 
                 def get_ta(color, text):
                     return TextArea(text,
-                                    textprops=dict(color=color, ha='center', va='center', fontsize=6,
+                                    textprops=dict(color=color, ha='center', va='center', fontsize=14,
                                                    fontweight='bold'))
 
                 return HPacker(children=[get_ta(color, text_err) if col == ERROR_COL else get_ta(color, text_bias)
@@ -213,14 +221,14 @@ if __name__ == "__main__":
                                          in zip((par2type2avg_error[par][_] for _ in est_labels),
                                                 (par2type2bias[par][_] for _ in est_labels),
                                                 palette + palette)],
-                               align="center", pad=0, sep=1)
+                               align="center", pad=0, sep=0)
 
 
 
 
-            xbox = HPacker(children=[get_xbox(par) for par in PARAMETERS], align="center", pad=0, sep=14)
+            xbox = HPacker(children=[get_xbox(par) for par in PARAMETERS], align="center", pad=0, sep=30)
             anchored_xbox = AnchoredOffsetbox(loc=3, child=xbox, pad=0, frameon=False,
-                                              bbox_to_anchor=(0, -0.12),
+                                              bbox_to_anchor=(0.1, -0.15),
                                               bbox_transform=ax.transAxes, borderpad=0.)
             ax.set_xlabel('')
             ax.add_artist(anchored_xbox)
@@ -229,7 +237,7 @@ if __name__ == "__main__":
             if num_est > 0 or col == BIAS_COL:
                 leg.remove()
 
-            ax.set_title(fig_title)
+            ax.set_title(fig_title, loc='left')
 
     # plt.tight_layout()
     # fig.set_size_inches(9, 9)

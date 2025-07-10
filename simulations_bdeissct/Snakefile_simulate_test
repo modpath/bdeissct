@@ -57,20 +57,20 @@ rule simulate_bdeissct_trees:
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
-        --min_rho 0.01  \
-        --max_rho 0.75  \
-        --min_ups 0.01  \
-        --max_ups 0.75  \
-        --min_xc 10  \
-        --max_xc 500  \
+        --min_rho 0.05  \
+        --max_rho 0.5  \
+        --min_ups 0.05  \
+        --max_ups 0.5  \
+        --min_xc 20  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
-        --min_fe 0.05  \
-        --max_fe 0.95  \
-        --min_fss 0.01  \
+        --min_fe 0.1  \
+        --max_fe 0.9  \
+        --min_fss 0.05  \
         --max_fss 0.5  \
-        --min_xss 2  \
-        --max_xss 25 
+        --min_xss 5  \
+        --max_xss 20 
         """
 
 rule simulate_bdeiss_trees:
@@ -95,20 +95,20 @@ rule simulate_bdeiss_trees:
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
-        --min_rho 0.01  \
-        --max_rho 0.75  \
+        --min_rho 0.05  \
+        --max_rho 0.5  \
         --min_ups 0  \
         --max_ups 0  \
-        --min_xc 10  \
-        --max_xc 500  \
+        --min_xc 1  \
+        --max_xc 1  \
         --min_kappa 1 \
         --max_kappa 1 \
-        --min_fe 0.05  \
-        --max_fe 0.95  \
-        --min_fss 0.01  \
+        --min_fe 0.1  \
+        --max_fe 0.9  \
+        --min_fss 0.05  \
         --max_fss 0.5  \
-        --min_xss 2  \
-        --max_xss 25 
+        --min_xss 5  \
+        --max_xss 20 
         """
 
 rule simulate_bdeict_trees:
@@ -133,20 +133,20 @@ rule simulate_bdeict_trees:
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
-        --min_rho 0.01  \
-        --max_rho 0.75  \
-        --min_ups 0.01  \
-        --max_ups 0.75  \
-        --min_xc 10  \
-        --max_xc 500  \
+        --min_rho 0.05  \
+        --max_rho 0.5  \
+        --min_ups 0.05  \
+        --max_ups 0.5  \
+        --min_xc 20  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
-        --min_fe 0.05  \
-        --max_fe 0.95  \
+        --min_fe 0.1  \
+        --max_fe 0.9  \
         --min_fss 0  \
         --max_fss 0  \
-        --min_xss 2  \
-        --max_xss 25 
+        --min_xss 1  \
+        --max_xss 1 
         """
 
 rule simulate_bdei_trees:
@@ -171,20 +171,20 @@ rule simulate_bdei_trees:
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
-        --min_rho 0.01  \
-        --max_rho 0.75  \
+        --min_rho 0.05  \
+        --max_rho 0.5  \
         --min_ups 0  \
         --max_ups 0  \
-        --min_xc 10  \
-        --max_xc 500  \
+        --min_xc 1  \
+        --max_xc 1  \
         --min_kappa 1 \
         --max_kappa 1 \
-        --min_fe 0.05  \
-        --max_fe 0.95  \
+        --min_fe 0.1  \
+        --max_fe 0.9  \
         --min_fss 0  \
         --max_fss 0  \
-        --min_xss 2  \
-        --max_xss 25 
+        --min_xss 1  \
+        --max_xss 1 
         """
 
 rule simulate_bdssct_trees:
@@ -209,20 +209,20 @@ rule simulate_bdssct_trees:
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
-        --min_rho 0.01  \
-        --max_rho 0.75  \
-        --min_ups 0.01  \
-        --max_ups 0.75  \
-        --min_xc 10  \
-        --max_xc 500  \
+        --min_rho 0.05  \
+        --max_rho 0.5  \
+        --min_ups 0.05  \
+        --max_ups 0.5  \
+        --min_xc 20  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
         --max_fe 0  \
-        --min_fss 0.01  \
+        --min_fss 0.05  \
         --max_fss 0.5  \
-        --min_xss 2  \
-        --max_xss 25 
+        --min_xss 5  \
+        --max_xss 20 
         """
 
 rule simulate_bdss_trees:
@@ -247,20 +247,20 @@ rule simulate_bdss_trees:
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
-        --min_rho 0.01  \
-        --max_rho 0.75  \
+        --min_rho 0.05  \
+        --max_rho 0.5  \
         --min_ups 0  \
         --max_ups 0  \
-        --min_xc 10  \
-        --max_xc 500  \
+        --min_xc 1  \
+        --max_xc 1  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
         --max_fe 0  \
-        --min_fss 0.01  \
+        --min_fss 0.05  \
         --max_fss 0.5  \
-        --min_xss 2  \
-        --max_xss 25 
+        --min_xss 5  \
+        --max_xss 20 
         """
 
 rule simulate_bdct_trees:
@@ -285,20 +285,20 @@ rule simulate_bdct_trees:
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
-        --min_rho 0.01  \
-        --max_rho 0.75  \
-        --min_ups 0.01  \
-        --max_ups 0.75  \
-        --min_xc 10  \
-        --max_xc 500  \
+        --min_rho 0.05  \
+        --max_rho 0.5  \
+        --min_ups 0.05  \
+        --max_ups 0.5  \
+        --min_xc 20  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
         --max_fe 0  \
         --min_fss 0  \
         --max_fss 0  \
-        --min_xss 2  \
-        --max_xss 25 
+        --min_xss 1  \
+        --max_xss 1 
         """
 
 rule simulate_bd_trees:
@@ -323,18 +323,18 @@ rule simulate_bd_trees:
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
-        --min_rho 0.01  \
-        --max_rho 0.75  \
+        --min_rho 0.05  \
+        --max_rho 0.5  \
         --min_ups 0  \
         --max_ups 0  \
-        --min_xc 10  \
-        --max_xc 500  \
+        --min_xc 1  \
+        --max_xc 1  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
         --max_fe 0  \
         --min_fss 0  \
         --max_fss 0  \
-        --min_xss 2  \
-        --max_xss 25 
+        --min_xss 1  \
+        --max_xss 1 
         """

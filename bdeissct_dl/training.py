@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, LA, PSI, UPSILON, X_C, KAPPA, F_E, F_S, \
-    X_S, TARGET_COLUMNS_BDCT, PI_E, PI_I, PI_S, PI_IC, PI_SC, PI_EC, PIS
+    X_S, TARGET_COLUMNS_BDCT, PI_E, PI_I, PI_S, PI_IC, PI_SC, PI_EC, PIS, UPS_X_C, F_S_X_S, BD
 from bdeissct_dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy, load_scaler_numpy, \
     load_model_keras
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
@@ -58,140 +58,70 @@ def get_test_data(dfs=None, paths=None, scaler_x=None):
     return X, SF
 
 
-def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT, scaler_x=None, scaler_y=None):
+def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT):
     x_indices = []
     y_indices = []
-    n_col = 0
 
-    # First pass: calculate mean and var
-    for path in paths:
-        df = pd.read_csv(path)
-        if not x_indices:
-            feature_columns = set(get_X_columns(df.columns))
-            target_columns = set(target_columns) if target_columns is not None else set()
-            n_col = len(df.columns)
-            for i, col in enumerate(df.columns):
-                # fix the bug from prev. version of encoding
-                if col == 'pi_E.1':
-                    col = 'pi_EC'
-                if col in feature_columns:
-                    x_indices.append(i)
-                if col in target_columns:
-                    y_indices.append(i)
-            if scaler_x is None and scaler_y is None:
-                # no need to fit scalers and hence no need to see the rest of the data
-                break
-        if scaler_x:
-            X = df.iloc[:, x_indices].to_numpy(dtype=float, na_value=0)
-            scaler_x.partial_fit(X)
-        if scaler_y:
-            Y = df.iloc[:, y_indices].to_numpy(dtype=float, na_value=0)
-            scaler_y.partial_fit(Y)
-    return x_indices, y_indices, n_col
-
-def get_train_data(n_input, columns_x, columns_y, file_pattern=None, filenames=None, scaler_x=None, \
-                   batch_size=BATCH_SIZE, shuffle=False, iterative=True):
-
-    if iterative:
-        def parse_line(line):
-            """
-            parse a single line
-            :param line:
-            :return:
-            """
-            # decode into a tensor with default values (if something is missing in the given dataframe line) set to 0
-            fields = tf.io.decode_csv(line, [0.0] * n_input, field_delim=",", use_quote_delim=False)
-            X = tf.stack([fields[i] for i in columns_x], axis=-1)
-            Y = tf.stack([fields[i] for i in columns_y], axis=-1)
-
-            train_labels = {
-                LA: Y[0],
-                PSI: Y[1],
-                UPSILON: Y[2],
-                X_C: Y[3],
-                F_E: Y[4],
-                F_S: Y[5],
-                X_S: Y[6],
-                PIS: Y[7:]
-            }
+    df = pd.read_csv(paths[0])
+    feature_columns = set(get_X_columns(df.columns))
+    target_columns = set(target_columns) if target_columns is not None else set()
+    for i, col in enumerate(df.columns):
+        if col in feature_columns:
+            x_indices.append(i)
+        if col in target_columns:
+            y_indices.append(i)
+    return x_indices, y_indices
 
 
-            return X, train_labels
+def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, filenames=None, scaler_x=None, \
+                   batch_size=BATCH_SIZE, shuffle=False):
 
+    if file_pattern is not None:
+        filenames = glob.glob(filenames)
 
-        if file_pattern is not None:
-            filenames = glob.glob(filenames)
+    Xs, Ys = [], []
+    for path in filenames:
+        try:
+            df = pd.read_csv(path)
+            Xs.append(df.iloc[:, columns_x].to_numpy(dtype=float, na_value=0))
+            Ys.append(df.iloc[:, columns_y].to_numpy(dtype=float, na_value=0))
+        except:
+            print(f'Error reading file {path}. Skipping it.')
+            continue
 
-        def read_xz_lines(filenames):
+    X = np.concat(Xs, axis=0)
+    Y = np.concat(Ys, axis=0)
 
-            for filename in filenames:
-                # Opens .xz file for reading text (line by line)
-                with lzma.open(filename, "rt") as f:
-                    # skip the header
-                    next(f)
-                    for line in f:
-                        line = line.strip()
-                        if line:
-                            # print([_ for (i, _) in enumerate(line.split(',')) if i in columns_y])
-                            yield line
+    print('X has shape ', X.shape, 'Y has shape', Y.shape)
 
-        dataset = tf.data.Dataset.from_generator(
-            lambda: read_xz_lines(filenames),
-            output_types=tf.string,  # each line is a string
-            output_shapes=()
-        )
+    if shuffle and X.shape[0] > 1:
+        n_examples = X.shape[0]
+        permutation = np.random.choice(np.arange(n_examples), size=n_examples, replace=False)
+        X = X[permutation, :]
+        Y = Y[permutation, :]
 
-        dataset = dataset.map(parse_line, num_parallel_calls=tf.data.AUTOTUNE)
+    # Standardization of the input and output features with a standard scaler
+    if scaler_x:
+        X = scaler_x.transform(X)
 
-        def scale(x, y):
-            if scaler_x:
-                mean_x, scale_x = tf.constant(scaler_x.mean_, dtype=tf.float32), tf.constant(scaler_x.scale_, dtype=tf.float32)
-                x = (x - mean_x) / scale_x
-            return x, y
+    train_labels = {
+        LA: Y[:, 0],
+        PSI: Y[:, 1],
+    }
+    col_i = 2
+    if UPSILON in target_columns:
+        train_labels[UPS_X_C] = Y[:, col_i: (col_i + 2)]
+        col_i += 2
+    if F_E in target_columns:
+        train_labels[F_E] = Y[:, col_i]
+        col_i += 1
+    if F_S in target_columns:
+        train_labels[F_S_X_S] = Y[:, col_i: (col_i + 2)]
+        col_i += 2
+    if PI_I in target_columns:
+        train_labels[PIS] = Y[:, col_i:]
 
-        dataset = dataset.map(scale, num_parallel_calls=tf.data.AUTOTUNE)
-    else:
-        if file_pattern is not None:
-            filenames = glob.glob(filenames)
-
-        Xs, Ys = [], []
-        for path in filenames:
-            try:
-                df = pd.read_csv(path)
-                Xs.append(df.iloc[:, columns_x].to_numpy(dtype=float, na_value=0))
-                Ys.append(df.iloc[:, columns_y].to_numpy(dtype=float, na_value=0))
-            except:
-                print(f'Error reading file {path}. Skipping it.')
-                continue
-
-
-        X = np.concat(Xs, axis=0)
-        Y = np.concat(Ys, axis=0)
-
-        print('X has shape ', X.shape, 'Y has shape', Y.shape)
-
-        if shuffle and X.shape[0] > 1:
-            n_examples = X.shape[0]
-            permutation = np.random.choice(np.arange(n_examples), size=n_examples, replace=False)
-            X = X[permutation, :]
-            Y = Y[permutation, :]
-
-        # Standardization of the input and output features with a standard scaler
-        if scaler_x:
-            X = scaler_x.transform(X)
-
-        train_labels = {
-            LA: Y[:, 0],
-            PSI: Y[:, 1],
-            UPSILON: Y[:, 2],
-            X_C: Y[:, 3],
-            F_E: Y[:, 4],
-            F_S: Y[:, 5],
-            X_S: Y[:, 6],
-            PIS: Y[:, 7:]
-        }
-
-        dataset = tf.data.Dataset.from_tensor_slices((X, train_labels))
+    dataset = tf.data.Dataset.from_tensor_slices((X, train_labels))
 
     dataset = (
         dataset
@@ -212,11 +142,11 @@ def main():
     parser = \
         argparse.ArgumentParser(description="Train a BD(EI)(SS)(CT) model.")
     parser.add_argument('--train_data', type=str, nargs='+',
-                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(116)]
+                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(120)]
                         ,
                         help="path to the files where the encoded training data are stored")
     parser.add_argument('--val_data', type=str, nargs='+',
-                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(116, 128)]
+                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(120, 128)]
                         ,
                         help="path to the files where the encoded validation data are stored")
 
@@ -224,21 +154,14 @@ def main():
     parser.add_argument('--base_model_name', type=str, default=None,
                         help="base model name to use for training, if not specified, the model will be trained from scratch")
     parser.add_argument('--model_name',
-                        default='BD',
+                        default=BD,
                         type=str, help="model name")
-    parser.add_argument('--model_path', default=None, type=str,
+    parser.add_argument('--model_path', default=MODEL_PATH, type=str,
                         help="path to the folder where the trained model should be stored. "
                              "The model will be stored at this path in the folder corresponding to the model name.")
     params = parser.parse_args()
 
-    if params.model_path is None:
-        model_path = MODEL_PATH.format(params.model_name)
-        base_model_path = MODEL_PATH.format(params.base_model_name) if params.base_model_name else None
-    else:
-        model_path = os.path.join(params.model_path, params.model_name)
-        base_model_path = os.path.join(params.model_path, params.base_model_name) if params.base_model_name else None
-
-    os.makedirs(model_path, exist_ok=True)
+    os.makedirs(params.model_path, exist_ok=True)
 
     target_columns = MODEL2TARGET_COLUMNS[params.model_name]
     # reshuffle params.train_data order
@@ -247,30 +170,23 @@ def main():
     if len(params.val_data) > 1:
         np.random.shuffle(params.val_data)
 
+
+    x_indices, y_indices = get_data_characteristics(paths=params.train_data, target_columns=target_columns)
+
+    scaler_x = load_scaler_numpy(params.model_path, suffix='x')
+
     if params.base_model_name is not None:
-        scaler_x = load_scaler_numpy(base_model_path, suffix='x')
-        scaler_y = load_scaler_numpy(base_model_path, suffix='y')
-        x_indices, y_indices, n_columns = \
-            get_data_characteristics(paths=params.train_data, target_columns=target_columns, \
-                                     scaler_x=None, scaler_y=None)
-        model = load_model_keras(base_model_path)
-        print(f'Loaded base model from {base_model_path} with {len(x_indices)} input features and {len(y_indices)} output features.')
-        print(model.summary())
+        model = load_model_keras(params.model_path, params.base_model_name)
+        print(f'Loaded base model {params.base_model_name} with {len(x_indices)} input features and {len(y_indices)} output features.')
     else:
-        scaler_x, scaler_y = StandardScaler(), None
-        x_indices, y_indices, n_columns = \
-            get_data_characteristics(paths=params.train_data, target_columns=target_columns, \
-                                     scaler_x=scaler_x, scaler_y=scaler_y)
-        model = build_model(n_x=len(x_indices), n_y=len(y_indices))
+        model = build_model(target_columns, n_x=len(x_indices))
+        print(f'Building a model from scratch with {len(x_indices)} input features and {len(y_indices)} output features.')
+    print(model.summary())
 
-
-
-    ds_train = get_train_data(n_columns, x_indices, y_indices, file_pattern=None, filenames=params.train_data, \
-                              scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=False, iterative=False)
-    ds_val = get_train_data(n_columns, x_indices, y_indices, file_pattern=None, filenames=params.val_data, \
-                            scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=False, iterative=False)
-
-
+    ds_train = get_train_data(target_columns, x_indices, y_indices, file_pattern=None, filenames=params.train_data, \
+                              scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=True)
+    ds_val = get_train_data(target_columns, x_indices, y_indices, file_pattern=None, filenames=params.val_data, \
+                            scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=True)
 
     #early stopping to avoid overfitting
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=100)
@@ -279,16 +195,10 @@ def main():
     model.fit(ds_train, verbose=1, epochs=params.epochs, validation_data=ds_val,
               callbacks=[early_stop])
 
-    print(f'Saving the trained model to {model_path}...')
+    print(f'Saving the trained model {params.model_name} to {params.model_path}...')
 
-    save_model_keras(model, model_path)
+    save_model_keras(model, path=params.model_path, model_name=params.model_name)
 
-    if scaler_x is not None:
-        save_scaler_joblib(scaler_x, model_path, suffix='x')
-        save_scaler_numpy(scaler_x, model_path, suffix='x')
-    if scaler_y is not None:
-        save_scaler_joblib(scaler_y, model_path, suffix='y')
-        save_scaler_numpy(scaler_y, model_path, suffix='y')
 
 
 if '__main__' == __name__:

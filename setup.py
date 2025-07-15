@@ -38,6 +38,7 @@ setup(
                 'bdeissct_infer = bdeissct_dl.estimator:main',
                 'bdeissct_encode = bdeissct_dl.tree_encoder:main',
                 'bdeissct_train = bdeissct_dl.training:main',
+                'bdeissct_fit_scaler = bdeissct_dl.scaler_fitting:main',
                 'bdeissct_train_model_finder = bdeissct_dl.training_model_finder:main'
             ]
     },

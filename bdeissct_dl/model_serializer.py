@@ -5,56 +5,58 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-from bdeissct_dl.dl_model import relu_plus_one, half_sigmoid
+from bdeissct_dl.dl_model import relu_plus_one, half_sigmoid, loss_ct, loss_ss, CTLayer, SSLayer
 
 np.random.seed(239)
 tf.random.set_seed(239)
 
 
 
-def save_model_keras(model, prefix):
-    model.save(os.path.join(prefix, 'ffnn.keras'), overwrite=True, zipped=True)
+def save_model_keras(model, path, model_name):
+    model.save(os.path.join(path, f'{model_name}.keras'), overwrite=True, zipped=True)
 
-def load_model_keras(prefix):
-    return tf.keras.models.load_model(os.path.join(prefix, 'ffnn.keras'), custom_objects={"relu_plus_one": relu_plus_one, "half_sigmoid": half_sigmoid})
+def load_model_keras(path, model_name):
+    tf.keras.config.enable_unsafe_deserialization()
+    return tf.keras.models.load_model(os.path.join(path, f'{model_name}.keras'),
+                                      custom_objects={"loss_ct": loss_ct, "loss_ss": loss_ss, "relu_plus_one": relu_plus_one, "half_sigmoid": half_sigmoid, "CTLayer": CTLayer, "SSLayer": SSLayer})
 
-def save_model_h5(model, prefix):
-    model.save(os.path.join(prefix, 'ffnn.h5'), overwrite=True, zipped=True)
+def save_model_h5(model, path, model_name):
+    model.save(os.path.join(path, f'{model_name}.h5'), overwrite=True, zipped=True)
 
-def load_model_h5(prefix):
-    return tf.keras.models.load_model(os.path.join(prefix, 'ffnn.h5'))
+def load_model_h5(path, model_name):
+    return tf.keras.models.load_model(os.path.join(path, f'{model_name}.h5'))
 
-def save_model_json(model, prefix):
-    with open(os.path.join(prefix, 'ffnn.json'), 'w+') as json_file:
+def save_model_json(model, path, model_name):
+    with open(os.path.join(path, f'{model_name}.json'), 'w+') as json_file:
         json_file.write(model.to_json())
-    model.save_weights(os.path.join(prefix, 'ffnn.weights.h5'))
+    model.save_weights(os.path.join(path, f'{model_name}.weights.h5'))
 
-def load_model_json(prefix):
-    with open(os.path.join(prefix, 'ffnn.json'), 'r') as f:
+def load_model_json(path, model_name):
+    with open(os.path.join(path, f'{model_name}.json'), 'r') as f:
         model = tf.keras.models.model_from_json(f.read())
-    model.load_weights(os.path.join(prefix, 'ffnn.weights.h5'))
+    model.load_weights(os.path.join(path, f'{model_name}.weights.h5'))
     return model
 
-def save_model_onnx(model, prefix):
+def save_model_onnx(model, path, model_name):
     import tf2onnx
     import onnx
 
     input_signature = [tf.TensorSpec(model.inputs[0].shape, model.inputs[0].dtype, name='x')]
     model.output_names = ['output']
     onnx_model, _ = tf2onnx.convert.from_keras(model, input_signature=input_signature)
-    onnx.save(onnx_model, os.path.join(prefix, 'model.onnx'))
+    onnx.save(onnx_model, os.path.join(path, f'{model_name}.onnx'))
 
-def load_model_onnx(prefix):
+def load_model_onnx(path, model_name):
     """
     TODO: this does not work due to onnx vs keras naming issues
         (keras does not accept slashes in names that onnx creates)
 
-    :param prefix:
+    :param path:
     :return:
     """
     import onnx
     from onnx2keras import onnx_to_keras
-    onnx_model = onnx.load(os.path.join(prefix, 'model.onnx'))
+    onnx_model = onnx.load(os.path.join(path, f'{model_name}.onnx'))
     return onnx_to_keras(onnx_model, ['x'])
 
 def save_scaler_joblib(scaler, prefix, suffix=''):

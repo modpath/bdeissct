@@ -1,16 +1,15 @@
-import os
-
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl import MODEL_PATH
-from bdeissct_dl.bdeissct_model import F_E, RHO, UPSILON, MODEL2TARGET_COLUMNS, BD, BDEI, BDSS, BDEISS, MODELS, \
-    MODEL_FINDER, F_S, X_S, X_C, PI_I, PI_IC, PI_EC, PI_S, PI_E, PI_SC, LA, PSI, UPSILON, PIS
+from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, BD, MODELS, \
+    MODEL_FINDER, F_S, X_S, X_C, PI_I, PI_IC, PI_EC, PI_S, PI_E, PI_SC, UPSILON, PIS, UPS_X_C, F_S_X_S, F_E, BDEI, BDSS, \
+    BDEISS
 from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
 from bdeissct_dl.training import get_test_data
 from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
 from bdeissct_dl.tree_manager import read_forest
+
 
 def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODEL_PATH):
     n_forests = len(forest_sumstats)
@@ -19,7 +18,7 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
     if MODEL_FINDER == model_name:
         import bdeissct_dl.training_model_finder
         X = bdeissct_dl.training_model_finder.get_test_data(df=forest_sumstats)
-        model_weights = load_model_keras(model_path.format(model_name)).predict(X)
+        model_weights = load_model_keras(model_path, model_name).predict(X)
     else:
         model_weights = np.zeros((n_forests, n_models), dtype=float)
         model_weights[:, MODELS.index(model_name)] = 1
@@ -36,26 +35,51 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
     for model_id in model_ids:
         model_name = MODELS[model_id]
 
-        model_path = model_path.format(model_name)
-
         X_cur, SF_cur = np.array(X), np.array(SF)
 
         scaler_x = load_scaler_numpy(model_path, suffix='x')
         if scaler_x:
             X_cur = scaler_x.transform(X_cur)
 
-        model = load_model_keras(model_path)
+        model = load_model_keras(model_path, model_name)
         Y_pred = model.predict(X_cur)
 
         target_columns = MODEL2TARGET_COLUMNS[model_name]
-        Y_pred[PI_E] = Y_pred[PIS][:, 0]
-        Y_pred[PI_I] = Y_pred[PIS][:, 1]
-        Y_pred[PI_S] = Y_pred[PIS][:, 2]
-        Y_pred[PI_EC] = Y_pred[PIS][:, 3]
-        Y_pred[PI_IC] = Y_pred[PIS][:, 4]
-        Y_pred[PI_SC] = Y_pred[PIS][:, 5]
+        n_states = 1
+        if F_E in target_columns:
+            n_states += 1
+        if F_S in target_columns:
+            n_states += 1
+            Y_pred[F_S] = Y_pred[F_S_X_S][:, 0]
+            Y_pred[X_S] = Y_pred[F_S_X_S][:, 1]
+            del Y_pred[F_S_X_S]
+        if UPSILON in target_columns:
+            n_states *= 2
+            Y_pred[UPSILON] = Y_pred[UPS_X_C][:, 0]
+            Y_pred[X_C] = Y_pred[UPS_X_C][:, 1]
+            del Y_pred[UPS_X_C]
 
-        del Y_pred[PIS]
+        pi_idx = 0
+        if F_E in target_columns:
+            Y_pred[PI_E] = Y_pred[PIS][:, pi_idx]
+            pi_idx += 1
+        if n_states > 1:
+            Y_pred[PI_I] = Y_pred[PIS][:, pi_idx]
+            pi_idx += 1
+        if F_S in target_columns:
+            Y_pred[PI_S] = Y_pred[PIS][:, pi_idx]
+            pi_idx += 1
+        if UPSILON in target_columns:
+            if F_E in target_columns:
+                Y_pred[PI_EC] = Y_pred[PIS][:, pi_idx]
+                pi_idx += 1
+            Y_pred[PI_IC] = Y_pred[PIS][:, pi_idx]
+            pi_idx += 1
+            if F_S in target_columns:
+                Y_pred[PI_SC] = Y_pred[PIS][:, pi_idx]
+                pi_idx += 1
+        if n_states > 1:
+            del Y_pred[PIS]
 
         for col in target_columns:
             if len(Y_pred[col].shape) == 2 and Y_pred[col].shape[1] == 1:
@@ -68,27 +92,35 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
     if len(model_ids) == 1:
         result = results[0]
     else:
-        # if any('CT' in MODELS[_] for _ in model_ids):
-        #     ups_cols = [(f'{UPSILON}_{q * 100:.1f}' if q != 0.5 else UPSILON) for q in QUANTILES]
-        #     x_c_cols = [(f'{X_C}_{q * 100:.1f}' if q != 0.5 else X_C) for q in QUANTILES]
-        #     bdeiss_ids = {_[0] for _ in enumerate(model_ids) if MODELS[_[1]] in (BD, BDEI, BDSS, BDEISS)}
-        #     for idx in bdeiss_ids:
-        #         results[idx].loc[:, ups_cols] = np.zeros((n_forests, len(ups_cols)), dtype=float)
-        #         results[idx].loc[:, x_c_cols] = np.ones((n_forests, len(ups_cols)), dtype=float)
-        # bdei_ids = {_[0] for _ in enumerate(model_ids) if 'EI' in MODELS[_[1]]}
-        # if bdei_ids and len(bdei_ids) < len(model_ids):
-        #     f_cols = [(f'{F_E}_{q * 100:.1f}' if q != 0.5 else F_E) for q in QUANTILES]
-        #     for idx in range(len(model_ids)):
-        #         if not idx in bdei_ids:
-        #             results[idx].loc[:, f_cols] = np.zeros((n_forests, len(f_cols)), dtype=float)
-        # bdss_ids = {_[0] for _ in enumerate(model_ids) if 'SS' in MODELS[_[1]]}
-        # if bdss_ids and len(bdss_ids) < len(model_ids):
-        #     f_cols = [(f'{F_S}_{q * 100:.1f}' if q != 0.5 else F_S) for q in QUANTILES]
-        #     x_cols = [(f'{X_S}_{q * 100:.1f}' if q != 0.5 else X_S) for q in QUANTILES]
-        #     for idx in range(len(model_ids)):
-        #         if not idx in bdss_ids:
-        #             results[idx].loc[:, f_cols] = np.zeros((n_forests, len(f_cols)), dtype=float)
-        #             results[idx].loc[:, x_cols] = np.ones((n_forests, len(f_cols)), dtype=float)
+        bdei_ids = {_[0] for _ in enumerate(model_ids) if 'EI' in MODELS[_[1]]}
+        bdss_ids = {_[0] for _ in enumerate(model_ids) if 'SS' in MODELS[_[1]]}
+        ct_ids = {_[0] for _ in enumerate(model_ids) if 'CT' in MODELS[_[1]]}
+        if ct_ids and len(ct_ids) < len(model_ids):
+            for idx in range(len(model_ids)):
+                if not idx in ct_ids:
+                    results[idx].loc[:, UPSILON] = 0
+                    results[idx].loc[:, X_C] = 1
+                    results[idx].loc[:, PI_IC] = 0
+                    if bdei_ids:
+                        results[idx].loc[:, PI_EC] = 0
+                    if bdss_ids:
+                        results[idx].loc[:, PI_SC] = 0
+
+        if bdei_ids and len(bdei_ids) < len(model_ids):
+            for idx in range(len(model_ids)):
+                if not idx in bdei_ids:
+                    results[idx].loc[:, F_E] = 0
+                    results[idx].loc[:, PI_E] = 0
+                    if ct_ids:
+                        results[idx].loc[:, PI_EC] = 0
+        if bdss_ids and len(bdss_ids) < len(model_ids):
+            for idx in range(len(model_ids)):
+                if not idx in bdss_ids:
+                    results[idx].loc[:, F_S] = 0
+                    results[idx].loc[:, X_S] = 1
+                    results[idx].loc[:, PI_S] = 0
+                    if ct_ids:
+                        results[idx].loc[:, PI_SC] = 0
 
         columns = results[0].columns
         result = pd.DataFrame(index=forest_sumstats.index)
@@ -112,10 +144,10 @@ def main():
     parser.add_argument('--model_name', choices=MODELS + (MODEL_FINDER,), default=BD, type=str,
                         help=f'BDEISSCT model flavour. If {MODEL_FINDER} is specified, '
                              f'model finder will be used to pick the model.')
-    parser.add_argument('--model_path_pattern', default=MODEL_PATH,
+    parser.add_argument('--model_path', default=MODEL_PATH,
                         help='By default our pretrained BD(EI)(SS)(CT) models are used, '
                              'but it is possible to specify a pattern of a path to a custom folder here, '
-                             'containing files "ffnn.keras" (with the model), '
+                             'containing files "<model_name>.keras" (with the model), '
                              'and scaler-related files to rescale the input data X, and the output Y: '
                              'for X: "data_scalerx_mean.npy", "data_scalerx_scale.npy", "data_scalerx_var.npy" '
                              '(unpickled numpy-saved arrays), '
@@ -123,7 +155,7 @@ def main():
                              'a text file containing the number of examples in the training set). '
                              'For Y the file names are the same, just x replaced by y, e.g., "data_scalery_mean.npy". '
                              'The path pattern should contain a part "{}", which will be replaced by the model name, '
-                             'e.g., "/home/user/models/{}/", which for a model BD will point to "/home/user/models/BD/"')
+                             'e.g., "/home/user/models/", which for a model BD will contain a file "BD.keras"')
     parser.add_argument('--p', default=0, type=float, help='sampling probability')
     parser.add_argument('--log', default='/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/500_1000/BD/trees.estimates_BD', type=str, help="output log file")
     parser.add_argument('--nwk', default=None, type=str, help="input tree file")
@@ -140,7 +172,7 @@ def main():
         forest_df = forest2sumstat_df(forest, rho=params.p)
     else:
         forest_df = pd.read_csv(params.sumstats)
-    predict_parameters(forest_df, model_name=params.model_name, model_path=params.model_path_pattern)\
+    predict_parameters(forest_df, model_name=params.model_name, model_path=params.model_path)\
         .to_csv(params.log, header=True)
 
 

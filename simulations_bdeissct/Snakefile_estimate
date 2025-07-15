@@ -32,7 +32,7 @@ EST_ML = ['bd', 'bdct', 'bdei']
 
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
-    if "DEMI_clocks" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+    if "DEMI_clocks" in folder else " --rerun-triggers mtime --keep-going --cores 12"
 
 
 rule all:
@@ -41,6 +41,11 @@ rule all:
         #     model=MODELS, estimator=EST_ML, size=SIZES),
         expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
             model=MODELS, estimator=EST_DL, size=SIZES),
+    shell:
+        """
+        snakemake --snakefile Snakefile_combine_estimates {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_combine_estimates {snakemake_settings}
+        """
 
 
 rule estimate_params_dl:
@@ -49,20 +54,20 @@ rule estimate_params_dl:
     '''
     input:
         stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
-        dl_model= os.path.join(sim_folder, '..', 'models', '{size}', '{estimator}', 'ffnn.keras')
+        dl_model= os.path.join(sim_folder, '..', 'models', '{size}', '{estimator}.keras')
     output:
         est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'trees.estimates_{estimator}.csv.xz')
     params:
         mem = 2000,
         name = 'dl',
         qos = 'fast',
-        pattern = os.path.join(sim_folder, '..', 'models', '{size}', '{}')
+        pattern = os.path.join(sim_folder, '..', 'models', '{size}')
     threads: 1
     singularity: "docker://evolbioinfo/bdext:v0.1.37"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \
-        --model_path_pattern {params.pattern}
+        --model_path {params.pattern}
         """
 
 

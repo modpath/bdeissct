@@ -13,7 +13,7 @@ import re
 # PARAMETERS = ['lambda', 'avg la', 'psi', 'avg psi', 'avg psi 2', 'R', 'R2'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
 PARAMETERS = ['lambda', 'psi', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C'] #, 'f_E', 'f_S', 'X_S', 'X_C', 'upsilon']
 # PARAMETERS = ['avg la', 'R', 'd', 'd1'] #, 'f_E', 'f_S', 'X_S', 'X_C', 'upsilon']
-# PARAMETERS = ['pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
+PARAMETERS = ['pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
 par2greek = {'lambda': u'\u03bb', 'psi': u'\u03c8', 'phi': u'\u03c6',
              'p': '\u03c1', 'upsilon': '\u03c5',
              'R_naught': u'\u0052\u2080' + '=' + u'\u03bb\u002F\u03c8',

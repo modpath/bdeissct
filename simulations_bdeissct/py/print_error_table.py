@@ -121,11 +121,6 @@ if __name__ == "__main__":
                 if par != 'upsilon' and par != 'f_E' and par != 'f_S' and not par.startswith('pi'):
                     df.loc[mask, f'{par}_error'] /= real_df.loc[idx, par]
 
-        if model == 'BDSSCT':
-            print(1)
-
-
-
         data = []
         par2type2avg_error = defaultdict(lambda: dict())
         par2type2bias = defaultdict(lambda: dict())

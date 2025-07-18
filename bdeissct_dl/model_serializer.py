@@ -5,7 +5,7 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-from bdeissct_dl.dl_model import relu_plus_one, half_sigmoid, loss_ct, loss_ss, CTLayer, SSLayer
+from bdeissct_dl.dl_model import relu_plus_one, half_sigmoid, loss_ct, loss_ss, CTLayer, SSLayer, loss_prob
 
 np.random.seed(239)
 tf.random.set_seed(239)
@@ -18,7 +18,8 @@ def save_model_keras(model, path, model_name):
 def load_model_keras(path, model_name):
     tf.keras.config.enable_unsafe_deserialization()
     return tf.keras.models.load_model(os.path.join(path, f'{model_name}.keras'),
-                                      custom_objects={"loss_ct": loss_ct, "loss_ss": loss_ss, "relu_plus_one": relu_plus_one, "half_sigmoid": half_sigmoid, "CTLayer": CTLayer, "SSLayer": SSLayer})
+                                      custom_objects={"loss_ct": loss_ct, "loss_ss": loss_ss, "loss_prob": loss_prob, \
+                                                      "relu_plus_one": relu_plus_one, "half_sigmoid": half_sigmoid, "CTLayer": CTLayer, "SSLayer": SSLayer})
 
 def save_model_h5(model, path, model_name):
     model.save(os.path.join(path, f'{model_name}.h5'), overwrite=True, zipped=True)

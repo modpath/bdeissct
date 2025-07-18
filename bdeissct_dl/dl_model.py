@@ -3,6 +3,9 @@ from tensorflow.python.keras.utils.generic_utils import register_keras_serializa
 
 from bdeissct_dl.bdeissct_model import LA, PSI, F_E, F_S, X_S, UPSILON, X_C, PIS, F_S_X_S, UPS_X_C, PI_I
 
+LEARNING_RATE = 0.001
+
+DELTA = 0.001
 LOSS_WEIGHTS = {
     LA: 1,
     PSI: 1,
@@ -10,6 +13,7 @@ LOSS_WEIGHTS = {
     F_E: 100,
     F_S_X_S: 200,  # as there are 2 outputs, we multiply by 200 to scale it to [0, 200]
     PIS: 600  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
+    # PIS: 100 / (DELTA * 0.9995)  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
 }
 
 QUANTILES = (0.5, )
@@ -56,9 +60,6 @@ class CTLayer(tf.keras.layers.Layer):
     def from_config(cls, config):
         return cls(**config)
 
-
-
-
 @tf.keras.utils.register_keras_serializable(package='bdeissct_dl', name='loss_ct')
 def loss_ct(y_true, y_pred):
 
@@ -75,6 +76,7 @@ def loss_ct(y_true, y_pred):
 
     # Absolute error for ups
     p_loss = tf.abs(p_pred - p_true)
+    # p_loss = tf.abs((p_pred - p_true) / tf.maximum(p_true, 1e-2))
 
     mask = tf.cast(tf.greater(p_true, 1e-6), tf.float32)
     X_loss = tf.reduce_mean(mask * X_loss)
@@ -98,6 +100,7 @@ def loss_ss(y_true, y_pred):
 
     # Absolute error for f_S, multiplied by 2, as f_S is in [0, 0.5]
     p_loss = 2 * tf.abs(p_pred - p_true)
+    # p_loss = tf.abs((p_pred - p_true) / tf.maximum(p_true, 1e-2 / 2))
 
     mask = tf.cast(tf.greater(p_true, 1e-6), tf.float32)
     X_loss = tf.reduce_mean(mask * X_loss)
@@ -108,10 +111,7 @@ def loss_ss(y_true, y_pred):
 
 @tf.keras.utils.register_keras_serializable(package='bdeissct_dl', name='loss_prob')
 def loss_prob(y_true, y_pred):
-
-
-    # Relative error for X_S
-    return tf.reduce_mean(tf.abs((y_pred - y_true) / tf.maximum(y_true, 1e-4)))
+    return tf.reduce_mean(tf.abs((y_pred - y_true) / tf.maximum(y_true, 1e-2)))
 
 @register_keras_serializable(package="bdeissct_dl", name="half_sigmoid")
 def half_sigmoid(x):
@@ -127,8 +127,12 @@ LOSS_FUNCTIONS = {
     LA: "mean_absolute_percentage_error",
     PSI: "mean_absolute_percentage_error",
     UPS_X_C: loss_ct,
+    # F_E: loss_prob, #'mae',
     F_E: 'mae',
     F_S_X_S: loss_ss,
+    # PIS: tf.keras.losses.Huber(delta=DELTA,
+    #                            reduction='sum_over_batch_size',
+    #                            name='huber_loss')
     PIS: 'mae'
 }
 
@@ -176,10 +180,11 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
     model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
     if optimizer is None:
-        optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 
     if n_states > 1:
         LOSS_WEIGHTS[PIS] = 100 * n_states  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
+        # LOSS_WEIGHTS[PIS] = 100 / (DELTA * (1 - DELTA/2)) * n_states  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
 
     model.compile(optimizer=optimizer,
                   loss={col: LOSS_FUNCTIONS[col] for col in outputs.keys()},

@@ -1,20 +1,17 @@
 import glob
 import os
-import lzma
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from sklearn.preprocessing import StandardScaler
-
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, LA, PSI, UPSILON, X_C, KAPPA, F_E, F_S, \
     X_S, TARGET_COLUMNS_BDCT, PI_E, PI_I, PI_S, PI_IC, PI_SC, PI_EC, PIS, UPS_X_C, F_S_X_S, BD
-from bdeissct_dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy, load_scaler_numpy, \
+from bdeissct_dl.dl_model import build_model
+from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, \
     load_model_keras
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
-from bdeissct_dl.dl_model import build_model
 
 FEATURE_COLUMNS = [_ for _ in STATS if _ not in {'n_trees', 'n_tips', 'n_inodes', 'len_forest',
                                                  LA, PSI,

@@ -32,8 +32,8 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
 
 
 
-source_directory = "/home/azhukova/Demi/anna/projects/bdext/sim_bdeiss/test/500_1000/"
-destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/500_1000/"
-filename_to_copy = ".est_bd"
+source_directory = "/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/training/500_1000/BDSS"
+destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSS"
+filename_to_copy = "trees.csv.xz"
 
 copy_files_with_name(source_directory, destination_directory, filename_to_copy)

@@ -18,7 +18,6 @@ from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
 
 TARGET_AVG_BL = 1
 
-
 CHAIN_LEN = 4
 N_LTT_COORDINATES = 20
 
@@ -45,6 +44,7 @@ def scale(Y, SF):
             if col.startswith(time):
                 Y[col] /= SF
 
+
 def scale_back(Y, SF):
     for col in (Y.keys() if type(Y) == dict else Y.columns):
         for rate in RATE_PARAMETERS:
@@ -53,6 +53,7 @@ def scale_back(Y, SF):
         for time in TIME_PARAMETERS:
             if col.startswith(time):
                 Y[col] *= SF
+
 
 def scale_back_array(Y, SF, columns):
     for i, col in enumerate(columns):
@@ -73,7 +74,6 @@ def parse_parameters(log):
     # BDSSCT: R,R_i,la_ii,la_is,psi_i,p_i,R_s,la_si,la_ss,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,contact tracing probability,pi_i,pi_s,pi_i-C,pi_s-C,removal time after notification,kappa,tips,hidden_trees,end_time
     # BDEISS: R,pi_e,R_e,mu_ei,mu_es,pi_i,R_i,la_ie,psi_i,p_i,pi_s,R_s,la_se,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,incubation period,incubation fraction,tips,hidden_trees,end_time
     # BDEISSCT: R,R_e,mu_ei,mu_es,R_i,la_ie,psi_i,p_i,R_s,la_se,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,incubation period,incubation fraction,contact tracing probability,pi_e,pi_i,pi_s,pi_e-C,pi_i-C,pi_s-C,removal time after notification,kappa,tips,hidden_trees,end_time
-
 
     df = pd.read_csv(log)
     for i in df.index:
@@ -101,7 +101,6 @@ def parse_parameters(log):
             f_ss = 0
             x_ss = 1
 
-
         pi_E = df.loc[i, 'pi_E_observed'] if 'pi_E_observed' in df.columns else 0
         pi_I = df.loc[i, 'pi_I_observed'] if 'pi_I_observed' in df.columns else 1
         pi_S = df.loc[i, 'pi_S_observed'] if 'pi_S_observed' in df.columns else 0
@@ -110,7 +109,6 @@ def parse_parameters(log):
         pi_S_C = df.loc[i, 'pi_S-C_observed'] if 'pi_S-C_observed' in df.columns else 0
 
         yield la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa, pi_E, pi_I, pi_S, pi_E_C, pi_I_C, pi_S_C
-
 
 
 class BDEISSCTFeatureCalculator(FeatureCalculator):
@@ -169,96 +167,122 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
 FeatureRegistry.register(BasicFeatureCalculator())
 FeatureRegistry.register(BranchFeatureCalculator())
 FeatureRegistry.register(EventTimeFeatureCalculator())
-FeatureRegistry.register(TransmissionChainFeatureCalculator(CHAIN_LEN))
+FeatureRegistry.register(TransmissionChainFeatureCalculator(CHAIN_LEN, percentiles=[1, 5, 10, 25]))
 FeatureRegistry.register(LTTFeatureCalculator(N_LTT_COORDINATES))
 FeatureRegistry.register(BalanceFeatureCalculator())
 FeatureRegistry.register(SubtreeFeatureCalculator())
 FeatureRegistry.register(BDEISSCTFeatureCalculator())
 
-STATS = ['n_tips',
-         #
-         'brlen_inode_mean', 'brlen_inode_median', 'brlen_inode_var',
-         'brlen_tip_mean', 'brlen_tip_median', 'brlen_tip_var',
-         'brlen_inode_top_mean', 'brlen_inode_top_median', 'brlen_inode_top_var',
-         'brlen_tip_top_mean', 'brlen_tip_top_median', 'brlen_tip_top_var',
-         'brlen_inode_middle_mean', 'brlen_inode_middle_median', 'brlen_inode_middle_var',
-         'brlen_tip_middle_mean', 'brlen_tip_middle_median', 'brlen_tip_middle_var',
-         'brlen_inode_bottom_mean', 'brlen_inode_bottom_median', 'brlen_inode_bottom_var',
-         'brlen_tip_bottom_mean', 'brlen_tip_bottom_median', 'brlen_tip_bottom_var',
-         #
-         'frac_brlen_inode_mean_by_brlen_tip_mean', 'frac_brlen_inode_median_by_brlen_tip_median', 'frac_brlen_inode_var_by_brlen_tip_var',
-         'frac_brlen_inode_top_mean_by_brlen_tip_top_mean', 'frac_brlen_inode_top_median_by_brlen_tip_top_median', 'frac_brlen_inode_top_var_by_brlen_tip_top_var',
-         'frac_brlen_inode_middle_mean_by_brlen_tip_middle_mean', 'frac_brlen_inode_middle_median_by_brlen_tip_middle_median', 'frac_brlen_inode_middle_var_by_brlen_tip_middle_var',
-         'frac_brlen_inode_bottom_mean_by_brlen_tip_bottom_mean', 'frac_brlen_inode_bottom_median_by_brlen_tip_bottom_median', 'frac_brlen_inode_bottom_var_by_brlen_tip_bottom_var',
-         #
-         'time_tip_normalized_mean', 'time_tip_normalized_min', 'time_tip_normalized_max', 'time_tip_normalized_var', 'time_tip_normalized_median',
-         'time_inode_normalized_mean', 'time_inode_normalized_min', 'time_inode_normalized_max', 'time_inode_normalized_var', 'time_inode_normalized_median',
-         #
-         'n_4-chain_normalized',
-         'brlen_sum_4-chain_mean', 'brlen_sum_4-chain_min', 'brlen_sum_4-chain_max', 'brlen_sum_4-chain_var', 'brlen_sum_4-chain_median',
-         'brlen_sum_4-chain_perc10', 'brlen_sum_4-chain_perc20', 'brlen_sum_4-chain_perc30', 'brlen_sum_4-chain_perc40', 'brlen_sum_4-chain_perc60', 'brlen_sum_4-chain_perc70', 'brlen_sum_4-chain_perc80', 'brlen_sum_4-chain_perc90',
-         #
-         'ltt_time0', 'ltt_time1', 'ltt_time2', 'ltt_time3', 'ltt_time4', 'ltt_time5', 'ltt_time6', 'ltt_time7', 'ltt_time8', 'ltt_time9', 'ltt_time10', 'ltt_time11', 'ltt_time12', 'ltt_time13', 'ltt_time14', 'ltt_time15', 'ltt_time16', 'ltt_time17', 'ltt_time18', 'ltt_time19',
-         'ltt_lineages0_normalized', 'ltt_lineages1_normalized', 'ltt_lineages2_normalized', 'ltt_lineages3_normalized', 'ltt_lineages4_normalized', 'ltt_lineages5_normalized', 'ltt_lineages6_normalized', 'ltt_lineages7_normalized', 'ltt_lineages8_normalized', 'ltt_lineages9_normalized', 'ltt_lineages10_normalized', 'ltt_lineages11_normalized', 'ltt_lineages12_normalized', 'ltt_lineages13_normalized', 'ltt_lineages14_normalized', 'ltt_lineages15_normalized', 'ltt_lineages16_normalized', 'ltt_lineages17_normalized', 'ltt_lineages18_normalized', 'ltt_lineages19_normalized',
-         #
-         'time_lineages_max', 'time_lineages_max_top', 'time_lineages_max_middle', 'time_lineages_max_bottom',
-         'lineages_max_normalized', 'lineages_max_top_normalized', 'lineages_max_middle_normalized', 'lineages_max_bottom_normalized',
-         #
-         'lineage_slope_ratio',
-         'lineage_slope_ratio_top',
-         'lineage_slope_ratio_middle',
-         'lineage_slope_ratio_bottom',
-         #
-         'lineage_start_to_max_slope_normalized', 'lineage_stop_to_max_slope_normalized',
-         'lineage_start_to_max_slope_top_normalized', 'lineage_stop_to_max_slope_top_normalized',
-         'lineage_start_to_max_slope_middle_normalized', 'lineage_stop_to_max_slope_middle_normalized',
-         'lineage_start_to_max_slope_bottom_normalized', 'lineage_stop_to_max_slope_bottom_normalized',
-         #
-         'colless_normalized',
-         'sackin_normalized',
-         'width_max_normalized', 'depth_max_normalized', 'width_depth_ratio_normalized', 'width_delta_normalized',
-         'frac_inodes_in_ladder', 'len_ladder_max_normalized',
-         'frac_inodes_imbalanced', 'imbalance_avg',
-         #
-         'frac_tips_in_2', 'frac_tips_in_3L', 'frac_tips_in_4L', 'frac_tips_in_4B', 'frac_tips_in_O',
-         'frac_inodes_with_sibling_inodes', 'frac_inodes_without_sibling_inodes',
-         #
-         'time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'time_diff_in_4L_real_mean', 'time_diff_in_4B_real_mean', 'time_diff_in_I_real_mean',
-         'time_diff_in_2_real_min', 'time_diff_in_3L_real_min', 'time_diff_in_4L_real_min', 'time_diff_in_4B_real_min', 'time_diff_in_I_real_min',
-         'time_diff_in_2_real_max', 'time_diff_in_3L_real_max', 'time_diff_in_4L_real_max', 'time_diff_in_4B_real_max', 'time_diff_in_I_real_max',
-         'time_diff_in_2_real_var', 'time_diff_in_3L_real_var', 'time_diff_in_4L_real_var', 'time_diff_in_4B_real_var', 'time_diff_in_I_real_var',
-         'time_diff_in_2_real_median', 'time_diff_in_3L_real_median', 'time_diff_in_4L_real_median', 'time_diff_in_4B_real_median', 'time_diff_in_I_real_median',
-         #
-         'time_diff_in_2_random_mean', 'time_diff_in_3L_random_mean', 'time_diff_in_4L_random_mean', 'time_diff_in_4B_random_mean', 'time_diff_in_I_random_mean',
-         'time_diff_in_2_random_min', 'time_diff_in_3L_random_min', 'time_diff_in_4L_random_min', 'time_diff_in_4B_random_min', 'time_diff_in_I_random_min',
-         'time_diff_in_2_random_max', 'time_diff_in_3L_random_max', 'time_diff_in_4L_random_max', 'time_diff_in_4B_random_max', 'time_diff_in_I_random_max',
-         'time_diff_in_2_random_var', 'time_diff_in_3L_random_var', 'time_diff_in_4L_random_var', 'time_diff_in_4B_random_var', 'time_diff_in_I_random_var',
-         'time_diff_in_2_random_median', 'time_diff_in_3L_random_median', 'time_diff_in_4L_random_median', 'time_diff_in_4B_random_median', 'time_diff_in_I_random_median',
-         #
-         'time_diff_in_2_real_perc1', 'time_diff_in_2_real_perc5', 'time_diff_in_2_real_perc10', 'time_diff_in_2_real_perc25',
-         'time_diff_in_3L_real_perc1', 'time_diff_in_3L_real_perc5', 'time_diff_in_3L_real_perc10', 'time_diff_in_3L_real_perc25',
-         'time_diff_in_4L_real_perc1', 'time_diff_in_4L_real_perc5', 'time_diff_in_4L_real_perc10', 'time_diff_in_4L_real_perc25',
-         'time_diff_in_4B_real_perc1', 'time_diff_in_4B_real_perc5', 'time_diff_in_4B_real_perc10', 'time_diff_in_4B_real_perc25',
-         'time_diff_in_I_real_perc75', 'time_diff_in_I_real_perc90', 'time_diff_in_I_real_perc95', 'time_diff_in_I_real_perc99',
-         #
-         'time_diff_in_2_random_perc1', 'time_diff_in_2_random_perc5', 'time_diff_in_2_random_perc10', 'time_diff_in_2_random_perc25',
-         'time_diff_in_3L_random_perc1', 'time_diff_in_3L_random_perc5', 'time_diff_in_3L_random_perc10', 'time_diff_in_3L_random_perc25',
-         'time_diff_in_4L_random_perc1', 'time_diff_in_4L_random_perc5', 'time_diff_in_4L_random_perc10', 'time_diff_in_4L_random_perc25',
-         'time_diff_in_4B_random_perc1', 'time_diff_in_4B_random_perc5', 'time_diff_in_4B_random_perc10', 'time_diff_in_4B_random_perc25',
-         'time_diff_in_I_random_perc75', 'time_diff_in_I_random_perc90', 'time_diff_in_I_random_perc95', 'time_diff_in_I_random_perc99',
-         #
-         'time_diff_in_2_random_vs_real_frac_less', 'time_diff_in_3L_random_vs_real_frac_less', 'time_diff_in_4L_random_vs_real_frac_less', 'time_diff_in_4B_random_vs_real_frac_less',
-         'time_diff_in_I_random_vs_real_frac_more',
-         'time_diff_in_2_random_vs_real_pval_less', 'time_diff_in_3L_random_vs_real_pval_less', 'time_diff_in_4L_random_vs_real_pval_less', 'time_diff_in_4B_random_vs_real_pval_less',
-         'time_diff_in_I_random_vs_real_pval_more',
-         #
-         LA, PSI, RHO,
-         UPSILON, X_C, KAPPA,
-         F_E,
-         F_S, X_S,
-         PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC,
-         SCALING_FACTOR]
+BRLEN_STATS = ['brlen_inode_mean', 'brlen_inode_median', 'brlen_inode_var',
+               'brlen_tip_mean', 'brlen_tip_median', 'brlen_tip_var',
+               'brlen_inode_top_mean', 'brlen_inode_top_median', 'brlen_inode_top_var',
+               'brlen_tip_top_mean', 'brlen_tip_top_median', 'brlen_tip_top_var',
+               'brlen_inode_middle_mean', 'brlen_inode_middle_median', 'brlen_inode_middle_var',
+               'brlen_tip_middle_mean', 'brlen_tip_middle_median', 'brlen_tip_middle_var',
+               'brlen_inode_bottom_mean', 'brlen_inode_bottom_median', 'brlen_inode_bottom_var',
+               'brlen_tip_bottom_mean', 'brlen_tip_bottom_median', 'brlen_tip_bottom_var',
+               #
+               'frac_brlen_inode_mean_by_brlen_tip_mean', 'frac_brlen_inode_median_by_brlen_tip_median',
+               'frac_brlen_inode_var_by_brlen_tip_var',
+               'frac_brlen_inode_top_mean_by_brlen_tip_top_mean', 'frac_brlen_inode_top_median_by_brlen_tip_top_median',
+               'frac_brlen_inode_top_var_by_brlen_tip_top_var',
+               'frac_brlen_inode_middle_mean_by_brlen_tip_middle_mean',
+               'frac_brlen_inode_middle_median_by_brlen_tip_middle_median',
+               'frac_brlen_inode_middle_var_by_brlen_tip_middle_var',
+               'frac_brlen_inode_bottom_mean_by_brlen_tip_bottom_mean',
+               'frac_brlen_inode_bottom_median_by_brlen_tip_bottom_median',
+               'frac_brlen_inode_bottom_var_by_brlen_tip_bottom_var',
+               ]
+TIME_STATS = ['time_tip_normalized_mean', 'time_tip_normalized_min', 'time_tip_normalized_max',
+              'time_tip_normalized_var',
+              'time_tip_normalized_median',
+              'time_inode_normalized_mean', 'time_inode_normalized_min', 'time_inode_normalized_max',
+              'time_inode_normalized_var', 'time_inode_normalized_median']
 
+CHAIN_STATS = ['n_4-chain_normalized',
+               'brlen_sum_4-chain_mean', 'brlen_sum_4-chain_min', 'brlen_sum_4-chain_max', 'brlen_sum_4-chain_var',
+               'brlen_sum_4-chain_median',
+               'brlen_sum_4-chain_perc1', 'brlen_sum_4-chain_perc5', 'brlen_sum_4-chain_perc10',
+               'brlen_sum_4-chain_perc25']
+
+LTT_STATS = ['ltt_time0', 'ltt_time1', 'ltt_time2', 'ltt_time3', 'ltt_time4', 'ltt_time5', 'ltt_time6', 'ltt_time7',
+             'ltt_time8', 'ltt_time9', 'ltt_time10', 'ltt_time11', 'ltt_time12', 'ltt_time13', 'ltt_time14',
+             'ltt_time15',
+             'ltt_time16', 'ltt_time17', 'ltt_time18', 'ltt_time19',
+             'ltt_lineages0_normalized', 'ltt_lineages1_normalized', 'ltt_lineages2_normalized',
+             'ltt_lineages3_normalized',
+             'ltt_lineages4_normalized', 'ltt_lineages5_normalized', 'ltt_lineages6_normalized',
+             'ltt_lineages7_normalized',
+             'ltt_lineages8_normalized', 'ltt_lineages9_normalized', 'ltt_lineages10_normalized',
+             'ltt_lineages11_normalized', 'ltt_lineages12_normalized', 'ltt_lineages13_normalized',
+             'ltt_lineages14_normalized', 'ltt_lineages15_normalized', 'ltt_lineages16_normalized',
+             'ltt_lineages17_normalized', 'ltt_lineages18_normalized', 'ltt_lineages19_normalized',
+             #
+             'time_lineages_max', 'time_lineages_max_top', 'time_lineages_max_middle', 'time_lineages_max_bottom',
+             'lineages_max_normalized', 'lineages_max_top_normalized', 'lineages_max_middle_normalized',
+             'lineages_max_bottom_normalized',
+             #
+             'lineage_slope_ratio',
+             'lineage_slope_ratio_top',
+             'lineage_slope_ratio_middle',
+             'lineage_slope_ratio_bottom',
+             #
+             'lineage_start_to_max_slope_normalized', 'lineage_stop_to_max_slope_normalized',
+             'lineage_start_to_max_slope_top_normalized', 'lineage_stop_to_max_slope_top_normalized',
+             'lineage_start_to_max_slope_middle_normalized', 'lineage_stop_to_max_slope_middle_normalized',
+             'lineage_start_to_max_slope_bottom_normalized', 'lineage_stop_to_max_slope_bottom_normalized'
+             ]
+
+BALANCE_STATS = ['colless_normalized',
+                 'sackin_normalized',
+                 'width_max_normalized', 'depth_max_normalized', 'width_depth_ratio_normalized',
+                 'width_delta_normalized',
+                 'frac_inodes_in_ladder', 'len_ladder_max_normalized',
+                 'frac_inodes_imbalanced', 'imbalance_avg']
+
+TOPOLOGY_STATS = ['frac_tips_in_2', 'frac_tips_in_3L', 'frac_tips_in_4L', 'frac_tips_in_4B', 'frac_tips_in_O',
+                  'frac_inodes_with_sibling_inodes']
+
+TIME_DIFF_STATS = ['time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'time_diff_in_I_real_mean',
+                   'time_diff_in_2_real_min', 'time_diff_in_3L_real_min', 'time_diff_in_I_real_min',
+                   'time_diff_in_2_real_max', 'time_diff_in_3L_real_max', 'time_diff_in_I_real_max',
+                   'time_diff_in_2_real_var', 'time_diff_in_3L_real_var', 'time_diff_in_I_real_var',
+                   'time_diff_in_2_real_median', 'time_diff_in_3L_real_median', 'time_diff_in_I_real_median',
+                   #
+                   'time_diff_in_2_random_mean', 'time_diff_in_3L_random_mean', 'time_diff_in_I_random_mean',
+                   'time_diff_in_2_random_min', 'time_diff_in_3L_random_min', 'time_diff_in_I_random_min',
+                   'time_diff_in_2_random_max', 'time_diff_in_3L_random_max', 'time_diff_in_I_random_max',
+                   'time_diff_in_2_random_var', 'time_diff_in_3L_random_var', 'time_diff_in_I_random_var',
+                   'time_diff_in_2_random_median', 'time_diff_in_3L_random_median', 'time_diff_in_I_random_median',
+                   #
+                   'time_diff_in_2_real_perc1', 'time_diff_in_2_real_perc5', 'time_diff_in_2_real_perc10',
+                   'time_diff_in_2_real_perc25',
+                   'time_diff_in_3L_real_perc1', 'time_diff_in_3L_real_perc5', 'time_diff_in_3L_real_perc10',
+                   'time_diff_in_3L_real_perc25',
+                   'time_diff_in_I_real_perc75', 'time_diff_in_I_real_perc90', 'time_diff_in_I_real_perc95',
+                   'time_diff_in_I_real_perc99',
+                   #
+                   'time_diff_in_2_random_perc1', 'time_diff_in_2_random_perc5', 'time_diff_in_2_random_perc10',
+                   'time_diff_in_2_random_perc25',
+                   'time_diff_in_3L_random_perc1', 'time_diff_in_3L_random_perc5', 'time_diff_in_3L_random_perc10',
+                   'time_diff_in_3L_random_perc25',
+                   'time_diff_in_I_random_perc75', 'time_diff_in_I_random_perc90', 'time_diff_in_I_random_perc95',
+                   'time_diff_in_I_random_perc99',
+                   #
+                   'time_diff_in_2_random_vs_real_frac_less', 'time_diff_in_3L_random_vs_real_frac_less',
+                   'time_diff_in_I_random_vs_real_frac_more',
+                   'time_diff_in_2_random_vs_real_pval_less', 'time_diff_in_3L_random_vs_real_pval_less',
+                   'time_diff_in_I_random_vs_real_pval_more']
+
+EPI_STATS = [LA, PSI, RHO,
+             UPSILON, X_C, KAPPA,
+             F_E,
+             F_S, X_S,
+             PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC]
+
+STATS = ['n_tips'] \
+        + BRLEN_STATS + TIME_STATS + CHAIN_STATS + LTT_STATS + BALANCE_STATS + TOPOLOGY_STATS + TIME_DIFF_STATS \
+        + EPI_STATS + [SCALING_FACTOR]
 
 def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0, f_ss=0, x_ss=1,
                       pi_e=0, pi_i=1, pi_s=0, pi_ec=0, pi_ic=0, pi_sc=0,
@@ -283,7 +307,6 @@ def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0
     :return: pd.DataFrame containing the summary stats, the presumed BDEISS-CT model parameters (0 if not given)
         and the branch scaling factor
     """
-
 
     scaling_factor = rescale_forest_to_avg_brlen(forest, target_avg_length=target_avg_brlen)
 
@@ -322,7 +345,6 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
         if nwks:
             for nwk, log in zip(nwks, logs):
                 yield nwk, log
-
 
     with (get_write_handle(output, '.temp') as f):
         is_text = isinstance(f, io.TextIOBase)

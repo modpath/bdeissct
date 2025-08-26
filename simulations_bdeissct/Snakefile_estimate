@@ -63,7 +63,7 @@ rule estimate_params_dl:
         qos = 'fast',
         pattern = os.path.join(sim_folder, '..', 'models', '{size}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.37"
+    singularity: "docker://evolbioinfo/bdext:v0.1.41"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \

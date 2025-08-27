@@ -5,8 +5,8 @@ import os
 # snakemake --snakefile Snakefile_estimate --rerun-triggers mtime --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 
 # To run on bioevo (change shakemake activation below if you are not Anna ;) :
-# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/DEMI_clocks/anna/projects/bdext/sim_bdeiss/
-# snakemake --snakefile Snakefile_estimate --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o logs/{params.name}.log -e logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast -J {params.name}" --jobs 600
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/pasteur/anna/projects/bdext/sim_bdeiss/
+# snakemake --snakefile Snakefile_estimate --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o logs/{params.name}.log -e logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast -J {params.name}" --jobs 600
 
 localrules: all
 
@@ -31,8 +31,8 @@ EST_DL = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT'
 EST_ML = ['bd', 'bdct', 'bdei']
 
 
-snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem {params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
-    if "DEMI_clocks" in folder else " --rerun-triggers mtime --keep-going --cores 12"
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12"
 
 
 rule all:
@@ -63,7 +63,7 @@ rule estimate_params_dl:
         qos = 'fast',
         pattern = os.path.join(sim_folder, '..', 'models', '{size}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.41"
+    singularity: "docker://evolbioinfo/bdext:v0.1.43"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \

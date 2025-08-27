@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, LA, PSI, UPSILON, X_C, KAPPA, F_E, F_S, \
-    X_S, TARGET_COLUMNS_BDCT, PI_E, PI_I, PI_S, PI_IC, PI_SC, PI_EC, PIS, UPS_X_C, F_S_X_S, BD
+    X_S, TARGET_COLUMNS_BDCT, PI_E, PI_I, PI_S, PI_IC, PI_SC, PI_EC, PIS, UPS_X_C, F_S_X_S, BD, LA_AVG
 from bdeissct_dl.dl_model import build_model
 from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, \
     load_model_keras
@@ -20,7 +20,8 @@ FEATURE_COLUMNS = [_ for _ in STATS if _ not in {'n_trees', 'n_tips', 'n_inodes'
                                                  F_S, X_S,
                                                  PI_E, PI_I, PI_S,
                                                  PI_EC, PI_IC, PI_SC,
-                                                 SCALING_FACTOR}]
+                                                 SCALING_FACTOR,
+                                                 LA_AVG}]
 
 
 def calc_validation_fraction(m):

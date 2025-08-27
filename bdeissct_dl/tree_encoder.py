@@ -13,7 +13,7 @@ from treesumstats.subtree_sumstats import SubtreeFeatureCalculator
 from treesumstats.transmission_chain_sumstats import TransmissionChainFeatureCalculator
 
 from bdeissct_dl.bdeissct_model import RHO, LA, PSI, F_E, UPSILON, X_C, KAPPA, F_S, X_S, RATE_PARAMETERS, \
-    TIME_PARAMETERS, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC
+    TIME_PARAMETERS, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, LA_AVG
 from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
 
 TARGET_AVG_BL = 1
@@ -120,7 +120,7 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
     def feature_names(self):
         return [LA, PSI, RHO, F_E, F_S, X_S, UPSILON, X_C, KAPPA, \
                 PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, \
-                SCALING_FACTOR]
+                SCALING_FACTOR, LA_AVG]
 
     def set_forest(self, forest, **kwargs):
         pass
@@ -131,6 +131,8 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
     def help(self, feature_name, *args, **kwargs):
         if LA == feature_name:
             return 'transmission rate.'
+        if LA_AVG == feature_name:
+            return 'average transmission rate.'
         if PSI == feature_name:
             return 'removal rate.'
         if RHO == feature_name:
@@ -278,7 +280,8 @@ EPI_STATS = [LA, PSI, RHO,
              UPSILON, X_C, KAPPA,
              F_E,
              F_S, X_S,
-             PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC]
+             PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC,
+             LA_AVG]
 
 STATS = ['n_tips'] \
         + BRLEN_STATS + TIME_STATS + CHAIN_STATS + LTT_STATS + BALANCE_STATS + TOPOLOGY_STATS + TIME_DIFF_STATS \
@@ -316,7 +319,8 @@ def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0
               F_S: f_ss, X_S: x_ss,
               X_C: x_c, UPSILON: upsilon, KAPPA: kappa,
               PI_E: pi_e, PI_I: pi_i, PI_S: pi_s,
-              PI_EC: pi_ec, PI_IC: pi_ic, PI_SC: pi_sc}
+              PI_EC: pi_ec, PI_IC: pi_ic, PI_SC: pi_sc,
+              LA_AVG: la * (pi_i + pi_ic + x_ss * (pi_s + pi_sc))}
     scale(kwargs, scaling_factor)
 
     return pd.DataFrame.from_records([list(FeatureManager.compute_features(forest, *STATS, **kwargs))], columns=STATS)
@@ -374,6 +378,7 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
                 kwargs[F_S], kwargs[X_S] = f_ss, x_ss
                 kwargs[PI_E], kwargs[PI_I], kwargs[PI_S] = pi_e, pi_i, pi_s
                 kwargs[PI_EC], kwargs[PI_IC], kwargs[PI_SC] = pi_ec, pi_ic, pi_sc
+                kwargs[LA_AVG] = la * (pi_i + pi_ic + x_ss * (pi_s + pi_sc))
 
                 scale(kwargs, scaling_factor)
 

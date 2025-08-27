@@ -60,12 +60,20 @@ if __name__ == "__main__":
         rho = ddf.loc[0, 'p_I']
         la = ddf.loc[0, 'la_II' if 'la_II' in ddf.columns else 'la_IE'] \
              + (0 if 'la_IS' not in ddf.columns else ddf.loc[0, 'la_IS'])
-        pi_I = ddf.loc[0, 'pi_I_observed'] if 'pi_I_observed' in ddf.columns else 1
-        pi_I_C = ddf.loc[0, 'pi_I-C_observed'] if 'pi_I-C_observed' in ddf.columns else 0
-        pi_E = ddf.loc[0, 'pi_E_observed'] if 'pi_E_observed' in ddf.columns else 0
-        pi_E_C = ddf.loc[0, 'pi_E-C_observed'] if 'pi_E-C_observed' in ddf.columns else 0
-        pi_S = ddf.loc[0, 'pi_S_observed'] if 'pi_S_observed' in ddf.columns else 0
-        pi_S_C = ddf.loc[0, 'pi_S-C_observed'] if 'pi_S-C_observed' in ddf.columns else 0
+        if 'pi_I-C_observed' in ddf.columns:
+            pi_I = ddf.loc[0, 'pi_I_observed'] if 'pi_I_observed' in ddf.columns else 1
+            pi_I_C = ddf.loc[0, 'pi_I-C_observed'] if 'pi_I-C_observed' in ddf.columns else 0
+            pi_E = ddf.loc[0, 'pi_E_observed'] if 'pi_E_observed' in ddf.columns else 0
+            pi_E_C = ddf.loc[0, 'pi_E-C_observed'] if 'pi_E-C_observed' in ddf.columns else 0
+            pi_S = ddf.loc[0, 'pi_S_observed'] if 'pi_S_observed' in ddf.columns else 0
+            pi_S_C = ddf.loc[0, 'pi_S-C_observed'] if 'pi_S-C_observed' in ddf.columns else 0
+        else:
+            pi_I = ddf.loc[0, 'pi_I'] if 'pi_I' in ddf.columns else 1
+            pi_I_C = 0
+            pi_E = ddf.loc[0, 'pi_E'] if 'pi_E' in ddf.columns else 0
+            pi_E_C = 0
+            pi_S = ddf.loc[0, 'pi_S'] if 'pi_S' in ddf.columns else 0
+            pi_S_C = 0
         if 'upsilon' in ddf.columns:
             upsilon = ddf.loc[0, 'upsilon']
             kappa = ddf.loc[0, 'kappa']
@@ -237,33 +245,77 @@ if __name__ == "__main__":
     df.loc[pd.isna(df['f_S']) , 'f_S'] = 0
     df.loc[pd.isna(df['X_S']) , 'X_S'] = 1
 
-    pi_nonE = 1 - df['pi_E'] - df['pi_E-C']
-    pi_anyI = df['pi_I'] + df['pi_I-C']
-    pi_anyS = df['pi_S'] + df['pi_S-C']
-    df['pi_1'] = df['pi_I'] / pi_anyI * (df['pi_I'] / pi_nonE)
-    df['pi_5'] = df['pi_I-C'] / pi_anyI * (df['pi_I-C'] / pi_nonE)
-    pi_anyS_or_1 = np.where(pi_anyS <= 0, 1, pi_anyS)
-    df['pi_2'] = df['pi_S'] / pi_anyS_or_1 * (df['pi_S'] / pi_nonE)
-    df['pi_6'] = df['pi_S-C'] / pi_anyS_or_1 * (df['pi_S-C'] / pi_nonE)
-    df['pi_3'] = df['pi_I-C'] / pi_nonE
-    df['pi_4'] = df['pi_S-C'] / pi_nonE
+    df['avg la'] = df['lambda'] * (df['pi_I'] + df['pi_I-C'] + (df['pi_S'] + df['pi_S-C']) * df['X_S'])
+
+    df['p_rec_I'] = 1 - df['f_S']
+    df['p_rec_S'] = df['f_S']
+
+    df['p_tr_I'] = (1 - df['f_S']) / (1 - df['f_S'] + df['X_S'] * df['f_S'])
+    df['p_tr_S'] = 1 - df['p_tr_I']
+
 
     dI = 1 / df['psi']
     dE = dI * (df['f_E'] / (1 - df['f_E']))
+    df['mu'] = 1 / np.maximum(dE, 1e-9)
 
-    df['avg la'] = (df['pi_I'] + df['pi_I-C']) * df['lambda'] + (df['pi_S'] + df['pi_S-C']) * df['lambda'] * df['X_S']
-    # df['avg psi'] = (df['pi_I'] + df['pi_S']) * df['psi'] + (df['pi_I-C'] + df['pi_S-C']) * df['psi'] * df['X_C']
+    df['p2_tr_I'] = np.where(dE > 0, df['psi'] * df['p'] * df['upsilon'] / (df['lambda'] + df['mu'] + df['psi']), 0)
+    df['p2_tr_S'] = np.where(dE > 0, df['psi'] * df['p'] * df['upsilon'] / (df['X_S'] * df['lambda'] + df['mu'] + df['psi']), 0)
 
-    # e_coefficient = 1 - df['f_E']
+    p3_tr_tr_I = np.where(dE > 0, df['mu'] / (df['lambda'] + df['mu'] + df['psi']), 1) * df['psi'] * df['p'] * df['upsilon'] / (df['lambda'] + 2 * df['psi'])
+    p3_tr_tr_S = np.where(dE > 0, df['mu'] / (df['X_S'] * df['lambda'] + df['mu'] + df['psi']), 1) * df['psi'] * df['p'] * df['upsilon'] / (df['X_S'] * df['lambda'] + 2 * df['psi'])
 
-    # df['avg psi 2'] = (df['pi_I'] + df['pi_S'] + df['pi_E'] * e_coefficient) * df['psi'] \
-    #                   + (df['pi_I-C'] + df['pi_S-C'] + df['pi_E-C'] * e_coefficient) * df['psi'] * df['X_C']
-    # df['avg d'] = (df['pi_I'] + df['pi_S'] + df['pi_E'] / e_coefficient) / df['psi']  \
-    #                   + (df['pi_I-C'] + df['pi_S-C'] + df['pi_E-C'] / e_coefficient) / (df['psi'] * df['X_C'])
-    df['d'] = dE + dI * (df['pi_1'] + df['pi_2'] + (df['pi_5'] + df['pi_6']) / 2 + 1 / df['X_C'] * (df['pi_3'] + df['pi_4'] + (df['pi_5'] + df['pi_6']) / 2))
+    p3_rec_common_part = np.where(dE > 0, df['mu'] / (df['mu'] + df['psi']), 1) * df['psi'] * df['p'] * df['upsilon']
+    p3_rec_rec_I_part = 1 / (df['lambda'] + 2 * df['psi'])
+    p3_rec_rec_S_part = 1 / (df['X_S'] * df['lambda'] + 2 * df['psi'])
+    p3_rec_I_part = df['lambda'] / (df['lambda'] + df['psi'])
+    p3_rec_S_part = df['X_S'] * df['lambda'] / (df['X_S'] * df['lambda'] + df['psi'])
+    p3_rec_tr_I_part = 1 - df['p2_tr_I']
+    p3_rec_tr_S_part = 1 - df['p2_tr_S']
 
-    df['R'] = df['lambda'] / df['psi'] * (df['pi_1'] + df['X_S'] * df['pi_2'] + 1 / df['X_C'] * df['pi_3'] + df['X_S'] / df['X_C'] * df['pi_4'] \
-                                          + 1 / 2 * (1 + 1 / df['X_C']) * df['pi_5'] + df['X_S'] / 2 * (1 + 1 / df['X_C']) * df['pi_5'])
+    p3_rec_tr_I_I_rec_I = p3_rec_common_part * p3_rec_tr_I_part * p3_rec_I_part * p3_rec_rec_I_part
+    p3_rec_tr_S_I_rec_I = p3_rec_common_part * p3_rec_tr_S_part * p3_rec_I_part * p3_rec_rec_I_part
+    p3_rec_tr_S_S_rec_I = p3_rec_common_part * p3_rec_tr_S_part * p3_rec_S_part * p3_rec_rec_I_part
+    p3_rec_tr_S_S_rec_S = p3_rec_common_part * p3_rec_tr_S_part * p3_rec_S_part * p3_rec_rec_S_part
+    p3_rec_tr_S_I_rec_S = p3_rec_common_part * p3_rec_tr_S_part * p3_rec_I_part * p3_rec_rec_S_part
+    p3_rec_tr_I_I_rec_S = p3_rec_common_part * p3_rec_tr_I_part * p3_rec_I_part * p3_rec_rec_S_part
+    p3_rec_tr_I_S_rec_S = p3_rec_common_part * p3_rec_tr_I_part * p3_rec_S_part * p3_rec_rec_S_part
+    p3_rec_tr_I_S_rec_I = p3_rec_common_part * p3_rec_tr_I_part * p3_rec_S_part * p3_rec_rec_I_part
+
+
+    df['p3_tr_I_I_rec_I'] = p3_tr_tr_I + p3_rec_tr_I_I_rec_I - p3_tr_tr_I * p3_rec_tr_I_I_rec_I
+    df['p3_tr_I_I_rec_S'] = p3_tr_tr_I + p3_rec_tr_I_I_rec_S - p3_tr_tr_I * p3_rec_tr_I_I_rec_S
+    df['p3_tr_I_S_rec_S'] = p3_tr_tr_I + p3_rec_tr_I_S_rec_S - p3_tr_tr_I * p3_rec_tr_I_S_rec_S
+    df['p3_tr_I_S_rec_I'] = p3_tr_tr_I + p3_rec_tr_I_S_rec_I - p3_tr_tr_I * p3_rec_tr_I_S_rec_I
+    df['p3_tr_S_S_rec_I'] = p3_tr_tr_S + p3_rec_tr_S_S_rec_I - p3_tr_tr_S * p3_rec_tr_S_S_rec_I
+    df['p3_tr_S_S_rec_S'] = p3_tr_tr_S + p3_rec_tr_S_S_rec_S - p3_tr_tr_S * p3_rec_tr_S_S_rec_S
+    df['p3_tr_S_I_rec_S'] = p3_tr_tr_S + p3_rec_tr_S_I_rec_S - p3_tr_tr_S * p3_rec_tr_S_I_rec_S
+    df['p3_tr_S_I_rec_I'] = p3_tr_tr_S + p3_rec_tr_S_I_rec_I - p3_tr_tr_S * p3_rec_tr_S_I_rec_I
+
+    pi_2_common = df['p_tr_I'] * df['p2_tr_I'] + df['p_tr_S'] * df['p2_tr_S']
+    df['pi_2a'] = pi_2_common * (1 - df['f_S'])
+    df['pi_2b'] = pi_2_common * df['f_S']
+
+    df['pi_3a'] = (1 - df['f_S']) * \
+                  (df['p_tr_I'] * (df['p_rec_I'] * df['p3_tr_I_I_rec_I'] + df['p_rec_S'] * df['p3_tr_I_I_rec_S']) \
+                   + df['p_tr_S'] * (df['p_rec_I'] * df['p3_tr_S_I_rec_I'] + df['p_rec_S'] * df['p3_tr_S_I_rec_S']))
+    df['pi_3b'] = df['f_S'] * \
+                  (df['p_tr_I'] * (df['p_rec_I'] * df['p3_tr_I_S_rec_I'] + df['p_rec_S'] * df['p3_tr_I_S_rec_S']) \
+                   + df['p_tr_S'] * (df['p_rec_I'] * df['p3_tr_S_S_rec_I'] + df['p_rec_S'] * df['p3_tr_S_S_rec_S']))
+
+
+    pi_1 = 1 - df['pi_2a'] - df['pi_2b'] - df['pi_3a'] - df['pi_3b']
+    df['pi_1a'] = pi_1 * (1 - df['f_S'])
+    df['pi_1b'] = pi_1 * df['f_S']
+
+    d1 = dI
+    d2 = dI * (1 / df['X_C'])
+    d3 = dI * (1 / 2 + 1 / df['X_C'])
+    df['d'] = dE + d1 * (df['pi_1a'] + df['pi_1b']) + d2 * (df['pi_2a'] + df['pi_2b']) + d3 * (df['pi_3a'] + df['pi_3b'])
+
+
+    df['R'] = df['lambda'] / df['psi'] * \
+              (df['pi_1a'] + df['X_S'] * df['pi_1b'] + 1 / df['X_C'] * df['pi_2a'] + df['X_S'] / df['X_C'] * df['pi_2b'] \
+                                          + (1 / 2 + 1 / df['X_C']) * df['pi_3a'] + df['X_S'] * (1 / 2 + 1 / df['X_C']) * df['pi_3b'])
 
 
     # df['avg psi'] = 1 / df['avg d']

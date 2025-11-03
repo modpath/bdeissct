@@ -4,7 +4,7 @@ FROM evolbioinfo/bdext:v0.1.41
 # RUN mkdir /pasteur
 
 # Install bdext
-RUN cd /usr/local/ && pip3 uninstall -y bdext && pip3 install --no-cache-dir bdext==0.1.48
+RUN cd /usr/local/ && pip3 uninstall -y bdext && pip3 install --no-cache-dir bdext==0.1.49
 
 # The entrypoint runs bdpn_infer with command line arguments
 ENTRYPOINT ["bdeissct_infer"]

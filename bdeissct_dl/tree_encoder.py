@@ -78,8 +78,8 @@ def parse_parameters(log):
 
     df = pd.read_csv(log)
     for i in df.index:
-        R = df.loc[i, 'R'] if 'R' in df.columns else df['avg_Re']
-        d = df.loc[i, 'd'] if 'd' in df.columns else df['avg_d']
+        R = df.loc[i, 'R'] if 'R' in df.columns else df.loc[i, 'avg_Re']
+        d = df.loc[i, 'd'] if 'd' in df.columns else df.loc[i, 'avg_d']
         rho = df.loc[i, 'p_I']
         if 'mu_EI' in df.columns:
             mu = df.loc[i, 'mu_EI'] + (0 if 'mu_ES' not in df.columns else df.loc[i, 'mu_ES'])

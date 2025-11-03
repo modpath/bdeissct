@@ -14,9 +14,8 @@ from treesumstats.subtree_sumstats import SubtreeFeatureCalculator
 from treesumstats.transmission_chain_sumstats import TransmissionChainFeatureCalculator
 
 from bdeissct_dl.bdeissct_model import RHO, LA, PSI, F_E, UPSILON, X_C, KAPPA, F_S, X_S, RATE_PARAMETERS, \
-    TIME_PARAMETERS, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, LA_AVG, INFECTION_DURATION
+    TIME_PARAMETERS, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, LA_AVG, INFECTION_DURATION, REPRODUCTIVE_NUMBER
 from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
-from bdeissct_model import REPRODUCTIVE_NUMBER
 
 TARGET_AVG_BL = 1
 

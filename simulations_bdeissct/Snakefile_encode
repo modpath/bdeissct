@@ -54,7 +54,7 @@ rule encode_batch:
         qos='fast',
         nwk=os.path.join(sim_folder, '{model}', '{k}', 'trees.*.nwk'),
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.45"
+    singularity: "docker://evolbioinfo/bdext:v0.1.48"
     shell:
         """  
         bdeissct_encode --patterns '{params.nwk}' --out {output.stats}
@@ -73,7 +73,7 @@ rule merge_batches:
         name='enc.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.45"
+    singularity: "docker://evolbioinfo/bdext:v0.1.48"
     shell:
         """
         python py/merge_xz.py --output {output.stats} --input {input.stats}

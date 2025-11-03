@@ -38,16 +38,6 @@ def generate_tree(params, pid, results):
         f_e = 0
         mu = np.inf
 
-    la = psi * R
-
-    if params.max_ups > 0:
-        upsilon = random_float(rng, params.min_ups, params.max_ups)
-        x_c = random_float(rng, params.min_xc, params.max_xc)
-        kappa = rng.integers(params.min_kappa, params.max_kappa) \
-            if params.max_kappa > params.min_kappa else params.max_kappa
-    else:
-        upsilon, kappa, x_c = 0, psi, 1
-
     if params.max_fss > 0:
         f_ss = random_float(rng, params.min_fss, params.max_fss)
         x_ss = random_float(rng, params.min_xss, params.max_xss)
@@ -55,10 +45,22 @@ def generate_tree(params, pid, results):
         f_ss = 0
         x_ss = 1
 
+    la = psi * R / (1 + f_ss * (x_ss - 1))
+
+    if params.max_ups > 0:
+        upsilon = random_float(rng, params.min_ups, params.max_ups)
+        x_c = random_float(rng, params.min_xc, params.max_xc)
+        kappa = rng.integers(params.min_kappa, params.max_kappa) \
+            if params.max_kappa > params.min_kappa else params.max_kappa
+    else:
+        upsilon, kappa, x_c = 0, 1, 1
+
+
+
     if f_e > 0:
         if f_ss > 0:
             model = BirthDeathExposedInfectiousWithSuperSpreadingModel(mu_n=(1 - f_ss) * mu, mu_s=f_ss * mu,
-                                                                       la_n=la, la_s=x_ss * la, psi=psi, p=rho)
+                                                                       la_n=la, la_s=la * x_ss, psi=psi, p=rho)
         else:
             model = BirthDeathExposedInfectiousModel(mu=mu, la=la, psi=psi, p=rho)
     else:
@@ -73,9 +75,9 @@ def generate_tree(params, pid, results):
 
     tips = rng.integers(params.min_tips, params.max_tips + 1)
 
-    [tree], (_, _, T, observed_freqs), _ = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa)
+    epidemic = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa, return_stats=True)
 
-    results[pid] = tree, model, kappa, T, observed_freqs
+    results[pid] = model, epidemic
 
 
 if __name__ == "__main__":
@@ -132,20 +134,27 @@ if __name__ == "__main__":
                 break
     forest = []
     with open(params.log, 'w+') as f:
-        model = return_dict[0][1]
+        model = return_dict[0][0]
         is_ct = isinstance(model, CTModel)
         keys = model.get_epidemiological_parameters().keys()
-        f.write('{}{},{},tips,end_time\n' \
+        f.write('{}{},{},tips,end_time,avg_Re,avg_d,zeta\n' \
                 .format(','.join(keys),
                         ',kappa' if is_ct else '',
                         ','.join(f'pi_{s}_observed' for s in model.states)))
-        for tree, model, kappa, T, obs in return_dict.values():
+        for model, epidemic in return_dict.values():
+            tree = epidemic.sampled_forest[0]
+            obs = epidemic.pis
+            kappa = epidemic.kappa
+            T = epidemic.T
+            avg_Re = epidemic.R_e
+            avg_d = epidemic.d
+            zeta = epidemic.z
             tips = len(tree)
             ps = model.get_epidemiological_parameters()
-            f.write('{}{},{},{},{:g}\n'.format(','.join(f'{ps[k]:g}' for k in keys),
+            f.write('{}{},{},{},{:g},{:g},{:g},{:g}\n'.format(','.join(f'{ps[k]:g}' for k in keys),
                                                f',{kappa:g}' if is_ct else '',
                                                ','.join(f'{o:g}' for o in obs[0]),
-                                               tips, T))
+                                               tips, T, avg_Re, avg_d, zeta))
 
             forest.append(tree)
     save_forest(forest, params.nwk)

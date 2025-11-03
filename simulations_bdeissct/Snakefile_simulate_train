@@ -16,10 +16,10 @@ num = int(config.get("num", 128))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
 
-sim_folder = os.path.join(folder, config.get("sf", 'training'))
+sim_folder = os.path.join(folder, config.get("sf", 'train'))
 model = config.get('model', None)
 MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['500_1000']
+SIZES=['2000_5000']
 
 TREES_PER_FILE = 8
 
@@ -31,11 +31,11 @@ rule all:
     input:
         expand(os.path.join(sim_folder, '{size}', '{model}', '{k}', 'trees.{i}.nwk'), \
             k=REPETITIONS, i=REPETITIONS, model=MODELS, size=SIZES)
-    shell:
-        """
-        snakemake --snakefile Snakefile_encode --config model={model} num={num} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_encode --config model={model} num={num}  {snakemake_settings}
-        """
+    # shell:
+    #     """
+    #     snakemake --snakefile Snakefile_encode --config model={model} num={num} {snakemake_settings} --unlock
+    #     snakemake --snakefile Snakefile_encode --config model={model} num={num}  {snakemake_settings}
+    #     """
 
 
 rule simulate_bdeissct_trees:
@@ -47,10 +47,10 @@ rule simulate_bdeissct_trees:
         nwk=os.path.join(sim_folder, '{mint}_{maxt}', 'BDEISSCT', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
-        name='{k}.{i}.BDEISSCT',
+        name='BDEISSCT',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -65,7 +65,7 @@ rule simulate_bdeissct_trees:
         --min_ups 0  \
         --max_ups 0.75  \
         --min_xc 10  \
-        --max_xc 500  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
@@ -85,16 +85,16 @@ rule simulate_bdeiss_trees:
         nwk=os.path.join(sim_folder, '{mint}_{maxt}', 'BDEISS', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
-        name='{k}.{i}.BDEISS',
+        name='BDEISS',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
         --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
         --n {TREES_PER_FILE} \
-        --min_R 0.5 \
+        --min_R 1 \
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
@@ -103,7 +103,7 @@ rule simulate_bdeiss_trees:
         --min_ups 0  \
         --max_ups 0  \
         --min_xc 10  \
-        --max_xc 500  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
@@ -123,16 +123,16 @@ rule simulate_bdeict_trees:
         nwk=os.path.join(sim_folder, '{mint}_{maxt}', 'BDEICT', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
-        name='{k}.{i}.BDEICT',
+        name='BDEICT',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
         --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
         --n {TREES_PER_FILE} \
-        --min_R 0.5 \
+        --min_R 1 \
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
@@ -141,7 +141,7 @@ rule simulate_bdeict_trees:
         --min_ups 0  \
         --max_ups 0.75  \
         --min_xc 10  \
-        --max_xc 500  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
@@ -161,16 +161,16 @@ rule simulate_bdei_trees:
         nwk=os.path.join(sim_folder, '{mint}_{maxt}', 'BDEI', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
-        name='{k}.{i}.BDEI',
+        name='BDEI',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
         --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
         --n {TREES_PER_FILE} \
-        --min_R 0.5 \
+        --min_R 1 \
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
@@ -179,7 +179,7 @@ rule simulate_bdei_trees:
         --min_ups 0  \
         --max_ups 0  \
         --min_xc 10  \
-        --max_xc 500  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
@@ -199,16 +199,16 @@ rule simulate_bdssct_trees:
         nwk=os.path.join(sim_folder, '{mint}_{maxt}', 'BDSSCT', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
-        name='{k}.{i}.BDSSCT',
+        name='BDSSCT',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
         --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
         --n {TREES_PER_FILE} \
-        --min_R 0.5 \
+        --min_R 1 \
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
@@ -217,7 +217,7 @@ rule simulate_bdssct_trees:
         --min_ups 0  \
         --max_ups 0.75  \
         --min_xc 10  \
-        --max_xc 500  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
@@ -237,16 +237,16 @@ rule simulate_bdss_trees:
         nwk=os.path.join(sim_folder, '{mint}_{maxt}', 'BDSS', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
-        name='{k}.{i}.BDSS',
+        name='BDSS',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
         --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
         --n {TREES_PER_FILE} \
-        --min_R 0.5 \
+        --min_R 1 \
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
@@ -255,7 +255,7 @@ rule simulate_bdss_trees:
         --min_ups 0  \
         --max_ups 0  \
         --min_xc 10  \
-        --max_xc 500  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
@@ -275,16 +275,16 @@ rule simulate_bdct_trees:
         nwk=os.path.join(sim_folder, '{mint}_{maxt}', 'BDCT', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
-        name='{k}.{i}.BDCT',
+        name='BDCT',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
         --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
         --n {TREES_PER_FILE} \
-        --min_R 0.5 \
+        --min_R 1 \
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
@@ -293,7 +293,7 @@ rule simulate_bdct_trees:
         --min_ups 0  \
         --max_ups 0.75  \
         --min_xc 10  \
-        --max_xc 500  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \
@@ -313,16 +313,16 @@ rule simulate_bd_trees:
         nwk=os.path.join(sim_folder, '{mint}_{maxt}', 'BD', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
-        name='{k}.{i}.BD',
+        name='BD',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
         --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
         --n {TREES_PER_FILE} \
-        --min_R 0.5 \
+        --min_R 1 \
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \
@@ -331,7 +331,7 @@ rule simulate_bd_trees:
         --min_ups 0  \
         --max_ups 0  \
         --min_xc 10  \
-        --max_xc 500  \
+        --max_xc 100  \
         --min_kappa 1 \
         --max_kappa 1 \
         --min_fe 0  \

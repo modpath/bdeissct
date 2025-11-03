@@ -1,15 +1,15 @@
 import tensorflow as tf
 from tensorflow.python.keras.utils.generic_utils import register_keras_serializable
 
-from bdeissct_dl.bdeissct_model import LA, PSI, F_E, F_S, X_S, UPSILON, X_C, PIS, F_S_X_S, UPS_X_C, PI_I, LA_AVG
+from bdeissct_dl.bdeissct_model import F_E, F_S, UPSILON, F_S_X_S, UPS_X_C, REPRODUCTIVE_NUMBER, \
+    INFECTION_DURATION
 
 LEARNING_RATE = 0.001
 
 DELTA = 0.001
 LOSS_WEIGHTS = {
-    LA: 1,
-    LA_AVG: 1,
-    PSI: 1,
+    REPRODUCTIVE_NUMBER: 1,
+    INFECTION_DURATION: 1,
     UPS_X_C: 200,  # as there are 2 outputs, we multiply by 200 to scale it to [0, 200]
     F_E: 100,
     F_S_X_S: 200,  # as there are 2 outputs, we multiply by 200 to scale it to [0, 200]
@@ -125,9 +125,8 @@ def relu_plus_one(x):
 
 
 LOSS_FUNCTIONS = {
-    LA: "mean_absolute_percentage_error",
-    LA_AVG: "mean_absolute_percentage_error",
-    PSI: "mean_absolute_percentage_error",
+    REPRODUCTIVE_NUMBER: "mean_absolute_percentage_error",
+    INFECTION_DURATION: "mean_absolute_percentage_error",
     UPS_X_C: loss_ct,
     # F_E: loss_prob, #'mae',
     F_E: 'mae',
@@ -164,11 +163,9 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
 
     n_states = 1
     outputs = {
-        LA: tf.keras.layers.Dense(1, activation="softplus", name=LA)(x), # positive values only
-        PSI: tf.keras.layers.Dense(1, activation="softplus", name=PSI)(x), # positive values only
+        REPRODUCTIVE_NUMBER: tf.keras.layers.Dense(1, activation="softplus", name=REPRODUCTIVE_NUMBER)(x), # positive values only
+        INFECTION_DURATION: tf.keras.layers.Dense(1, activation="softplus", name=INFECTION_DURATION)(x), # positive values only
     }
-    if F_E in target_columns or F_S in target_columns or UPSILON in target_columns:
-        outputs[LA_AVG] = tf.keras.layers.Dense(1, activation="softplus", name=LA_AVG)(x), # positive values only
     if F_E in target_columns:
         outputs[F_E] = tf.keras.layers.Dense(1, activation="sigmoid", name=F_E)(x)
         n_states += 1
@@ -178,17 +175,11 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
     if UPSILON in target_columns:
         outputs[UPS_X_C] = CTLayer(name=UPS_X_C)(tf.keras.layers.Dense(2, activation=None, name="ups_XC_logits")(x))
         n_states *= 2
-    # if PI_I in target_columns:
-    #     outputs[PIS] = tf.keras.layers.Dense(n_states, activation="softmax", name=PIS)(x)  # pi_E, pi_I, pi_S, pi_EC, pi_IC, pi_SC
 
     model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
     if optimizer is None:
         optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
-
-    # if n_states > 1:
-    #     LOSS_WEIGHTS[PIS] = 100 * n_states  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
-        # LOSS_WEIGHTS[PIS] = 100 / (DELTA * (1 - DELTA/2)) * n_states  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
 
     model.compile(optimizer=optimizer,
                   loss={col: LOSS_FUNCTIONS[col] for col in outputs.keys()},

@@ -2,6 +2,7 @@ import io
 import os
 from glob import iglob
 
+import numpy as np
 import pandas as pd
 from treesumstats import FeatureCalculator, FeatureRegistry, FeatureManager
 from treesumstats.balance_sumstats import BalanceFeatureCalculator
@@ -13,8 +14,9 @@ from treesumstats.subtree_sumstats import SubtreeFeatureCalculator
 from treesumstats.transmission_chain_sumstats import TransmissionChainFeatureCalculator
 
 from bdeissct_dl.bdeissct_model import RHO, LA, PSI, F_E, UPSILON, X_C, KAPPA, F_S, X_S, RATE_PARAMETERS, \
-    TIME_PARAMETERS, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, LA_AVG
+    TIME_PARAMETERS, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, LA_AVG, INFECTION_DURATION
 from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
+from bdeissct_model import REPRODUCTIVE_NUMBER
 
 TARGET_AVG_BL = 1
 
@@ -66,49 +68,41 @@ def scale_back_array(Y, SF, columns):
 
 
 def parse_parameters(log):
-    # BD: R,la_ii,psi_i,p_i,infectious time,tips,hidden_trees,end_time
-    # BDCT: R,la_ii,psi_i,p_i,infectious time,contact tracing probability,pi_i,pi_i-C,removal time after notification,kappa,tips,hidden_trees,end_time
-    # BDEI: R,pi_e,R_e,mu_ei,pi_i,R_i,la_ie,psi_i,p_i,infectious time,incubation period,incubation fraction,tips,hidden_trees,end_time
-    # BDEICT: R,R_e,mu_ei,R_i,la_ie,psi_i,p_i,infectious time,incubation period,incubation fraction,contact tracing probability,pi_e,pi_i,pi_e-C,pi_i-C,removal time after notification,kappa,tips,hidden_trees,end_time
-    # BDSS: R,pi_i,R_i,la_ii,la_is,psi_i,p_i,pi_s,R_s,la_si,la_ss,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,tips,hidden_trees,end_time
-    # BDSSCT: R,R_i,la_ii,la_is,psi_i,p_i,R_s,la_si,la_ss,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,contact tracing probability,pi_i,pi_s,pi_i-C,pi_s-C,removal time after notification,kappa,tips,hidden_trees,end_time
-    # BDEISS: R,pi_e,R_e,mu_ei,mu_es,pi_i,R_i,la_ie,psi_i,p_i,pi_s,R_s,la_se,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,incubation period,incubation fraction,tips,hidden_trees,end_time
-    # BDEISSCT: R,R_e,mu_ei,mu_es,R_i,la_ie,psi_i,p_i,R_s,la_se,psi_s,p_s,infectious time,superspreading transmission ratio,superspreading fraction,incubation period,incubation fraction,contact tracing probability,pi_e,pi_i,pi_s,pi_e-C,pi_i-C,pi_s-C,removal time after notification,kappa,tips,hidden_trees,end_time
+    # BD: R_I,t_I,d_I,la_II,psi_I,p_I,R,d,pi_I_observed,tips,end_time,avg_Re,avg_d,zeta
+    # BDCT: t_I,pi_I,la_II,psi_I,p_I,R_I-C,t_I-C,d_I-C,pi_I-C,la_I-CI,upsilon,phi_I-C,kappa,pi_I_observed,pi_I-C_observed,tips,end_time,avg_Re,avg_d,zeta
+    # BDEI: R_E,t_E,d_E,pi_E,mu_EI,R_I,t_I,d_I,pi_I,la_IE,psi_I,p_I,R,d,f_E,pi_E_observed,pi_I_observed,tips,end_time,avg_Re,avg_d,zeta
+    # BDEICT: t_E,pi_E,mu_EI,t_I,pi_I,la_IE,psi_I,p_I,R_E-C,t_E-C,d_E-C,pi_E-C,mu_E-CI-C,R_I-C,t_I-C,d_I-C,pi_I-C,la_I-CE,upsilon,phi_I-C,kappa,pi_E_observed,pi_I_observed,pi_E-C_observed,pi_I-C_observed,tips,end_time,avg_Re,avg_d,zeta
+    # BDSS: R_I,t_I,d_I,pi_I,la_II,la_IS,psi_I,p_I,R_S,t_S,d_S,pi_S,la_SI,la_SS,psi_S,p_S,R,d,X_S,f_S,pi_I_observed,pi_S_observed,tips,end_time,avg_Re,avg_d,zeta
+    # BDSSCT: t_I,pi_I,la_II,la_IS,psi_I,p_I,t_S,pi_S,la_SI,la_SS,psi_S,p_S,R_I-C,t_I-C,d_I-C,pi_I-C,la_I-CI,la_I-CS,R_S-C,t_S-C,d_S-C,pi_S-C,la_S-CI,la_S-CS,upsilon,phi_I-C,phi_S-C,kappa,pi_I_observed,pi_S_observed,pi_I-C_observed,pi_S-C_observed,tips,end_time,avg_Re,avg_d,zeta
+    # BDEISS: R_E,t_E,d_E,pi_E,mu_EI,mu_ES,R_I,t_I,d_I,pi_I,la_IE,psi_I,p_I,R_S,t_S,d_S,pi_S,la_SE,psi_S,p_S,R,d,X_S,f_S,f_E,pi_E_observed,pi_I_observed,pi_S_observed,tips,end_time,avg_Re,avg_d,zeta
+    # BDEISSCT: t_E,pi_E,mu_EI,mu_ES,t_I,pi_I,la_IE,psi_I,p_I,t_S,pi_S,la_SE,psi_S,p_S,R_E-C,t_E-C,d_E-C,pi_E-C,mu_E-CI-C,mu_E-CS-C,R_I-C,t_I-C,d_I-C,pi_I-C,la_I-CE,R_S-C,t_S-C,d_S-C,pi_S-C,la_S-CE,upsilon,phi_I-C,phi_S-C,kappa,pi_E_observed,pi_I_observed,pi_S_observed,pi_E-C_observed,pi_I-C_observed,pi_S-C_observed,tips,end_time,avg_Re,avg_d,zeta
 
     df = pd.read_csv(log)
     for i in df.index:
-        psi = df.loc[i, 'psi_I']
+        R = df.loc[i, 'R'] if 'R' in df.columns else df['avg_Re']
+        d = df.loc[i, 'd'] if 'd' in df.columns else df['avg_d']
         rho = df.loc[i, 'p_I']
-        la = df.loc[i, 'la_II' if 'la_II' in df.columns else 'la_IE'] \
-             + (0 if 'la_IS' not in df.columns else df.loc[i, 'la_IS'])
-        if 'upsilon' in df.columns:
-            upsilon = df.loc[i, 'upsilon']
-            kappa = df.loc[i, 'kappa']
-            x_c = df.loc[i, 'phi_I-C'] / psi
-        else:
-            upsilon = 0
-            kappa = 1
-            x_c = 1
         if 'mu_EI' in df.columns:
             mu = df.loc[i, 'mu_EI'] + (0 if 'mu_ES' not in df.columns else df.loc[i, 'mu_ES'])
-            f_e = 1 / mu / (1 / mu + 1 / psi)
+            d_E = 1 / mu
+            f_E = d_E / d
         else:
-            f_e = 0
-        if 'f_S' in df.columns:
-            f_ss = df.loc[i, 'f_S']
-            x_ss = df.loc[i, 'X_S']
+            f_E = 0
+            mu = np.inf
+        f_S = (df.loc[i, 'mu_ES'] / mu if 'mu_ES' in df.columns
+               else (df.loc[i, 'la_SS'] / (df.loc[i, 'la_SI'] + df.loc[i, 'la_SS']) if 'la_SI' in df.columns else 0))
+        if f_S:
+            X_S = (df.loc[i, 'la_SE'] if 'la_SE' in df.columns else (df.loc[i, 'la_SI'] if 'la_SI' in df.columns else 0)) \
+                  /  df.loc[i, 'la_IE' if 'la_IE' in df.columns else 'la_II']
         else:
-            f_ss = 0
-            x_ss = 1
+            X_S = 1
 
-        pi_E = df.loc[i, 'pi_E_observed'] if 'pi_E_observed' in df.columns else 0
-        pi_I = df.loc[i, 'pi_I_observed'] if 'pi_I_observed' in df.columns else 1
-        pi_S = df.loc[i, 'pi_S_observed'] if 'pi_S_observed' in df.columns else 0
-        pi_I_C = df.loc[i, 'pi_I-C_observed'] if 'pi_I-C_observed' in df.columns else 0
-        pi_E_C = df.loc[i, 'pi_E-C_observed'] if 'pi_E-C_observed' in df.columns else 0
-        pi_S_C = df.loc[i, 'pi_S-C_observed'] if 'pi_S-C_observed' in df.columns else 0
+        upsilon = df.loc[i, 'upsilon'] if 'upsilon' in df.columns else 0
+        kappa = df.loc[i, 'kappa'] if 'kappa' in df.columns else 1
+        X_C = df.loc[i, 'phi_I-C'] / df.loc[i, 'psi_I'] if 'phi_I-C' in df.columns else 1
 
-        yield la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa, pi_E, pi_I, pi_S, pi_E_C, pi_I_C, pi_S_C
+
+        yield R, d, rho, f_E, f_S, X_S, upsilon, X_C, kappa
 
 
 class BDEISSCTFeatureCalculator(FeatureCalculator):
@@ -118,9 +112,8 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
         pass
 
     def feature_names(self):
-        return [LA, PSI, RHO, F_E, F_S, X_S, UPSILON, X_C, KAPPA, \
-                PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, \
-                SCALING_FACTOR, LA_AVG]
+        return [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO, F_E, F_S, X_S, UPSILON, X_C, KAPPA, \
+                SCALING_FACTOR]
 
     def set_forest(self, forest, **kwargs):
         pass
@@ -163,6 +156,10 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
             return 'fraction of notified infectious superspreaders'
         if SCALING_FACTOR == feature_name:
             return 'tree scaling factor.'
+        if REPRODUCTIVE_NUMBER == feature_name:
+            return 'reproduction number.'
+        if INFECTION_DURATION == feature_name:
+            return 'infection duration.'
         return None
 
 
@@ -276,19 +273,16 @@ TIME_DIFF_STATS = ['time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'tim
                    'time_diff_in_2_random_vs_real_pval_less', 'time_diff_in_3L_random_vs_real_pval_less',
                    'time_diff_in_I_random_vs_real_pval_more']
 
-EPI_STATS = [LA, PSI, RHO,
+EPI_STATS = [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO,
              UPSILON, X_C, KAPPA,
              F_E,
-             F_S, X_S,
-             PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC,
-             LA_AVG]
+             F_S, X_S]
 
 STATS = ['n_tips'] \
         + BRLEN_STATS + TIME_STATS + CHAIN_STATS + LTT_STATS + BALANCE_STATS + TOPOLOGY_STATS + TIME_DIFF_STATS \
         + EPI_STATS + [SCALING_FACTOR]
 
-def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0, f_ss=0, x_ss=1,
-                      pi_e=0, pi_i=1, pi_s=0, pi_ec=0, pi_ic=0, pi_sc=0,
+def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, f_e=0, f_ss=0, x_ss=1,
                       target_avg_brlen=TARGET_AVG_BL):
     """
     Rescales the input forest to have mean branch lengths of 1, calculates its summary statistics,
@@ -303,8 +297,8 @@ def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0
     :param rho: presumed sampling probability
     :param upsilon: presumed notification probability
     :param kappa: presumed max number of notified contacts
-    :param la: presumed transmission rate
-    :param psi: presumed removal rate
+    :param R: presumed avg reproduction number
+    :param d: presumed avg infection duration
     :param x_c: presumed notified sampling rate to standard removal rate ratio
     :param target_avg_brlen: length of the average non-zero branch in the rescaled tree
     :return: pd.DataFrame containing the summary stats, the presumed BDEISS-CT model parameters (0 if not given)
@@ -314,13 +308,10 @@ def forest2sumstat_df(forest, rho, la=0, psi=0, x_c=0, upsilon=0, kappa=1, f_e=0
     scaling_factor = rescale_forest_to_avg_brlen(forest, target_avg_length=target_avg_brlen)
 
     kwargs = {SCALING_FACTOR: scaling_factor,
-              LA: la, PSI: psi, RHO: rho,
+              REPRODUCTIVE_NUMBER: R, INFECTION_DURATION: d, RHO: rho,
               F_E: f_e,
               F_S: f_ss, X_S: x_ss,
-              X_C: x_c, UPSILON: upsilon, KAPPA: kappa,
-              PI_E: pi_e, PI_I: pi_i, PI_S: pi_s,
-              PI_EC: pi_ec, PI_IC: pi_ic, PI_SC: pi_sc,
-              LA_AVG: la * (pi_i + pi_ic + x_ss * (pi_s + pi_sc))}
+              X_C: x_c, UPSILON: upsilon, KAPPA: kappa}
     scale(kwargs, scaling_factor)
 
     return pd.DataFrame.from_records([list(FeatureManager.compute_features(forest, *STATS, **kwargs))], columns=STATS)
@@ -369,16 +360,12 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
             for ps, forest in zip(parameters, forests):
 
                 scaling_factor = rescale_forest_to_avg_brlen(forest, target_avg_length=target_avg_brlen)
-                la, psi, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa, \
-                    pi_e, pi_i, pi_s, pi_ec, pi_ic, pi_sc = ps
+                R, d, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa = ps
                 kwargs = {SCALING_FACTOR: scaling_factor}
-                kwargs[LA], kwargs[PSI], kwargs[RHO] = la, psi, rho
+                kwargs[REPRODUCTIVE_NUMBER], kwargs[INFECTION_DURATION], kwargs[RHO] = R, d, rho
                 kwargs[UPSILON], kwargs[KAPPA], kwargs[X_C] = upsilon, kappa, x_c
                 kwargs[F_E] = f_e
                 kwargs[F_S], kwargs[X_S] = f_ss, x_ss
-                kwargs[PI_E], kwargs[PI_I], kwargs[PI_S] = pi_e, pi_i, pi_s
-                kwargs[PI_EC], kwargs[PI_IC], kwargs[PI_SC] = pi_ec, pi_ic, pi_sc
-                kwargs[LA_AVG] = la * (pi_i + pi_ic + x_ss * (pi_s + pi_sc))
 
                 scale(kwargs, scaling_factor)
 
@@ -417,7 +404,7 @@ def main():
                         help="input tree/forest file templates to be treated with glob. "
                              "If the templates are given instead of --nwks, the corresponding log files are "
                              "considered to be obtainable by replacing .nwk by .log")
-    parser.add_argument('--out', required=True, type=str,
+    parser.add_argument('--out', type=str,
                         help="path to the file where the encoded data should be stored")
     params = parser.parse_args()
 

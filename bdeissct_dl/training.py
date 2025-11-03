@@ -6,22 +6,19 @@ import pandas as pd
 import tensorflow as tf
 
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
-from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, LA, PSI, UPSILON, X_C, KAPPA, F_E, F_S, \
-    X_S, TARGET_COLUMNS_BDCT, PI_E, PI_I, PI_S, PI_IC, PI_SC, PI_EC, PIS, UPS_X_C, F_S_X_S, BD, LA_AVG
+from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, F_E, F_S, \
+    X_S, TARGET_COLUMNS_BDCT, UPS_X_C, F_S_X_S, REPRODUCTIVE_NUMBER, INFECTION_DURATION
 from bdeissct_dl.dl_model import build_model
 from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, \
     load_model_keras
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
 
 FEATURE_COLUMNS = [_ for _ in STATS if _ not in {'n_trees', 'n_tips', 'n_inodes', 'len_forest',
-                                                 LA, PSI,
+                                                 REPRODUCTIVE_NUMBER, INFECTION_DURATION,
                                                  UPSILON, X_C, KAPPA,
                                                  F_E,
                                                  F_S, X_S,
-                                                 PI_E, PI_I, PI_S,
-                                                 PI_EC, PI_IC, PI_SC,
-                                                 SCALING_FACTOR,
-                                                 LA_AVG}]
+                                                 SCALING_FACTOR}]
 
 
 def calc_validation_fraction(m):
@@ -103,8 +100,8 @@ def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, file
         X = scaler_x.transform(X)
 
     train_labels = {
-        LA: Y[:, 0],
-        PSI: Y[:, 1],
+        REPRODUCTIVE_NUMBER: Y[:, 0],
+        INFECTION_DURATION: Y[:, 1],
     }
     col_i = 2
     if UPSILON in target_columns:
@@ -116,8 +113,6 @@ def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, file
     if F_S in target_columns:
         train_labels[F_S_X_S] = Y[:, col_i: (col_i + 2)]
         col_i += 2
-    if PI_I in target_columns:
-        train_labels[PIS] = Y[:, col_i:]
 
     dataset = tf.data.Dataset.from_tensor_slices((X, train_labels))
 
@@ -140,19 +135,21 @@ def main():
     parser = \
         argparse.ArgumentParser(description="Train a BD(EI)(SS)(CT) model.")
     parser.add_argument('--train_data', type=str, nargs='+',
-                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(120)]
-                        ,
+                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDEI/{i}/trees.csv.xz' for i in range(10)] \
+                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(0)]
+                        # ,
                         help="path to the files where the encoded training data are stored")
     parser.add_argument('--val_data', type=str, nargs='+',
-                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(120, 128)]
-                        ,
+                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDEI/{i}/trees.csv.xz' for i in range(10, 12)] \
+                        #     + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(0, 0)]
+                        # ,
                         help="path to the files where the encoded validation data are stored")
 
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='number of epochs to train the model')
     parser.add_argument('--base_model_name', type=str, default=None,
                         help="base model name to use for training, if not specified, the model will be trained from scratch")
     parser.add_argument('--model_name',
-                        default=BD,
+                        # default=BDEI,
                         type=str, help="model name")
     parser.add_argument('--model_path', default=MODEL_PATH, type=str,
                         help="path to the folder where the trained model should be stored. "
@@ -187,7 +184,7 @@ def main():
                             scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=True)
 
     #early stopping to avoid overfitting
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=100)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=25)
 
     #Training of the Network, with an independent validation set
     model.fit(ds_train, verbose=1, epochs=params.epochs, validation_data=ds_val,

@@ -4,14 +4,14 @@ import os
 # To run locally:
 # snakemake --snakefile Snakefile_estimate --rerun-triggers mtime --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 
-# To run on bioevo (change shakemake activation below if you are not Anna ;) :
-# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/pasteur/anna/projects/bdext/sim_bdeiss/
+# To run on maestro:
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projets/mPath/anna/projects/bdext/sim_bdeiss
 # snakemake --snakefile Snakefile_estimate --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o logs/{params.name}.log -e logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast -J {params.name}" --jobs 600
 
 localrules: all
 
 folder = os.path.abspath(config.get("folder", '.'))
-num = int(config.get("num", 100))
+num = int(config.get("num", 1000))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
 
@@ -25,8 +25,7 @@ ci = ""
 bdei_ci = ""
 
 
-model = config.get('model', None)
-EST_DL = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+EST_DL = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
 EST_ML = ['bd', 'bdct', 'bdei']
 
@@ -63,7 +62,7 @@ rule estimate_params_dl:
         qos = 'fast',
         pattern = os.path.join(sim_folder, '..', 'models', '{size}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.45"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \

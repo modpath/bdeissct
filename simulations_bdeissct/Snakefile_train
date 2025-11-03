@@ -7,7 +7,7 @@ import os
 
 # To run on maestro:
 # source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projets/mPath/anna/projects/bdext/sim_bdeiss
-# snakemake --snakefile Snakefile_simulate_train --config model=BDCT --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log -p common --mem={params.mem} --qos=fast  -J {params.name}" --jobs 300
+# snakemake --snakefile Snakefile_train --dconfig model=BDCT --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log -p common --mem={params.mem} --qos=fast  -J {params.name}" --jobs 300
 # needs 4000MB of mem per 256-file dataset (so 32000 for BDEISSCT)
 
 localrules: all
@@ -15,18 +15,16 @@ localrules: all
 
 folder = os.path.abspath(config.get("folder", '.'))
 
-N_TRAIN = 230
+N_TRAIN = 112
 N_TRAIN_OTHER = N_TRAIN
-N_TOTAL = 256
+N_TOTAL = 128
 N_VAL = N_TOTAL - N_TRAIN
 N_VAL_OTHER = N_VAL
 
 os.makedirs('logs', exist_ok=True)
 
-sim_folder = os.path.join(folder, config.get("sf", 'training'), '500_1000')
-model_folder = os.path.join(folder, 'models', '500_1000')
-model = config.get('model', None)
-# MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT', 'MF']
+sim_folder = os.path.join(folder, config.get("sf", 'train'), '2000_5000')
+model_folder = os.path.join(folder, 'models', '2000_5000')
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
 
@@ -57,7 +55,7 @@ rule fit_scaler:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_fit_scaler --train_data {input.train_trees} --model_path {params.path}
@@ -80,7 +78,7 @@ rule train_model_BD:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_train --model_name BD --train_data {input.train_trees} --val_data {input.val_trees} \
@@ -106,7 +104,7 @@ rule train_model_BDCT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_train --model_name BDCT --train_data {input.train_trees_nested} {input.train_trees} \
@@ -133,7 +131,7 @@ rule train_model_BDEI:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_train --model_name BDEI --train_data {input.train_trees_nested} {input.train_trees} \
@@ -161,7 +159,7 @@ rule train_model_BDEICT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_train --model_name BDEICT --train_data {input.train_trees_nested} {input.train_trees} \
@@ -189,7 +187,7 @@ rule train_model_BDSS:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_train --model_name BDSS --train_data {input.train_trees_nested} {input.train_trees} \
@@ -217,7 +215,7 @@ rule train_model_BDSSCT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_train --model_name BDSSCT  --train_data {input.train_trees_nested} {input.train_trees} \
@@ -245,7 +243,7 @@ rule train_model_BDEISS:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_train --model_name BDEISS --train_data {input.train_trees_nested} {input.train_trees} \
@@ -273,7 +271,7 @@ rule train_model_BDEISSCT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.46"
     shell:
         """        
         bdeissct_train --model_name BDEISSCT --train_data {input.train_trees_nested} {input.train_trees} \

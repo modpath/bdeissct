@@ -14,15 +14,15 @@ localrules: all
 
 
 folder = os.path.abspath(config.get("folder", '.'))
-num = int(config.get("num", 256))
+num = int(config.get("num", 128))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
 
-sim_folder = os.path.join(folder, config.get("sf", 'training'), '500_1000')
+sim_folder = os.path.join(folder, config.get("sf", 'train'), '2000_5000')
 model = config.get('model', None)
 # MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['500_1000']
+SIZES=['2000_5000']
 
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
@@ -31,7 +31,7 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 rule all:
     input:
         expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), model=MODELS, k=range(num)),
-        expand(os.path.join(folder, 'test', '{size}', '{model}', 'trees.csv.xz'), model=MODELS, size=SIZES),
+        # expand(os.path.join(folder, 'test', '{size}', '{model}', 'trees.csv.xz'), model=MODELS, size=SIZES),
     shell:
         """
         snakemake --snakefile Snakefile_train {snakemake_settings} --unlock
@@ -54,7 +54,7 @@ rule encode_batch:
         qos='fast',
         nwk=os.path.join(sim_folder, '{model}', '{k}', 'trees.*.nwk'),
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.45"
     shell:
         """  
         bdeissct_encode --patterns '{params.nwk}' --out {output.stats}
@@ -73,29 +73,10 @@ rule merge_batches:
         name='enc.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
+    singularity: "docker://evolbioinfo/bdext:v0.1.45"
     shell:
         """
         python py/merge_xz.py --output {output.stats} --input {input.stats}
         """
 
 
-rule encode_test:
-    '''
-    Encodes simulated test set as sumstats.
-    '''
-    input:
-        log = expand(os.path.join(folder, 'test', '{{size}}', '{{model}}', 'tree.{i}.log'), i=range(100)),
-        nwk = expand(os.path.join(folder, 'test', '{{size}}', '{{model}}', 'tree.{i}.nwk'), i=range(100)),
-    output:
-        stats = os.path.join(folder, 'test', '{size,[0-9]+_[0-9]+}', '{model,[BDEISCT0-9]+}', 'trees.csv.xz')
-    params:
-        mem=2000,
-        name='enc.{model}.test',
-        qos='fast',
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.43"
-    shell:
-        """
-        bdeissct_encode --nwks {input.nwk} --out {output.stats} --logs {input.log}
-        """

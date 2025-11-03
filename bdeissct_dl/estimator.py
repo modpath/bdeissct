@@ -95,7 +95,7 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
         bdei_ids = {_[0] for _ in enumerate(model_ids) if 'EI' in MODELS[_[1]]}
         bdss_ids = {_[0] for _ in enumerate(model_ids) if 'SS' in MODELS[_[1]]}
         ct_ids = {_[0] for _ in enumerate(model_ids) if 'CT' in MODELS[_[1]]}
-        non_bd_ids = ct_ids | bdei_ids | bdss_ids
+        non_bd_ids = bdei_ids | bdss_ids
         if len(non_bd_ids) < len(model_ids):
             for idx in range(len(model_ids)):
                 if idx not in non_bd_ids:

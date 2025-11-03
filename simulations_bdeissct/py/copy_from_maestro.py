@@ -1,6 +1,23 @@
 import os
 import shutil
+from glob import iglob
 
+
+def copy_files_with_path(source_dir, dest_dir, target_filename):
+    """
+    Recursively copy only files named target_filename from source_dir
+    to dest_dir, preserving the directory structure.
+    """
+
+    # Walk through the directory tree
+    for file in iglob(os.path.join(source_dir, target_filename)):
+        folder = os.path.dirname(file).replace(source_dir, dest_dir)
+
+        # Create the directory in the destination if it doesn't exist
+        os.makedirs(folder, exist_ok=True)
+
+        shutil.copy2(file, file.replace(source_dir, dest_dir))
+        print(f"Copied: {file} -> {file.replace(source_dir, dest_dir)}")
 
 def copy_files_with_name(source_dir, dest_dir, target_filename):
     """
@@ -32,8 +49,9 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
 
 
 
-source_directory = "/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/training/500_1000/BDSS"
-destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDSS"
-filename_to_copy = "trees.csv.xz"
+source_directory = "/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/train/2000_5000/"
+destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train/2000_5000/"
+filename_to_copy = "*/0/trees.0.*"
 
-copy_files_with_name(source_directory, destination_directory, filename_to_copy)
+copy_files_with_path(source_directory, destination_directory, filename_to_copy)
+# copy_files_with_name(source_directory, destination_directory, filename_to_copy)

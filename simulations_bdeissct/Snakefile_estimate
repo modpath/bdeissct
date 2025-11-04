@@ -17,7 +17,7 @@ os.makedirs('logs', exist_ok=True)
 
 sim_folder = os.path.join(folder, config.get("sf", 'test'))
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['500_1000']
+SIZES=['2000_5000']
 
 # ci = "--ci"
 ci = ""
@@ -36,15 +36,15 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        # expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
-        #     model=MODELS, estimator=EST_ML, size=SIZES),
-        expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
-            model=MODELS, estimator=EST_DL, size=SIZES),
-    shell:
-        """
-        snakemake --snakefile Snakefile_combine_estimates {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_combine_estimates {snakemake_settings}
-        """
+        expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
+            model=MODELS, estimator=EST_ML, size=SIZES),
+        # expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
+        #     model=MODELS, estimator=EST_DL, size=SIZES),
+    # shell:
+    #     """
+    #     snakemake --snakefile Snakefile_combine_estimates {snakemake_settings} --unlock
+    #     snakemake --snakefile Snakefile_combine_estimates {snakemake_settings}
+    #     """
 
 
 rule estimate_params_dl:
@@ -89,7 +89,7 @@ rule estimate_params_bd:
         """
         p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_I") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
 
-        bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci} --upper_bounds 2520 1010 0.5 --lower_bounds 0.04 0.08 0.05
+        bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}
         """
 
 
@@ -112,7 +112,7 @@ rule estimate_params_bdct:
         """
         p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_I") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
 
-        bdct_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}  --upper_bounds 2520 20 2000 0.5 0.5 --lower_bounds 0.04 0.08 0.8 0.05 0
+        bdct_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}  
         """
 
 
@@ -138,6 +138,6 @@ rule estimate_params_bdei:
         la=`awk -F, 'NR==2 {{ print $5 }}' {input.bd_est}`
         psi=`awk -F, 'NR==2 {{ print $6 }}' {input.bd_est}`
 
-        bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads} --upper_bounds 2500 2520 1010 0.5
+        bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads} 
         """
 

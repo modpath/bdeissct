@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, F_E, F_S, \
-    X_S, TARGET_COLUMNS_BDCT, UPS_X_C, F_S_X_S, REPRODUCTIVE_NUMBER, INFECTION_DURATION
+    X_S, TARGET_COLUMNS_BDCT, UPS_X_C, F_S_X_S, REPRODUCTIVE_NUMBER, INFECTION_DURATION, BDEI
 from bdeissct_dl.dl_model import build_model
 from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, \
     load_model_keras
@@ -135,13 +135,13 @@ def main():
     parser = \
         argparse.ArgumentParser(description="Train a BD(EI)(SS)(CT) model.")
     parser.add_argument('--train_data', type=str, nargs='+',
-                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDEI/{i}/trees.csv.xz' for i in range(10)] \
-                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(0)]
+                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train/2000_5000/BDEI/{i}/trees.csv.xz' for i in range(100)] \
+                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/2000_5000/BD/{i}/trees.csv.xz' for i in range(10)]
                         # ,
                         help="path to the files where the encoded training data are stored")
     parser.add_argument('--val_data', type=str, nargs='+',
-                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BDEI/{i}/trees.csv.xz' for i in range(10, 12)] \
-                        #     + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/BD/{i}/trees.csv.xz' for i in range(0, 0)]
+                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train/2000_5000/BDEI/{i}/trees.csv.xz' for i in range(100, 120)] \
+                        #     + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train/2000_5000/BD/{i}/trees.csv.xz' for i in range(10, 12)]
                         # ,
                         help="path to the files where the encoded validation data are stored")
 

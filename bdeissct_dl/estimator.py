@@ -3,8 +3,7 @@ import pandas as pd
 
 from bdeissct_dl import MODEL_PATH
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, BD, MODELS, \
-    MODEL_FINDER, F_S, X_S, X_C, PI_I, PI_IC, PI_EC, PI_S, PI_E, PI_SC, UPSILON, PIS, UPS_X_C, F_S_X_S, F_E, BDEI, BDSS, \
-    BDEISS, LA_AVG, LA
+    MODEL_FINDER, F_S, X_S, X_C, UPSILON, UPS_X_C, F_S_X_S, F_E
 from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
 from bdeissct_dl.training import get_test_data
 from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
@@ -45,41 +44,14 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
         Y_pred = model.predict(X_cur)
 
         target_columns = MODEL2TARGET_COLUMNS[model_name]
-        n_states = 1
-        if F_E in target_columns:
-            n_states += 1
         if F_S in target_columns:
-            n_states += 1
             Y_pred[F_S] = Y_pred[F_S_X_S][:, 0]
             Y_pred[X_S] = Y_pred[F_S_X_S][:, 1]
             del Y_pred[F_S_X_S]
         if UPSILON in target_columns:
-            n_states *= 2
             Y_pred[UPSILON] = Y_pred[UPS_X_C][:, 0]
             Y_pred[X_C] = Y_pred[UPS_X_C][:, 1]
             del Y_pred[UPS_X_C]
-
-        # pi_idx = 0
-        # if F_E in target_columns:
-        #     Y_pred[PI_E] = Y_pred[PIS][:, pi_idx]
-        #     pi_idx += 1
-        # if n_states > 1:
-        #     Y_pred[PI_I] = Y_pred[PIS][:, pi_idx]
-        #     pi_idx += 1
-        # if F_S in target_columns:
-        #     Y_pred[PI_S] = Y_pred[PIS][:, pi_idx]
-        #     pi_idx += 1
-        # if UPSILON in target_columns:
-        #     if F_E in target_columns:
-        #         Y_pred[PI_EC] = Y_pred[PIS][:, pi_idx]
-        #         pi_idx += 1
-        #     Y_pred[PI_IC] = Y_pred[PIS][:, pi_idx]
-        #     pi_idx += 1
-        #     if F_S in target_columns:
-        #         Y_pred[PI_SC] = Y_pred[PIS][:, pi_idx]
-        #         pi_idx += 1
-        # if n_states > 1:
-        #     del Y_pred[PIS]
 
         for col in target_columns:
             if len(Y_pred[col].shape) == 2 and Y_pred[col].shape[1] == 1:
@@ -95,38 +67,23 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
         bdei_ids = {_[0] for _ in enumerate(model_ids) if 'EI' in MODELS[_[1]]}
         bdss_ids = {_[0] for _ in enumerate(model_ids) if 'SS' in MODELS[_[1]]}
         ct_ids = {_[0] for _ in enumerate(model_ids) if 'CT' in MODELS[_[1]]}
-        non_bd_ids = bdei_ids | bdss_ids
-        if len(non_bd_ids) < len(model_ids):
-            for idx in range(len(model_ids)):
-                if idx not in non_bd_ids:
-                    results[idx].loc[:, LA_AVG] = results[idx].loc[:, LA]
 
         if ct_ids and len(ct_ids) < len(model_ids):
             for idx in range(len(model_ids)):
-                if not idx in ct_ids:
+                if idx not in ct_ids:
                     results[idx].loc[:, UPSILON] = 0
                     results[idx].loc[:, X_C] = 1
-                    results[idx].loc[:, PI_IC] = 0
-                    if bdei_ids:
-                        results[idx].loc[:, PI_EC] = 0
-                    if bdss_ids:
-                        results[idx].loc[:, PI_SC] = 0
 
         if bdei_ids and len(bdei_ids) < len(model_ids):
             for idx in range(len(model_ids)):
-                if not idx in bdei_ids:
+                if idx not in bdei_ids:
                     results[idx].loc[:, F_E] = 0
-                    results[idx].loc[:, PI_E] = 0
-                    if ct_ids:
-                        results[idx].loc[:, PI_EC] = 0
+
         if bdss_ids and len(bdss_ids) < len(model_ids):
             for idx in range(len(model_ids)):
                 if not idx in bdss_ids:
                     results[idx].loc[:, F_S] = 0
                     results[idx].loc[:, X_S] = 1
-                    results[idx].loc[:, PI_S] = 0
-                    if ct_ids:
-                        results[idx].loc[:, PI_SC] = 0
 
         columns = results[0].columns
         result = pd.DataFrame(index=forest_sumstats.index)

@@ -1,12 +1,7 @@
-
-import logging
 import re
-import numpy as np
 
 import pandas as pd
-
 from treesimulator.mtbd_models import *
-
 
 if __name__ == "__main__":
     import argparse
@@ -43,78 +38,57 @@ if __name__ == "__main__":
     #                            'kappa', 'kappa_min', 'kappa_max',
     #                            'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C'])
     df = pd.DataFrame(columns=['type', 'tips',
-                               'lambda',
-                               'psi',
+                               'R',
+                               'd',
                                'p',
                                'f_E',
                                'f_S',
                                'X_S',
                                'upsilon',
-                               'X_C',
-                               'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C'])
+                               'X_C'])
 
     for real in params.real:
         i = int(re.findall(r'[0-9]+', real)[-1])
         ddf = pd.read_csv(real)
-        psi = ddf.loc[0, 'psi_I']
-        rho = ddf.loc[0, 'p_I']
-        la = ddf.loc[0, 'la_II' if 'la_II' in ddf.columns else 'la_IE'] \
-             + (0 if 'la_IS' not in ddf.columns else ddf.loc[0, 'la_IS'])
-        if 'pi_I-C_observed' in ddf.columns:
-            pi_I = ddf.loc[0, 'pi_I_observed'] if 'pi_I_observed' in ddf.columns else 1
-            pi_I_C = ddf.loc[0, 'pi_I-C_observed'] if 'pi_I-C_observed' in ddf.columns else 0
-            pi_E = ddf.loc[0, 'pi_E_observed'] if 'pi_E_observed' in ddf.columns else 0
-            pi_E_C = ddf.loc[0, 'pi_E-C_observed'] if 'pi_E-C_observed' in ddf.columns else 0
-            pi_S = ddf.loc[0, 'pi_S_observed'] if 'pi_S_observed' in ddf.columns else 0
-            pi_S_C = ddf.loc[0, 'pi_S-C_observed'] if 'pi_S-C_observed' in ddf.columns else 0
-        else:
-            pi_I = ddf.loc[0, 'pi_I'] if 'pi_I' in ddf.columns else 1
-            pi_I_C = 0
-            pi_E = ddf.loc[0, 'pi_E'] if 'pi_E' in ddf.columns else 0
-            pi_E_C = 0
-            pi_S = ddf.loc[0, 'pi_S'] if 'pi_S' in ddf.columns else 0
-            pi_S_C = 0
-        if 'upsilon' in ddf.columns:
-            upsilon = ddf.loc[0, 'upsilon']
-            kappa = ddf.loc[0, 'kappa']
-            X_C = ddf.loc[0, 'phi_I-C'] / psi
-        else:
-            upsilon = 0
-            kappa = 1
-            X_C = 1
+
+        R = ddf.loc[i, 'R'] if 'R' in ddf.columns else ddf.loc[i, 'avg_Re']
+        d = ddf.loc[i, 'd'] if 'd' in ddf.columns else ddf.loc[i, 'avg_d']
+        rho = ddf.loc[i, 'p_I']
         if 'mu_EI' in ddf.columns:
-            mu = ddf.loc[0, 'mu_EI'] + (0 if 'mu_ES' not in ddf.columns else ddf.loc[0, 'mu_ES'])
-            f_E = 1 / mu / (1 / mu + 1 / psi)
+            mu = ddf.loc[i, 'mu_EI'] + (0 if 'mu_ES' not in ddf.columns else ddf.loc[i, 'mu_ES'])
+            d_E = 1 / mu
+            f_E = d_E / d
         else:
             f_E = 0
-        if 'f_S' in ddf.columns:
-            f_S = ddf.loc[0, 'f_S']
-            X_S = ddf.loc[0, 'la_SI'] / ddf.loc[0, 'la_II'] if 'la_SI' in ddf.columns else ddf.loc[0, 'la_SE'] / ddf.loc[0, 'la_IE']
+            mu = np.inf
+        f_S = (ddf.loc[i, 'mu_ES'] / mu if 'mu_ES' in ddf.columns
+               else (ddf.loc[i, 'la_SS'] / (ddf.loc[i, 'la_SI'] + ddf.loc[i, 'la_SS']) if 'la_SI' in ddf.columns else 0))
+        if f_S:
+            X_S = (ddf.loc[i, 'la_SE'] if 'la_SE' in ddf.columns else (
+                ddf.loc[i, 'la_SI'] if 'la_SI' in ddf.columns else 0)) \
+                  / ddf.loc[i, 'la_IE' if 'la_IE' in ddf.columns else 'la_II']
         else:
-            f_S = 0
             X_S = 1
+
+        upsilon = ddf.loc[i, 'upsilon'] if 'upsilon' in ddf.columns else 0
+        kappa = ddf.loc[i, 'kappa'] if 'kappa' in ddf.columns else 1
+        X_C = ddf.loc[i, 'phi_I-C'] / ddf.loc[i, 'psi_I'] if 'phi_I-C' in ddf.columns else 1
 
         tips = ddf.loc[0, 'tips']
 
         df.loc[f'{i}.real',
-        ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'tips', 'type',
-         'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
-            = [la, psi, rho, f_E, f_S, X_S, upsilon, X_C, tips, 'real',
-               pi_E, pi_I, pi_S, pi_E_C, pi_I_C, pi_S_C]
+        ['R', 'd', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'tips', 'type']] \
+            = [R, d, rho, f_E, f_S, X_S, upsilon, X_C, tips, 'real']
 
     if params.estimates_bdct:
         for est in params.estimates_bdct:
             i = int(re.findall(r'[0-9]+', est)[-1])
             ddf = pd.read_csv(est, index_col=0)
             est_label = 'bdct'
-            R0, rt, rho, upsilon, prt, la, psi, phi = ddf.loc['value', :]
-            model = CTModel(BirthDeathModel(la=la, psi=psi, p=rho), upsilon=upsilon, phi=phi)
-            pi_I, pi_I_C = model.state_frequencies
+            R, d, rho, upsilon, prt, la, psi, phi = ddf.loc['value', :]
             df.loc[f'{i}.{est_label}',
-            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'type',
-             'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
-                = [la, psi, rho, 0, 0, 1, upsilon, phi / psi, est_label,
-                   0, pi_I, 0, 0, pi_I_C, 0]
+            ['R', 'd', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'type']] \
+                = [R, d, rho, 0, 0, 1, upsilon, phi / psi, est_label]
             # if 'CI_min' in ddf.index:
             #     R0, rt, rho, upsilon, prt, la, psi, phi = ddf.loc['CI_min', :]
             #     df.loc[f'{i}.{est_label}',
@@ -132,12 +106,10 @@ if __name__ == "__main__":
             i = int(re.findall(r'[0-9]+', est)[-1])
             ddf = pd.read_csv(est, index_col=0)
             est_label = 'bd'
-            R0, rt, rho, la, psi = ddf.loc['value', :]
+            R, d, rho, la, psi = ddf.loc['value', :]
             df.loc[f'{i}.{est_label}',
-            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'type',
-             'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
-                = [la, psi, rho, 0, 0, 1, 0, 1, est_label,
-                   0, 1, 0, 0, 0, 0]
+            ['R', 'd', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'type']] \
+                = [R, d, rho, 0, 0, 1, 0, 1, est_label]
             # if 'CI_min' in ddf.index:
             #     R0, rt, rho, la, psi = ddf.loc['CI_min', :]
             #     df.loc[f'{i}.{est_label}',
@@ -160,17 +132,12 @@ if __name__ == "__main__":
 
             d_E = 1 / mu
             d_I = 1 / psi
-            f_E = d_E / (d_E + d_I)
-
-
-            model = BirthDeathExposedInfectiousModel(mu=mu, la=la, psi=psi, p=rho)
-            pi_E, pi_I = model.state_frequencies
+            d = d_E + d_I
+            f_E = d_E / d
 
             df.loc[f'{i}.{est_label}',
-            ['lambda', 'psi', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'type',
-             'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']] \
-                = [la, psi, rho, f_E, 0, 1, 0, 1, est_label,
-                   pi_E, pi_I, 0, 0, 0, 0]
+            ['R', 'd', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'type']] \
+                = [la / psi, d, rho, f_E, 0, 1, 0, 1, est_label]
             # if not pd.isna(mu_CI) and mu_CI is not None and mu_CI != 'None':
             #     mu_CI, psi_CI, la_CI, rho_CI = \
             #         mu_CI.strip('(').strip(')'), psi_CI.strip('(').strip(')'), la_CI.strip('(').strip(')'), rho_CI.strip('(').strip(')')
@@ -203,8 +170,6 @@ if __name__ == "__main__":
         for est in est_list:
             ddf = pd.read_csv(est, index_col=0)
             ddf.index = ddf.index.map(lambda i: f'{i}.{est_label}')
-            ddf.columns = [c.replace('_2.5', '_min').replace('_97.5', '_max').replace('la', 'lambda')\
-                               .replace('pi_IC', 'pi_I-C').replace('pi_EC', 'pi_E-C').replace('pi_SC', 'pi_S-C') for c in ddf.columns]
             ddf['p'] = np.array(df.loc[ddf.index.map(lambda _: _.replace(est_label, 'real')), ['p']], dtype=float)
             ddf['type'] = est_label
 
@@ -230,102 +195,13 @@ if __name__ == "__main__":
             #     ddf[pi_label] /= pis_sum
             df = pd.concat((df, ddf))
 
-
-    df.loc[pd.isna(df['pi_I']) , 'pi_I'] = 1
-
     df.loc[pd.isna(df['upsilon']) , 'upsilon'] = 0
     df.loc[pd.isna(df['X_C']) , 'X_C'] = 1
-    df.loc[pd.isna(df['pi_I-C']) , 'pi_I-C'] = 0
-    df.loc[pd.isna(df['pi_E']) , 'pi_E'] = 0
-    df.loc[pd.isna(df['pi_E-C']) , 'pi_E-C'] = 0
-    df.loc[pd.isna(df['pi_S']) , 'pi_S'] = 0
-    df.loc[pd.isna(df['pi_S-C']) , 'pi_S-C'] = 0
 
     df.loc[pd.isna(df['f_E']) , 'f_E'] = 0
+
     df.loc[pd.isna(df['f_S']) , 'f_S'] = 0
     df.loc[pd.isna(df['X_S']) , 'X_S'] = 1
-
-    df['avg la'] = df['lambda'] * (df['pi_I'] + df['pi_I-C'] + (df['pi_S'] + df['pi_S-C']) * df['X_S'])
-
-    df['p_rec_I'] = 1 - df['f_S']
-    df['p_rec_S'] = df['f_S']
-
-    df['p_tr_I'] = (1 - df['f_S']) / (1 - df['f_S'] + df['X_S'] * df['f_S'])
-    df['p_tr_S'] = 1 - df['p_tr_I']
-
-
-    dI = 1 / df['psi']
-    dE = dI * (df['f_E'] / (1 - df['f_E']))
-    df['mu'] = 1 / np.maximum(dE, 1e-9)
-
-    df['p2_tr_I'] = np.where(dE > 0, df['psi'] * df['p'] * df['upsilon'] / (df['lambda'] + df['mu'] + df['psi']), 0)
-    df['p2_tr_S'] = np.where(dE > 0, df['psi'] * df['p'] * df['upsilon'] / (df['X_S'] * df['lambda'] + df['mu'] + df['psi']), 0)
-
-    p3_tr_tr_I = np.where(dE > 0, df['mu'] / (df['lambda'] + df['mu'] + df['psi']), 1) * df['psi'] * df['p'] * df['upsilon'] / (df['lambda'] + 2 * df['psi'])
-    p3_tr_tr_S = np.where(dE > 0, df['mu'] / (df['X_S'] * df['lambda'] + df['mu'] + df['psi']), 1) * df['psi'] * df['p'] * df['upsilon'] / (df['X_S'] * df['lambda'] + 2 * df['psi'])
-
-    p3_rec_common_part = np.where(dE > 0, df['mu'] / (df['mu'] + df['psi']), 1) * df['psi'] * df['p'] * df['upsilon']
-    p3_rec_rec_I_part = 1 / (df['lambda'] + 2 * df['psi'])
-    p3_rec_rec_S_part = 1 / (df['X_S'] * df['lambda'] + 2 * df['psi'])
-    p3_rec_I_part = df['lambda'] / (df['lambda'] + df['psi'])
-    p3_rec_S_part = df['X_S'] * df['lambda'] / (df['X_S'] * df['lambda'] + df['psi'])
-    p3_rec_tr_I_part = 1 - df['p2_tr_I']
-    p3_rec_tr_S_part = 1 - df['p2_tr_S']
-
-    p3_rec_tr_I_I_rec_I = p3_rec_common_part * p3_rec_tr_I_part * p3_rec_I_part * p3_rec_rec_I_part
-    p3_rec_tr_S_I_rec_I = p3_rec_common_part * p3_rec_tr_S_part * p3_rec_I_part * p3_rec_rec_I_part
-    p3_rec_tr_S_S_rec_I = p3_rec_common_part * p3_rec_tr_S_part * p3_rec_S_part * p3_rec_rec_I_part
-    p3_rec_tr_S_S_rec_S = p3_rec_common_part * p3_rec_tr_S_part * p3_rec_S_part * p3_rec_rec_S_part
-    p3_rec_tr_S_I_rec_S = p3_rec_common_part * p3_rec_tr_S_part * p3_rec_I_part * p3_rec_rec_S_part
-    p3_rec_tr_I_I_rec_S = p3_rec_common_part * p3_rec_tr_I_part * p3_rec_I_part * p3_rec_rec_S_part
-    p3_rec_tr_I_S_rec_S = p3_rec_common_part * p3_rec_tr_I_part * p3_rec_S_part * p3_rec_rec_S_part
-    p3_rec_tr_I_S_rec_I = p3_rec_common_part * p3_rec_tr_I_part * p3_rec_S_part * p3_rec_rec_I_part
-
-
-    df['p3_tr_I_I_rec_I'] = p3_tr_tr_I + p3_rec_tr_I_I_rec_I - p3_tr_tr_I * p3_rec_tr_I_I_rec_I
-    df['p3_tr_I_I_rec_S'] = p3_tr_tr_I + p3_rec_tr_I_I_rec_S - p3_tr_tr_I * p3_rec_tr_I_I_rec_S
-    df['p3_tr_I_S_rec_S'] = p3_tr_tr_I + p3_rec_tr_I_S_rec_S - p3_tr_tr_I * p3_rec_tr_I_S_rec_S
-    df['p3_tr_I_S_rec_I'] = p3_tr_tr_I + p3_rec_tr_I_S_rec_I - p3_tr_tr_I * p3_rec_tr_I_S_rec_I
-    df['p3_tr_S_S_rec_I'] = p3_tr_tr_S + p3_rec_tr_S_S_rec_I - p3_tr_tr_S * p3_rec_tr_S_S_rec_I
-    df['p3_tr_S_S_rec_S'] = p3_tr_tr_S + p3_rec_tr_S_S_rec_S - p3_tr_tr_S * p3_rec_tr_S_S_rec_S
-    df['p3_tr_S_I_rec_S'] = p3_tr_tr_S + p3_rec_tr_S_I_rec_S - p3_tr_tr_S * p3_rec_tr_S_I_rec_S
-    df['p3_tr_S_I_rec_I'] = p3_tr_tr_S + p3_rec_tr_S_I_rec_I - p3_tr_tr_S * p3_rec_tr_S_I_rec_I
-
-    pi_2_common = df['p_tr_I'] * df['p2_tr_I'] + df['p_tr_S'] * df['p2_tr_S']
-    df['pi_2a'] = pi_2_common * (1 - df['f_S'])
-    df['pi_2b'] = pi_2_common * df['f_S']
-
-    df['pi_3a'] = (1 - df['f_S']) * \
-                  (df['p_tr_I'] * (df['p_rec_I'] * df['p3_tr_I_I_rec_I'] + df['p_rec_S'] * df['p3_tr_I_I_rec_S']) \
-                   + df['p_tr_S'] * (df['p_rec_I'] * df['p3_tr_S_I_rec_I'] + df['p_rec_S'] * df['p3_tr_S_I_rec_S']))
-    df['pi_3b'] = df['f_S'] * \
-                  (df['p_tr_I'] * (df['p_rec_I'] * df['p3_tr_I_S_rec_I'] + df['p_rec_S'] * df['p3_tr_I_S_rec_S']) \
-                   + df['p_tr_S'] * (df['p_rec_I'] * df['p3_tr_S_S_rec_I'] + df['p_rec_S'] * df['p3_tr_S_S_rec_S']))
-
-
-    pi_1 = 1 - df['pi_2a'] - df['pi_2b'] - df['pi_3a'] - df['pi_3b']
-    df['pi_1a'] = pi_1 * (1 - df['f_S'])
-    df['pi_1b'] = pi_1 * df['f_S']
-
-    d1 = dI
-    d2 = dI * (1 / df['X_C'])
-    d3 = dI * (1 / 2 + 1 / df['X_C'])
-    df['d'] = dE + d1 * (df['pi_1a'] + df['pi_1b']) + d2 * (df['pi_2a'] + df['pi_2b']) + d3 * (df['pi_3a'] + df['pi_3b'])
-
-
-    df['R'] = df['lambda'] / df['psi'] * \
-              (df['pi_1a'] + df['X_S'] * df['pi_1b'] + 1 / df['X_C'] * df['pi_2a'] + df['X_S'] / df['X_C'] * df['pi_2b'] \
-                                          + (1 / 2 + 1 / df['X_C']) * df['pi_3a'] + df['X_S'] * (1 / 2 + 1 / df['X_C']) * df['pi_3b'])
-
-
-    # df['avg psi'] = 1 / df['avg d']
-
-    # df['R'] = (df['pi_I'] + df['pi_I-C'] / df['X_C']) * df['lambda'] / df['psi'] \
-    #           + (df['pi_S'] + df['pi_S-C'] / df['X_C']) * df['lambda'] / df['psi'] * df['X_S']
-    # df['R2'] = (df['pi_E'] * (1 - df['f_S'])  + df['pi_I'] + (df['pi_I-C'] + df['pi_E-C']* (1 - df['f_S']))/ df['X_C']) * df['lambda'] / df['psi'] \
-    #           + (df['pi_E'] * df['f_S'] + df['pi_S'] + (df['pi_S-C'] + df['pi_E-C'] * df['f_S'] ) / df['X_C']) * df['lambda'] / df['psi'] * df['X_S']
-
-    # df['R'] = df['avg la'] * df['avg d']
 
     df.sort_index(inplace=True)
     df.index = df.index.map(lambda _: int(_.split('.')[0]))

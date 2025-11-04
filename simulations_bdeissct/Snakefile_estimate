@@ -38,13 +38,13 @@ rule all:
     input:
         expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
             model=MODELS, estimator=EST_ML, size=SIZES),
-        # expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
-        #     model=MODELS, estimator=EST_DL, size=SIZES),
-    # shell:
-    #     """
-    #     snakemake --snakefile Snakefile_combine_estimates {snakemake_settings} --unlock
-    #     snakemake --snakefile Snakefile_combine_estimates {snakemake_settings}
-    #     """
+        expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
+            model=MODELS, estimator=EST_DL, size=SIZES),
+    shell:
+        """
+        snakemake --snakefile Snakefile_combine_estimates {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_combine_estimates {snakemake_settings}
+        """
 
 
 rule estimate_params_dl:
@@ -62,7 +62,7 @@ rule estimate_params_dl:
         qos = 'fast',
         pattern = os.path.join(sim_folder, '..', 'models', '{size}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.45"
+    singularity: "docker://evolbioinfo/bdext:v0.1.51"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \

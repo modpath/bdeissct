@@ -35,11 +35,11 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 rule all:
     input:
         expand(os.path.join(model_folder, '{model}.keras'), model=MODELS),
-    # shell:
-    #     """
-    #     snakemake --snakefile Snakefile_estimate {snakemake_settings} --unlock
-    #     snakemake --snakefile Snakefile_estimate {snakemake_settings}
-    #     """
+    shell:
+        """
+        snakemake --snakefile Snakefile_estimate {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_estimate {snakemake_settings}
+        """
 
 rule fit_scaler:
     '''
@@ -55,7 +55,7 @@ rule fit_scaler:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_fit_scaler --train_data {input.train_trees} --model_path {params.path}
@@ -78,7 +78,7 @@ rule train_model_BD:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train --model_name BD --train_data {input.train_trees} --val_data {input.val_trees} \
@@ -104,7 +104,7 @@ rule train_model_BDCT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train --model_name BDCT --train_data {input.train_trees_nested} {input.train_trees} \
@@ -131,7 +131,7 @@ rule train_model_BDEI:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train --model_name BDEI --train_data {input.train_trees_nested} {input.train_trees} \
@@ -159,7 +159,7 @@ rule train_model_BDEICT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train --model_name BDEICT --train_data {input.train_trees_nested} {input.train_trees} \
@@ -187,7 +187,7 @@ rule train_model_BDSS:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train --model_name BDSS --train_data {input.train_trees_nested} {input.train_trees} \
@@ -215,7 +215,7 @@ rule train_model_BDSSCT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train --model_name BDSSCT  --train_data {input.train_trees_nested} {input.train_trees} \
@@ -243,7 +243,7 @@ rule train_model_BDEISS:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train --model_name BDEISS --train_data {input.train_trees_nested} {input.train_trees} \
@@ -271,7 +271,7 @@ rule train_model_BDEISSCT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train --model_name BDEISSCT --train_data {input.train_trees_nested} {input.train_trees} \
@@ -314,7 +314,7 @@ rule train_mf:
         val_labels =(['BD'] * N_VAL) + (['BDCT'] * N_VAL) + (['BDSS'] * N_VAL) + (['BDSSCT'] * N_VAL) \
                     + (['BDEI'] * N_VAL) + (['BDEICT'] * N_VAL) + (['BDEISS'] * N_VAL) + (['BDEISSCT'] * N_VAL)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.49"
+    singularity: "docker://evolbioinfo/bdext:v0.1.50"
     shell:
         """        
         bdeissct_train_model_finder \

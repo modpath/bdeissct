@@ -1,7 +1,7 @@
 import re
 
 import pandas as pd
-from treesimulator.mtbd_models import *
+import numpy as np
 
 if __name__ == "__main__":
     import argparse
@@ -22,9 +22,6 @@ if __name__ == "__main__":
     parser.add_argument('--real', nargs='*', type=str, help="real parameters")
     parser.add_argument('--tab', type=str, help="estimate table")
     params = parser.parse_args()
-
-    logging.getLogger().handlers = []
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
 
     # df = pd.DataFrame(columns=['type', 'tips',
     #                            'lambda', 'lambda_min', 'lambda_max',
@@ -48,37 +45,13 @@ if __name__ == "__main__":
                                'X_C'])
 
     for real in params.real:
-        i = int(re.findall(r'[0-9]+', real)[-1])
-        ddf = pd.read_csv(real)
-
-        R = ddf.loc[i, 'R'] if 'R' in ddf.columns else ddf.loc[i, 'avg_Re']
-        d = ddf.loc[i, 'd'] if 'd' in ddf.columns else ddf.loc[i, 'avg_d']
-        rho = ddf.loc[i, 'p_I']
-        if 'mu_EI' in ddf.columns:
-            mu = ddf.loc[i, 'mu_EI'] + (0 if 'mu_ES' not in ddf.columns else ddf.loc[i, 'mu_ES'])
-            d_E = 1 / mu
-            f_E = d_E / d
-        else:
-            f_E = 0
-            mu = np.inf
-        f_S = (ddf.loc[i, 'mu_ES'] / mu if 'mu_ES' in ddf.columns
-               else (ddf.loc[i, 'la_SS'] / (ddf.loc[i, 'la_SI'] + ddf.loc[i, 'la_SS']) if 'la_SI' in ddf.columns else 0))
-        if f_S:
-            X_S = (ddf.loc[i, 'la_SE'] if 'la_SE' in ddf.columns else (
-                ddf.loc[i, 'la_SI'] if 'la_SI' in ddf.columns else 0)) \
-                  / ddf.loc[i, 'la_IE' if 'la_IE' in ddf.columns else 'la_II']
-        else:
-            X_S = 1
-
-        upsilon = ddf.loc[i, 'upsilon'] if 'upsilon' in ddf.columns else 0
-        kappa = ddf.loc[i, 'kappa'] if 'kappa' in ddf.columns else 1
-        X_C = ddf.loc[i, 'phi_I-C'] / ddf.loc[i, 'psi_I'] if 'phi_I-C' in ddf.columns else 1
-
-        tips = ddf.loc[0, 'tips']
-
-        df.loc[f'{i}.real',
-        ['R', 'd', 'p', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'tips', 'type']] \
-            = [R, d, rho, f_E, f_S, X_S, upsilon, X_C, tips, 'real']
+        ddf = pd.read_csv(real)[['R', 'd', 'rho', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'n_tips', 'sf']]
+        ddf['d'] *= ddf['sf']
+        ddf.index = ddf.index.map(lambda i: f'{i}.real')
+        ddf['p'] = ddf['rho']
+        ddf['type'] = 'real'
+        ddf['tips'] = ddf['n_tips']
+        df = pd.concat((df, ddf[df.columns]))
 
     if params.estimates_bdct:
         for est in params.estimates_bdct:

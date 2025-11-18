@@ -10,7 +10,7 @@ from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
 from bdeissct_dl.tree_manager import read_forest
 
 
-def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODEL_PATH):
+def predict_parameters_mf(forest_sumstats, model_name=MODEL_FINDER, model_path=MODEL_PATH):
     n_forests = len(forest_sumstats)
     n_models = len(MODELS)
 
@@ -22,9 +22,8 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
         model_weights = np.zeros((n_forests, n_models), dtype=float)
         model_weights[:, MODELS.index(model_name)] = 1
 
-
-
-    X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=None)
+    scaler_x = load_scaler_numpy(model_path, suffix='x')
+    X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
 
     results = []
 
@@ -35,10 +34,6 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
         model_name = MODELS[model_id]
 
         X_cur, SF_cur = np.array(X), np.array(SF)
-
-        scaler_x = load_scaler_numpy(model_path, suffix='x')
-        if scaler_x:
-            X_cur = scaler_x.transform(X_cur)
 
         model = load_model_keras(model_path, model_name)
         Y_pred = model.predict(X_cur)
@@ -93,6 +88,34 @@ def predict_parameters(forest_sumstats, model_name=MODEL_FINDER, model_path=MODE
             result[col] = np.average(predictions, weights=weights, axis=1)
 
     return result
+
+
+
+def predict_parameters(forest_sumstats, model_name=BD, model_path=MODEL_PATH):
+    scaler_x = load_scaler_numpy(model_path, suffix='x')
+    X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
+
+    model = load_model_keras(model_path, model_name)
+    Y_pred = model.predict(X)
+
+    target_columns = MODEL2TARGET_COLUMNS[model_name]
+    if F_S in target_columns:
+        Y_pred[F_S] = Y_pred[F_S_X_S][:, 0]
+        Y_pred[X_S] = Y_pred[F_S_X_S][:, 1]
+        del Y_pred[F_S_X_S]
+    if UPSILON in target_columns:
+        Y_pred[UPSILON] = Y_pred[UPS_X_C][:, 0]
+        Y_pred[X_C] = Y_pred[UPS_X_C][:, 1]
+        del Y_pred[UPS_X_C]
+
+    for col in target_columns:
+        if len(Y_pred[col].shape) == 2 and Y_pred[col].shape[1] == 1:
+            Y_pred[col] = Y_pred[col].squeeze(axis=1)
+
+    print(Y_pred)
+    scale_back(Y_pred, SF)
+
+    return pd.DataFrame.from_dict(Y_pred, orient='columns')
 
 
 def main():

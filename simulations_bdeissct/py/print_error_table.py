@@ -13,8 +13,8 @@ import re
 MODELS = ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
 
 # PARAMETERS = ['lambda', 'avg la', 'psi', 'avg psi', 'avg psi 2', 'R', 'R2'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
-PARAMETERS = ['R', 'd', 'avg la', 'f_E', 'f_S', 'upsilon', 'X_S', 'X_C'] #, 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
-p2latex = {'avg la': '$\\bar{\\lambda}$', 'R': '$\\bar{R}$', 'd': '$\\bar{d}$', 'f_E': '$f_E$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
+PARAMETERS = ['R', 'd', 'f_E', 'f_S', 'upsilon', 'X_S', 'X_C'] #, 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
+p2latex = {'avg la': '$\\bar{\\lambda}$', 'avg R': '$\\bar{R}$', 'R': '$R$', 'd': '$d$', 'f_E': '$f_E$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
            'upsilon': '$\\upsilon$', 'X_C': '$X_C$', 'pi_E': '$\\pi_E$', 'pi_I': '$\\pi_I$', 'pi_S': '$\\pi_S$', \
            'pi_E-C': '$\\pi_{E_C}$', 'pi_I-C': '$\\pi_{I_C}$', 'pi_S-C': '$\\pi_{S_C}$'}
 p2name = {'avg la': 'average transmission rate', 'R': 'average reproduction number', 'd': 'average infection time', \
@@ -22,39 +22,39 @@ p2name = {'avg la': 'average transmission rate', 'R': 'average reproduction numb
            'upsilon': 'contact-tracing probability', 'X_C': 'contact-traced detection speed up'}
 
 EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdct', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
-EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', None, 'bdssdl', None, 'bdeissdl', 'bdct', 'bdctdl', None, 'bdeictdl', None, 'bdssctdl', None, 'bdeissctdl']
+EST_ORDER = ['bd', 'bddl', None, 'bdeidl', None, 'bdssdl', None, 'bdeissdl', None, 'bdctdl', None, 'bdeictdl', None, 'bdssctdl', None, 'bdeissctdl']
 
 
 HEADER = """
-\\begin{{table*}}[!h]
+\\begin{{table}}[!t]
 \\begin{{center}}
 \\scriptsize
 \\caption{{Estimation errors for the {param_name} {param_latex} for transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-errors}}}}
 \\tabcolsep=4pt
-\\begin{{tabular*}}{{{width_fraction}\\textwidth}}{{@{{\\extracolsep{{\\fill}}}}l|{rl}|@{{\\extracolsep{{\\fill}}}}}}
+\\begin{{tabular*}}{{\\columnwidth}}{{@{{\\extracolsep{{\\fill}}}}|l|{rl}|@{{\\extracolsep{{\\fill}}}}}}
 \\toprule"""
 
 FOOTER1 = """\\botrule
 \\end{{tabular*}}
 \\begin{{tablenotes}}%
 \\item Mean absolute percentage errors, $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|/{param_latex}$, 
-and in parenthesis the corresponding biases, $100({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})/{param_latex}$, are reported for 100 trees generated under each dataset for each estimator.
+and in parenthesis the corresponding biases, $100({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})/{param_latex}$, are reported for 1000 trees generated under each dataset for each estimator.
 \\item We consider only estimators for the models that are either nested in or generalize the model that generated the data. 
 \\item The errors and biases of the estimators corresponding to the model that generated the data are shown in bold.
 \\end{{tablenotes}}
 \\end{{center}}
-\\end{{table*}}
+\\end{{table}}
 """
 
 FOOTER2 = """\\botrule
 \\end{{tabular*}}
 \\begin{{tablenotes}}%
 \\item Mean absolute errors multiplied by 100, $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|$, 
-and in parenthesis the corresponding biases, $100 ({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})$, are reported for 100 trees generated under each dataset for each estimator.
+and in parenthesis the corresponding biases, $100 ({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})$, are reported for 1000 trees generated under each dataset for each estimator.
 \\item The errors and biases of the estimators corresponding to the model that generated the data are shown in bold.
 \\end{{tablenotes}}
 \\end{{center}}
-\\end{{table*}}
+\\end{{table}}
 """
 
 
@@ -79,7 +79,7 @@ def need_to_skip(par, estimator_type):
     return False
 
 
-estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/500_1000/{model}/estimates.tab' for model in
+estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000/{model}/estimates.tab' for model in
                   MODELS]
 
 
@@ -92,7 +92,11 @@ if __name__ == "__main__":
     params = parser.parse_args()
 
     errors = np.zeros(shape=(8, 14, 16), dtype=float)
+    errors_min = np.zeros(shape=(8, 14, 16), dtype=float)
+    errors_max = np.zeros(shape=(8, 14, 16), dtype=float)
     biases = np.zeros(shape=(8, 14, 16), dtype=float)
+    biases_min = np.zeros(shape=(8, 14, 16), dtype=float)
+    biases_max = np.zeros(shape=(8, 14, 16), dtype=float)
 
 
 
@@ -137,6 +141,22 @@ if __name__ == "__main__":
                     cur_mask &= df['upsilon'] >= 0.001
                 if cur_mask.sum() > 0:
                     errors[num_model, num_par, num_est] = 100 * np.mean(np.abs(df.loc[cur_mask, f"{par}_error"]))
+
+                    # data = np.abs(df.loc[cur_mask, f"{par}_error"])
+                    #
+                    # # Bootstrap resampling
+                    # n_bootstrap = 10000
+                    # bootstrap_means = []
+                    # for i in range(n_bootstrap):
+                    #     sample = np.random.choice(data, size=len(data), replace=True)
+                    #     bootstrap_means.append(np.mean(sample))
+                    #
+                    # # Percentile method
+                    # ci_lower = np.percentile(bootstrap_means, 2.5)
+                    # ci_upper = np.percentile(bootstrap_means, 97.5)
+                    #
+                    #
+                    # errors_min[num_model, num_par, num_est], errors_max[num_model, num_par, num_est] = 100 * ci_lower, 100 * ci_upper
                     biases[num_model, num_par, num_est] = 100 * np.mean(df.loc[cur_mask, f"{par}_error"])
 
     def format_bias(b):
@@ -148,6 +168,10 @@ if __name__ == "__main__":
         return f'{errors[m_i, p_i, e_i]:.0f} & ({format_bias(biases[m_i, p_i, e_i])})' \
             if (e_i // 2) != m_i \
             else f'\\textbf{{{errors[m_i, p_i, e_i]:.0f}}} & \\textbf{{({format_bias(biases[m_i, p_i, e_i])})}}'
+
+        return f'{errors[m_i, p_i, e_i]:.0f} [{errors_min[m_i, p_i, e_i]:.0f}-{errors_max[m_i, p_i, e_i]:.0f}] & ({format_bias(biases[m_i, p_i, e_i])})' \
+            if (e_i // 2) != m_i \
+            else f'\\textbf{{{errors[m_i, p_i, e_i]:.0f} [{errors_min[m_i, p_i, e_i]:.0f}-{errors_max[m_i, p_i, e_i]:.0f}]}} & \\textbf{{({format_bias(biases[m_i, p_i, e_i])})}}'
 
     def latex_estimator(estimator):
         estimator = estimator.upper().replace('DL', '')
@@ -161,13 +185,19 @@ if __name__ == "__main__":
         return "\\multicolumn{{2}}{{c|}}{{({})}}".format('DL' if 'dl' in estimator else 'ML')
 
     def is_ct(estimator):
-        return "\\multicolumn{{2}}{{c|}}{{{}}}".format(('-CT' if 'ct' in estimator and estimator.upper().strip('DL') != 'BDCT' else '') + (' (ML)' if 'dl' not in estimator else ' (DL)'))
+        return "\\multicolumn{{2}}{{c|}}{{{}}}".format(('-CT' if 'ct' in estimator and estimator.upper().strip('DL') != 'BDCT' else '') \
+                                                       # + (' (ML)' if 'dl' not in estimator else ' (DL)')
+        )
 
     with open(params.latex, 'w') as f:
         for p_i, p in enumerate(PARAMETERS):
+            if p in ['R', 'd']:
+                continue
             pertinent_ests = [_ for _ in EST_ORDER if _ is not None and not need_to_skip(p, _)]
             f.write(HEADER.format(param_name=p2name[p], param_latex=p2latex[p], param=p, rl='|'.join(['rl'] * len(pertinent_ests)), width_fraction=0.09 * (len(pertinent_ests) + 1),
-                                  ml_expl=' The estimator type, maximum-likelihood (ML) or deep-learning-based (DL), is specified in parenthesis.'))
+                                  # ml_expl=' The estimator type, maximum-likelihood (ML) or deep-learning-based (DL), is specified in parenthesis.')
+                                  ml_expl='')
+                    )
             f.write('\n')
             f.write(' & {}\\\\\n'.format(' & '.join([latex_estimator(_) for _ in pertinent_ests]))\
                     .replace('\\multicolumn{2}{c|}{BD} & \\multicolumn{2}{c|}{BD}', '\\multicolumn{4}{c|}{BD}')\

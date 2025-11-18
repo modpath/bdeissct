@@ -31,7 +31,7 @@ rule combine_estimates:
     Combine estimates.
     '''
     input:
-        log = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.log'), i=REPETITIONS),
+        tree_stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
         est_bddl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BD.csv.xz'),
         est_bdctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDCT.csv.xz'),
         est_bdeidl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEI.csv.xz'),
@@ -47,10 +47,10 @@ rule combine_estimates:
         name = 'estimates',
         qos = 'fast',
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.17"
+    singularity: "docker://evolbioinfo/python-evol:v3.8.2b"
     shell:
         """
-        python3 py/summary_table.py --real {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.log \
+        python3 py/summary_table.py --real {input.tree_stats} \
         --estimates_bd {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bd \
         --estimates_bdct {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bdct \
         --estimates_bdei {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bdei \

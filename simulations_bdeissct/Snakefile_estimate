@@ -36,8 +36,8 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
-            model=MODELS, estimator=EST_ML, size=SIZES),
+        # expand(os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
+        #     model=MODELS, estimator=EST_ML, size=SIZES),
         expand(os.path.join(sim_folder, '{size}', '{model}','trees.estimates_{estimator}.csv.xz'),
             model=MODELS, estimator=EST_DL, size=SIZES),
     shell:

@@ -17,7 +17,7 @@ os.makedirs('logs', exist_ok=True)
 
 sim_folder = os.path.join(folder, config.get("sf", 'test'))
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['2000_5000']
+SIZES=['200_500']
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
     if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
@@ -343,16 +343,16 @@ rule encode_test:
     '''
     input:
         nwk = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.nwk'), i=range(num)),
+        log = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'tree.{i}.log'), i=range(num)),
     output:
         stats = os.path.join(sim_folder, '{size,[0-9]+_[0-9]+}', '{model,[BDEISCT0-9]+}', 'trees.csv.xz')
     params:
         mem=2000,
         name='enc.{model}.test',
-        qos='fast',
-        nwk=os.path.join(sim_folder, '{size}', '{model}', 'tree.*.nwk'),
+        qos='fast'
     threads: 1
     singularity: "docker://evolbioinfo/bdext:v0.1.49"
     shell:
         """
-        bdeissct_encode --patterns {params.nwk} --out {output.stats}
+        bdeissct_encode --nwks {input.nwk} --logs {input.log} --out {output.stats}
         """

@@ -80,7 +80,8 @@ def parse_parameters(log):
     for i in df.index:
         R = df.loc[i, 'R'] if 'R' in df.columns else df.loc[i, 'avg_Re']
         d = df.loc[i, 'd'] if 'd' in df.columns else df.loc[i, 'avg_d']
-        rho = df.loc[i, 'p_I']
+        # if there is contact-tracing involved use averaged sampling probability over notified and unnotified infectious individuals
+        rho = df.loc[i, 'p_I'] if 'd' in df.columns else df.loc[i, 'zeta'] * df.loc[i, 'avg_Re']
         if 'mu_EI' in df.columns:
             mu = df.loc[i, 'mu_EI'] + (0 if 'mu_ES' not in df.columns else df.loc[i, 'mu_ES'])
             d_E = 1 / mu

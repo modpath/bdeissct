@@ -19,7 +19,7 @@ os.makedirs('logs', exist_ok=True)
 sim_folder = os.path.join(folder, config.get("sf", 'train'))
 model = config.get('model', None)
 MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['2000_5000']
+SIZES=['200_500']
 
 TREES_PER_FILE = 8
 
@@ -31,11 +31,11 @@ rule all:
     input:
         expand(os.path.join(sim_folder, '{size}', '{model}', '{k}', 'trees.{i}.nwk'), \
             k=REPETITIONS, i=REPETITIONS, model=MODELS, size=SIZES)
-    # shell:
-    #     """
-    #     snakemake --snakefile Snakefile_encode --config model={model} num={num} {snakemake_settings} --unlock
-    #     snakemake --snakefile Snakefile_encode --config model={model} num={num}  {snakemake_settings}
-    #     """
+    shell:
+        """
+        snakemake --snakefile Snakefile_encode --config model={model} num={num} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_encode --config model={model} num={num}  {snakemake_settings}
+        """
 
 
 rule simulate_bdeissct_trees:
@@ -56,7 +56,7 @@ rule simulate_bdeissct_trees:
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
         --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
         --n {TREES_PER_FILE} \
-        --min_R 0.5 \
+        --min_R 1 \
         --max_R 10  \
         --min_d 0.5  \
         --max_d 12  \

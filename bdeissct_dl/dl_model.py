@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.python.keras.utils.generic_utils import register_keras_serializable
 
 from bdeissct_dl.bdeissct_model import F_E, F_S, UPSILON, F_S_X_S, UPS_X_C, REPRODUCTIVE_NUMBER, \
-    INFECTION_DURATION
+    INFECTION_DURATION, X_S, X_C
 
 LEARNING_RATE = 0.001
 
@@ -11,10 +11,12 @@ LOSS_WEIGHTS = {
     REPRODUCTIVE_NUMBER: 1,
     INFECTION_DURATION: 1,
     UPS_X_C: 200,  # as there are 2 outputs, we multiply by 200 to scale it to [0, 200]
+    F_S: 200, # as it is a value between 0 and 0.5, we multiply by 200 to scale it to [0, 100]
     F_E: 100,
+    UPSILON: 100,
     F_S_X_S: 200,  # as there are 2 outputs, we multiply by 200 to scale it to [0, 200]
-    # PIS: 600  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
-    # PIS: 100 / (DELTA * 0.9995)  # as pi_* are within [0, 1] each, we multiply by 600 to scale it to [0, 600]
+    X_C: 1,
+    X_S: 1
 }
 
 QUANTILES = (0.5, )
@@ -128,13 +130,12 @@ LOSS_FUNCTIONS = {
     REPRODUCTIVE_NUMBER: "mean_absolute_percentage_error",
     INFECTION_DURATION: "mean_absolute_percentage_error",
     UPS_X_C: loss_ct,
-    # F_E: loss_prob, #'mae',
+    UPSILON: 'mae',
+    X_C: "mean_absolute_percentage_error",
     F_E: 'mae',
     F_S_X_S: loss_ss,
-    # PIS: tf.keras.losses.Huber(delta=DELTA,
-    #                            reduction='sum_over_batch_size',
-    #                            name='huber_loss')
-    # PIS: 'mae'
+    F_S: 'mae',
+    X_S: "mean_absolute_percentage_error",
 }
 
 
@@ -161,20 +162,26 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
     # x = tf.keras.layers.Dropout(0.5, name='dropout3_50')(x)
     x = tf.keras.layers.Dense(16, activation='elu', name=f'layer4_dense32_elu')(x)
 
-    n_states = 1
-    outputs = {
-        REPRODUCTIVE_NUMBER: tf.keras.layers.Dense(1, activation="softplus", name=REPRODUCTIVE_NUMBER)(x), # positive values only
-        INFECTION_DURATION: tf.keras.layers.Dense(1, activation="softplus", name=INFECTION_DURATION)(x), # positive values only
-    }
+    outputs = {}
+
+    if REPRODUCTIVE_NUMBER in target_columns:
+        outputs[REPRODUCTIVE_NUMBER] = tf.keras.layers.Dense(1, activation="softplus", name=REPRODUCTIVE_NUMBER)(x) # positive values only
+    if INFECTION_DURATION in target_columns:
+        outputs[INFECTION_DURATION] = tf.keras.layers.Dense(1, activation="softplus", name=INFECTION_DURATION)(x) # positive values only
     if F_E in target_columns:
         outputs[F_E] = tf.keras.layers.Dense(1, activation="sigmoid", name=F_E)(x)
-        n_states += 1
+    # if F_S in target_columns:
+    #     outputs[F_S_X_S] = SSLayer(name=F_S_X_S)(tf.keras.layers.Dense(2, activation=None, name="FS_XS_logits")(x))
     if F_S in target_columns:
-        outputs[F_S_X_S] = SSLayer(name=F_S_X_S)(tf.keras.layers.Dense(2, activation=None, name="FS_XS_logits")(x))
-        n_states += 1
+        outputs[F_S] = tf.keras.layers.Dense(1, activation=half_sigmoid, name="FS_logits")(x)
+    if X_S in target_columns:
+        outputs[X_S] = tf.keras.layers.Dense(1, activation=relu_plus_one, name="XS_logits")(x)
+    # if UPSILON in target_columns:
+    #     outputs[UPS_X_C] = CTLayer(name=UPS_X_C)(tf.keras.layers.Dense(2, activation=None, name="ups_XC_logits")(x))
     if UPSILON in target_columns:
-        outputs[UPS_X_C] = CTLayer(name=UPS_X_C)(tf.keras.layers.Dense(2, activation=None, name="ups_XC_logits")(x))
-        n_states *= 2
+        outputs[UPSILON] = tf.keras.layers.Dense(1, activation="sigmoid", name="ups_logits")(x)
+    if X_C in target_columns:
+        outputs[X_C] = tf.keras.layers.Dense(1, activation=relu_plus_one, name="XC_logits")(x)
 
     model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 

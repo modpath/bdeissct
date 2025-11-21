@@ -42,7 +42,7 @@ def main():
     os.makedirs(params.model_path, exist_ok=True)
 
     scaler_x, scaler_y = StandardScaler(), None
-    x_indices, y_indices = \
+    x_indices, y_indices, _ = \
         get_data_characteristics(paths=params.train_data, target_columns=TARGET_COLUMNS_BDEISSCT)
     fit_scalers(paths=params.train_data, x_indices=x_indices, y_indices=y_indices, scaler_x=scaler_x, scaler_y=scaler_y)
 

@@ -24,7 +24,7 @@ N_VAL_OTHER = N_VAL
 os.makedirs('logs', exist_ok=True)
 
 sim_folder = os.path.join(folder, config.get("sf", 'train'), '200_500')
-model_folder = os.path.join(folder, 'models', '200_500')
+model_folder = os.path.join(folder, 'models', '2000_5000')
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
 
@@ -34,7 +34,7 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        expand(os.path.join(model_folder, '{model}.keras'), model=MODELS),
+        expand(os.path.join(model_folder, '{model}.R.keras'), model=MODELS),
     shell:
         """
         snakemake --snakefile Snakefile_simulate_test {snakemake_settings} --unlock
@@ -55,7 +55,7 @@ rule fit_scaler:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_fit_scaler --train_data {input.train_trees} --model_path {params.path}
@@ -71,14 +71,14 @@ rule train_model_BD:
         val_trees = expand(os.path.join(sim_folder, 'BD', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
     output:
-        model = os.path.join(model_folder, 'BD.keras')
+        model = os.path.join(model_folder, 'BD.R.keras')
     params:
         mem=4000,
         name='tr_BD',
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_train --model_name BD --train_data {input.train_trees} --val_data {input.val_trees} \
@@ -90,21 +90,21 @@ rule train_model_BDCT:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BD.keras'),
+        # model = os.path.join(model_folder,'BD.R.keras'),
         train_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN_OTHER), model=['BD']),
         train_trees = expand(os.path.join(sim_folder, 'BDCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
         val_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TRAIN + N_VAL_OTHER), model=['BD']),
         val_trees = expand(os.path.join(sim_folder, 'BDCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
     output:
-        model = os.path.join(model_folder, 'BDCT.keras')
+        model = os.path.join(model_folder, 'BDCT.R.keras')
     params:
         mem=8000,
         name='tr_BDCT',
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_train --model_name BDCT --train_data {input.train_trees_nested} {input.train_trees} \
@@ -117,21 +117,21 @@ rule train_model_BDEI:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BD.keras'),
+        # model = os.path.join(model_folder,'BD.R.keras'),
         train_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN_OTHER), model=['BD']),
         train_trees = expand(os.path.join(sim_folder, 'BDEI', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
         val_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TRAIN + N_VAL_OTHER), model=['BD']),
         val_trees = expand(os.path.join(sim_folder, 'BDEI', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
     output:
-        model = os.path.join(model_folder, 'BDEI.keras')
+        model = os.path.join(model_folder, 'BDEI.R.keras')
     params:
         mem=8000,
         name='tr_BDEI',
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_train --model_name BDEI --train_data {input.train_trees_nested} {input.train_trees} \
@@ -145,21 +145,21 @@ rule train_model_BDEICT:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder, 'BDEI.keras'),
+        # model = os.path.join(model_folder, 'BDEI.R.keras'),
         train_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN_OTHER), model=['BD', 'BDEI', 'BDCT']),
         train_trees = expand(os.path.join(sim_folder, 'BDEICT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
         val_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TRAIN + N_VAL_OTHER), model=['BD', 'BDEI', 'BDCT']),
         val_trees = expand(os.path.join(sim_folder, 'BDEICT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
     output:
-        model = os.path.join(model_folder, 'BDEICT.keras')
+        model = os.path.join(model_folder, 'BDEICT.R.keras')
     params:
         mem=16000,
         name='tr_BDEICT',
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_train --model_name BDEICT --train_data {input.train_trees_nested} {input.train_trees} \
@@ -173,21 +173,21 @@ rule train_model_BDSS:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BD.keras'),
+        # model = os.path.join(model_folder,'BD.R.keras'),
         train_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN_OTHER), model=['BD']),
         train_trees = expand(os.path.join(sim_folder, 'BDSS', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
         val_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TRAIN + N_VAL_OTHER), model=['BD']),
         val_trees = expand(os.path.join(sim_folder, 'BDSS', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
     output:
-        model = os.path.join(model_folder, 'BDSS.keras')
+        model = os.path.join(model_folder, 'BDSS.R.keras')
     params:
         mem=8000,
         name='tr_BDSS',
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_train --model_name BDSS --train_data {input.train_trees_nested} {input.train_trees} \
@@ -201,21 +201,21 @@ rule train_model_BDSSCT:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BDSS.keras'),
+        # model = os.path.join(model_folder,'BDSS.R.keras'),
         train_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN_OTHER), model=['BD', 'BDSS', 'BDCT']),
         train_trees = expand(os.path.join(sim_folder, 'BDSSCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
         val_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TRAIN + N_VAL_OTHER), model=['BD', 'BDSS', 'BDCT']),
         val_trees = expand(os.path.join(sim_folder, 'BDSSCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
     output:
-        model = os.path.join(model_folder, 'BDSSCT.keras')
+        model = os.path.join(model_folder, 'BDSSCT.R.keras')
     params:
         mem=16000,
         name='tr_BDSSCT',
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_train --model_name BDSSCT  --train_data {input.train_trees_nested} {input.train_trees} \
@@ -229,21 +229,21 @@ rule train_model_BDEISS:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BDEI.keras'),
+        # model = os.path.join(model_folder,'BDEI.R.keras'),
         train_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN_OTHER), model=['BD', 'BDEI', 'BDSS']),
         train_trees = expand(os.path.join(sim_folder, 'BDEISS', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
         val_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TRAIN + N_VAL_OTHER), model=['BD', 'BDEI', 'BDSS']),
         val_trees = expand(os.path.join(sim_folder, 'BDEISS', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
     output:
-        model = os.path.join(model_folder, 'BDEISS.keras')
+        model = os.path.join(model_folder, 'BDEISS.R.keras')
     params:
         mem=16000,
         name='tr_BDEISS',
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_train --model_name BDEISS --train_data {input.train_trees_nested} {input.train_trees} \
@@ -257,21 +257,21 @@ rule train_model_BDEISSCT:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BDEISS.keras'),
+        # model = os.path.join(model_folder,'BDEISS.R.keras'),
         train_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN_OTHER), model=['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT']),
         train_trees = expand(os.path.join(sim_folder, 'BDEISSCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
         val_trees_nested = expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TRAIN + N_VAL_OTHER), model=['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT']),
         val_trees = expand(os.path.join(sim_folder, 'BDEISSCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
     output:
-        model = os.path.join(model_folder, 'BDEISSCT.keras')
+        model = os.path.join(model_folder, 'BDEISSCT.R.keras')
     params:
         mem=32000,
         name='tr_BDEISSCT',
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
+    singularity: "docker://evolbioinfo/bdext:v0.1.56"
     shell:
         """        
         bdeissct_train --model_name BDEISSCT --train_data {input.train_trees_nested} {input.train_trees} \
@@ -279,54 +279,3 @@ rule train_model_BDEISSCT:
         --model_path {params.path}
         """
         # --base_model_name BDEISS \
-
-rule train_mf:
-    '''
-    Trains a BDEISSCT model finder.
-    '''
-    input:
-        train_trees_BD = expand(os.path.join(sim_folder, 'BD', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
-        train_trees_BDCT = expand(os.path.join(sim_folder, 'BDCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
-        train_trees_BDEI = expand(os.path.join(sim_folder, 'BDEI', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
-        train_trees_BDEICT = expand(os.path.join(sim_folder, 'BDEICT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
-        train_trees_BDSS = expand(os.path.join(sim_folder, 'BDSS', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
-        train_trees_BDSSCT = expand(os.path.join(sim_folder, 'BDSSCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
-        train_trees_BDEISS = expand(os.path.join(sim_folder, 'BDEISS', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
-        train_trees_BDEISSCT = expand(os.path.join(sim_folder, 'BDEISSCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN)),
-        val_trees_BD = expand(os.path.join(sim_folder, 'BD', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
-        val_trees_BDCT = expand(os.path.join(sim_folder, 'BDCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
-        val_trees_BDEI = expand(os.path.join(sim_folder, 'BDEI', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
-        val_trees_BDEICT = expand(os.path.join(sim_folder, 'BDEICT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
-        val_trees_BDSS = expand(os.path.join(sim_folder, 'BDSS', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
-        val_trees_BDSSCT = expand(os.path.join(sim_folder, 'BDSSCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
-        val_trees_BDEISS = expand(os.path.join(sim_folder, 'BDEISS', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
-        val_trees_BDEISSCT = expand(os.path.join(sim_folder, 'BDEISSCT', '{k}', 'trees.csv.xz'), k=range(N_TRAIN,N_TOTAL)),
-        scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        model = os.path.join(model_folder, 'MF.keras')
-    params:
-        mem=2000,
-        name='train_mf',
-        qos='fast',
-        path = os.path.join(sim_folder, 'MF'),
-        train_labels =(['BD'] * N_TRAIN) + (['BDCT'] * N_TRAIN) + (['BDSS'] * N_TRAIN) + (['BDSSCT'] * N_TRAIN) \
-                      + (['BDEI'] * N_TRAIN) + (['BDEICT'] * N_TRAIN) + (['BDEISS'] * N_TRAIN) + (['BDEISSCT'] * N_TRAIN),
-        val_labels =(['BD'] * N_VAL) + (['BDCT'] * N_VAL) + (['BDSS'] * N_VAL) + (['BDSSCT'] * N_VAL) \
-                    + (['BDEI'] * N_VAL) + (['BDEICT'] * N_VAL) + (['BDEISS'] * N_VAL) + (['BDEISSCT'] * N_VAL)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.52"
-    shell:
-        """        
-        bdeissct_train_model_finder \
-        --train_data {input.train_trees_BD} {input.train_trees_BDCT} \
-        {input.train_trees_BDSS} {input.train_trees_BDSSCT} \
-        {input.train_trees_BDEI} {input.train_trees_BDEICT} \
-        {input.train_trees_BDEISS} {input.train_trees_BDEISSCT} \
-        --train_labels {params.train_labels} \
-         --val_data {input.val_trees_BD} {input.val_trees_BDCT} \
-        {input.val_trees_BDSS} {input.val_trees_BDSSCT} \
-        {input.val_trees_BDEI} {input.val_trees_BDEICT} \
-        {input.val_trees_BDEISS} {input.val_trees_BDEISSCT} \
-        --val_labels {params.val_labels} \
-         --model_path {params.path}
-        """

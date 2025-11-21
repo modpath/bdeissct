@@ -56,6 +56,7 @@ def get_test_data(dfs=None, paths=None, scaler_x=None):
 def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT):
     x_indices = []
     y_indices = []
+    col2index = {}
 
     df = pd.read_csv(paths[0])
     feature_columns = set(get_X_columns(df.columns))
@@ -65,7 +66,8 @@ def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT):
             x_indices.append(i)
         if col in target_columns:
             y_indices.append(i)
-    return x_indices, y_indices
+            col2index[col] = i
+    return x_indices, y_indices, col2index
 
 
 def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, filenames=None, scaler_x=None, \
@@ -99,20 +101,35 @@ def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, file
     if scaler_x:
         X = scaler_x.transform(X)
 
-    train_labels = {
-        REPRODUCTIVE_NUMBER: Y[:, 0],
-        INFECTION_DURATION: Y[:, 1],
-    }
-    col_i = 2
+    train_labels = {}
+    col_i = 0
+    if REPRODUCTIVE_NUMBER in target_columns:
+        train_labels[REPRODUCTIVE_NUMBER] = Y[:, col_i]
+        col_i += 1
+    if INFECTION_DURATION in target_columns:
+        train_labels[INFECTION_DURATION] = Y[:, col_i]
+        col_i += 1
+    # if UPSILON in target_columns:
+    #     train_labels[UPS_X_C] = Y[:, col_i: (col_i + 2)]
+    #     col_i += 2
     if UPSILON in target_columns:
-        train_labels[UPS_X_C] = Y[:, col_i: (col_i + 2)]
-        col_i += 2
+        train_labels[UPSILON] = Y[:, col_i]
+        col_i += 1
+    if X_C in target_columns:
+        train_labels[X_C] = Y[:, col_i]
+        col_i += 1
     if F_E in target_columns:
         train_labels[F_E] = Y[:, col_i]
         col_i += 1
+    # if F_S in target_columns:
+    #     train_labels[F_S_X_S] = Y[:, col_i: (col_i + 2)]
+    #     col_i += 2
     if F_S in target_columns:
-        train_labels[F_S_X_S] = Y[:, col_i: (col_i + 2)]
-        col_i += 2
+        train_labels[F_S] = Y[:, col_i]
+        col_i += 1
+    if X_S in target_columns:
+        train_labels[X_S] = Y[:, col_i]
+        col_i += 1
 
     dataset = tf.data.Dataset.from_tensor_slices((X, train_labels))
 
@@ -166,33 +183,36 @@ def main():
         np.random.shuffle(params.val_data)
 
 
-    x_indices, y_indices = get_data_characteristics(paths=params.train_data, target_columns=target_columns)
+    x_indices, y_indices, y_col2index = get_data_characteristics(paths=params.train_data, target_columns=target_columns)
 
     scaler_x = load_scaler_numpy(params.model_path, suffix='x')
 
-    if params.base_model_name is not None:
-        model = load_model_keras(params.model_path, params.base_model_name)
-        print(f'Loaded base model {params.base_model_name} with {len(x_indices)} input features and {len(y_indices)} output features.')
-    else:
-        model = build_model(target_columns, n_x=len(x_indices))
-        print(f'Building a model from scratch with {len(x_indices)} input features and {len(y_indices)} output features.')
-    print(model.summary())
 
-    ds_train = get_train_data(target_columns, x_indices, y_indices, file_pattern=None, filenames=params.train_data, \
-                              scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=True)
-    ds_val = get_train_data(target_columns, x_indices, y_indices, file_pattern=None, filenames=params.val_data, \
-                            scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=True)
+    for col, y_idx in y_col2index.items():
+        print(f'Training to predict {col} with {params.model_name}...')
 
-    #early stopping to avoid overfitting
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=25)
+        if params.base_model_name is not None:
+            model = load_model_keras(params.model_path, f'{params.base_model_name}.{col}')
+            print(f'Loaded base model {params.base_model_name} with {len(x_indices)} input features and {col} as output.')
+        else:
+            model = build_model([col], n_x=len(x_indices))
+            print(f'Building a model from scratch with {len(x_indices)} input features and {col} as output.')
+        print(model.summary())
 
-    #Training of the Network, with an independent validation set
-    model.fit(ds_train, verbose=1, epochs=params.epochs, validation_data=ds_val,
-              callbacks=[early_stop])
+        ds_train = get_train_data([col], x_indices, [y_idx], file_pattern=None, filenames=params.train_data, \
+                                  scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=True)
+        ds_val = get_train_data([col], x_indices, [y_idx], file_pattern=None, filenames=params.val_data, \
+                                scaler_x=scaler_x, batch_size=BATCH_SIZE * 8, shuffle=True)
 
-    print(f'Saving the trained model {params.model_name} to {params.model_path}...')
+        #early stopping to avoid overfitting
+        early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=25)
 
-    save_model_keras(model, path=params.model_path, model_name=params.model_name)
+        #Training of the Network, with an independent validation set
+        model.fit(ds_train, verbose=1, epochs=params.epochs, validation_data=ds_val, callbacks=[early_stop])
+
+        print(f'Saving the trained model {params.model_name}.{col} to {params.model_path}...')
+
+        save_model_keras(model, path=params.model_path, model_name=f'{params.model_name}.{col}')
 
 
 

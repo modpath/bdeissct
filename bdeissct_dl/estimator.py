@@ -39,13 +39,17 @@ def predict_parameters_mf(forest_sumstats, model_name=MODEL_FINDER, model_path=M
         Y_pred = model.predict(X_cur)
 
         target_columns = MODEL2TARGET_COLUMNS[model_name]
-        if F_S in target_columns:
-            Y_pred[F_S] = Y_pred[F_S_X_S][:, 0]
-            Y_pred[X_S] = Y_pred[F_S_X_S][:, 1]
+        if F_S_X_S in Y_pred:
+            if F_S in target_columns:
+                Y_pred[F_S] = Y_pred[F_S_X_S][:, 0]
+            if X_S in target_columns:
+                Y_pred[X_S] = Y_pred[F_S_X_S][:, 1]
             del Y_pred[F_S_X_S]
-        if UPSILON in target_columns:
-            Y_pred[UPSILON] = Y_pred[UPS_X_C][:, 0]
-            Y_pred[X_C] = Y_pred[UPS_X_C][:, 1]
+        if UPS_X_C in Y_pred:
+            if UPSILON in target_columns:
+                Y_pred[UPSILON] = Y_pred[UPS_X_C][:, 0]
+            if X_C in target_columns:
+                Y_pred[X_C] = Y_pred[UPS_X_C][:, 1]
             del Y_pred[UPS_X_C]
 
         for col in target_columns:
@@ -95,27 +99,32 @@ def predict_parameters(forest_sumstats, model_name=BD, model_path=MODEL_PATH):
     scaler_x = load_scaler_numpy(model_path, suffix='x')
     X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
 
-    model = load_model_keras(model_path, model_name)
-    Y_pred = model.predict(X)
-
     target_columns = MODEL2TARGET_COLUMNS[model_name]
-    if F_S in target_columns:
-        Y_pred[F_S] = Y_pred[F_S_X_S][:, 0]
-        Y_pred[X_S] = Y_pred[F_S_X_S][:, 1]
-        del Y_pred[F_S_X_S]
-    if UPSILON in target_columns:
-        Y_pred[UPSILON] = Y_pred[UPS_X_C][:, 0]
-        Y_pred[X_C] = Y_pred[UPS_X_C][:, 1]
-        del Y_pred[UPS_X_C]
 
+    result = None
     for col in target_columns:
+        model = load_model_keras(model_path, f'{model_name}.{col}')
+        Y_pred = model.predict(X)
+
+
+        # if F_S in target_columns:
+        #     Y_pred[F_S] = Y_pred[F_S_X_S][:, 0]
+        #     Y_pred[X_S] = Y_pred[F_S_X_S][:, 1]
+        #     del Y_pred[F_S_X_S]
+        # if UPSILON in target_columns:
+        #     Y_pred[UPSILON] = Y_pred[UPS_X_C][:, 0]
+        #     Y_pred[X_C] = Y_pred[UPS_X_C][:, 1]
+        #     del Y_pred[UPS_X_C]
+
         if len(Y_pred[col].shape) == 2 and Y_pred[col].shape[1] == 1:
             Y_pred[col] = Y_pred[col].squeeze(axis=1)
 
-    print(Y_pred)
-    scale_back(Y_pred, SF)
+        print(Y_pred)
+        scale_back(Y_pred, SF)
+        res_df = pd.DataFrame.from_dict(Y_pred, orient='columns')
+        result = result.join(res_df, how='outer') if result is not None else res_df
 
-    return pd.DataFrame.from_dict(Y_pred, orient='columns')
+    return result
 
 
 def main():

@@ -61,8 +61,8 @@ rule simulate_bdeissct_trees:
         --max_ups 0.5  \
         --min_xc 20  \
         --max_xc 100  \
-        --min_kappa 1 \
-        --max_kappa 1 \
+        --min_kappa 100 \
+        --max_kappa 100 \
         --min_fe 0.1  \
         --max_fe 0.9  \
         --min_fss 0.05  \
@@ -99,8 +99,8 @@ rule simulate_bdeiss_trees:
         --max_ups 0  \
         --min_xc 1  \
         --max_xc 1  \
-        --min_kappa 1 \
-        --max_kappa 1 \
+        --min_kappa 100 \
+        --max_kappa 100 \
         --min_fe 0.1  \
         --max_fe 0.9  \
         --min_fss 0.05  \
@@ -137,8 +137,8 @@ rule simulate_bdeict_trees:
         --max_ups 0.5  \
         --min_xc 20  \
         --max_xc 100  \
-        --min_kappa 1 \
-        --max_kappa 1 \
+        --min_kappa 100 \
+        --max_kappa 100 \
         --min_fe 0.1  \
         --max_fe 0.9  \
         --min_fss 0  \
@@ -175,8 +175,8 @@ rule simulate_bdei_trees:
         --max_ups 0  \
         --min_xc 1  \
         --max_xc 1  \
-        --min_kappa 1 \
-        --max_kappa 1 \
+        --min_kappa 100 \
+        --max_kappa 100 \
         --min_fe 0.1  \
         --max_fe 0.9  \
         --min_fss 0  \
@@ -213,8 +213,8 @@ rule simulate_bdssct_trees:
         --max_ups 0.5  \
         --min_xc 20  \
         --max_xc 100  \
-        --min_kappa 1 \
-        --max_kappa 1 \
+        --min_kappa 100 \
+        --max_kappa 100 \
         --min_fe 0  \
         --max_fe 0  \
         --min_fss 0.05  \
@@ -251,8 +251,8 @@ rule simulate_bdss_trees:
         --max_ups 0  \
         --min_xc 1  \
         --max_xc 1  \
-        --min_kappa 1 \
-        --max_kappa 1 \
+        --min_kappa 100 \
+        --max_kappa 100 \
         --min_fe 0  \
         --max_fe 0  \
         --min_fss 0.05  \
@@ -289,8 +289,8 @@ rule simulate_bdct_trees:
         --max_ups 0.5  \
         --min_xc 20  \
         --max_xc 100  \
-        --min_kappa 1 \
-        --max_kappa 1 \
+        --min_kappa 100 \
+        --max_kappa 100 \
         --min_fe 0  \
         --max_fe 0  \
         --min_fss 0  \
@@ -327,8 +327,8 @@ rule simulate_bd_trees:
         --max_ups 0  \
         --min_xc 1  \
         --max_xc 1  \
-        --min_kappa 1 \
-        --max_kappa 1 \
+        --min_kappa 100 \
+        --max_kappa 100 \
         --min_fe 0  \
         --max_fe 0  \
         --min_fss 0  \

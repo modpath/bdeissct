@@ -37,8 +37,8 @@ rule all:
         expand(os.path.join(model_folder, '{model}.keras'), model=MODELS),
     shell:
         """
-        snakemake --snakefile Snakefile_estimate {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_estimate {snakemake_settings}
+        snakemake --snakefile Snakefile_simulate_test {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_simulate_test {snakemake_settings}
         """
 
 rule fit_scaler:

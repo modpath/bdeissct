@@ -25,7 +25,7 @@ for p in PARAMETERS:
 greek2par = {v: k for k, v in par2greek.items()}
 
 EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdct', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
-EST_ORDER = ['bd', 'bddl', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
+# EST_ORDER = ['bd', 'bddl', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
 
 BIAS_COL = 'bias'
 ERROR_COL = 'error'
@@ -36,10 +36,10 @@ palette2 = sns.color_palette()
 # total_palette = [palette1[0]] + [palette2[0]] + [palette1[1]] + palette2[1:4] \
 #                 + [palette1[0]] + palette2[0:]
 palette = sns.color_palette("colorblind")
-total_palette = [palette[0]] + [palette[0]] + [palette[1]] + palette[1:3] + [palette[4]] \
-                + [palette[0]] + palette[0:3] + [palette[4]]
-total_palette = [palette[0]] + palette[0:2] + palette[1:]
-total_palette = [palette[0]] + palette[0:4] + palette[0:4]
+total_palette = [palette[0]] + [palette[0]] + [palette[1]] + palette[1:4] \
+                + palette[0:4]
+# total_palette = [palette[0]] + palette[0:2] + palette[1:]
+# total_palette = [palette[0]] + palette[0:4] + palette[0:4]
 
 # total_palette = palette
 
@@ -84,8 +84,8 @@ def need_to_skip(par, estimator_type, model):
         return True
     return False
 
-
-estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000/{model}/estimates.tab' for model in ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
+folder = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500'
+estimate_files = [f'{folder}/{model}/estimates.tab' for model in ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
 
 
 if __name__ == "__main__":
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Plots errors.")
     parser.add_argument('--estimates', default=estimate_files, type=str, nargs='+', help="estimated parameters")
-    parser.add_argument('--pdf', default='/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000/estimates.svg', type=str, help="plot")
+    parser.add_argument('--pdf', default=f'{folder}/estimates.svg', type=str, help="plot")
     params = parser.parse_args()
 
     plt.clf()

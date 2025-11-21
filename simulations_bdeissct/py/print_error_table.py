@@ -79,7 +79,7 @@ def need_to_skip(par, estimator_type):
     return False
 
 
-estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000/{model}/estimates.tab' for model in
+estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/{model}/estimates.tab' for model in
                   MODELS]
 
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Plots errors.")
     parser.add_argument('--estimates', default=estimate_files, type=str, nargs='+', help="estimated parameters")
-    parser.add_argument('--latex', default='/home/azhukova/articles/bdeissct_article/tables.tex', type=str, help="latex tables with results")
+    parser.add_argument('--latex', default='/home/azhukova/articles/bdeissct_article/tables_small.tex', type=str, help="latex tables with results")
     params = parser.parse_args()
 
     errors = np.zeros(shape=(8, 14, 16), dtype=float)

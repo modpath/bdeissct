@@ -17,7 +17,7 @@ os.makedirs('logs', exist_ok=True)
 
 sim_folder = os.path.join(folder, config.get("sf", 'test'))
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['2000_5000']
+SIZES=['200_500']
 
 # ci = "--ci"
 ci = ""
@@ -27,7 +27,7 @@ bdei_ci = ""
 
 EST_DL = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
-EST_ML = ['bd', 'bdct', 'bdei']
+EST_ML = ['bd', 'bdei']
 
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
@@ -62,7 +62,7 @@ rule estimate_params_dl:
         qos = 'fast',
         pattern = os.path.join(sim_folder, '..', 'models', '{size}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.56"
+    singularity: "docker://evolbioinfo/bdext:v0.1.58"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \
@@ -90,29 +90,6 @@ rule estimate_params_bd:
         p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_I") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
 
         bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}
-        """
-
-
-rule estimate_params_bdct:
-    '''
-    Estimate parameters.
-    '''
-    input:
-        nwk = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.nwk'),
-        log = os.path.join(sim_folder, '{size}', '{model}', 'tree.{i}.log'),
-    output:
-        est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT0-9]+}', 'tree.{i}.est_bdct'),
-    params:
-        mem = 2000,
-        name = 'bdct{i}',
-        qos = 'fast'
-    threads: 1
-    singularity: "docker://evolbioinfo/bdct:v0.1.25"
-    shell:
-        """
-        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_I") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
-
-        bdct_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}  
         """
 
 

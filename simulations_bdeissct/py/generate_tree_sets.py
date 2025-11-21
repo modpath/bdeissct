@@ -3,17 +3,26 @@ import time
 
 import numpy as np
 from treesimulator import save_forest
-
-from treesimulator.mtbd_models import CTModel, BirthDeathModel, BirthDeathExposedInfectiousModel, \
-    BirthDeathWithSuperSpreadingModel, BirthDeathExposedInfectiousWithSuperSpreadingModel
 from treesimulator.generator import generate
+from treesimulator.mtbd_models import CTModel, BirthDeathModel, BirthDeathExposedInfectiousModel, \
+    BirthDeathWithSuperSpreadingModel, BirthDeathExposedInfectiousWithSuperSpreadingModel, Model
 
 TIMEOUT = int(5 * 60) # seconds
 
+RHO = 'rho'
+INFECTION_DURATION = 'd'
+F_E = 'f_E'
+F_S = 'f_S'
+X_S = 'X_S'
+X_C = 'X_C'
+UPSILON = 'upsilon'
+KAPPA = 'kappa'
 
-def random_float(rng: np.random.Generator, min_value=0, max_value=1):
+
+def random_float(rng: np.random.Generator, min_value: float=0, max_value: float=1) -> float:
     """
     Generate a random float in [min_value, max_value[
+    :param rng: random generator
     :param max_value: max value
     :param min_value: min value
     :return: the generated float
@@ -24,60 +33,74 @@ def random_float(rng: np.random.Generator, min_value=0, max_value=1):
 def generate_tree(params, pid, results):
     rng = np.random.default_rng(seed=int(time.time()) + TIMEOUT * pid)
 
+    model_name = params.model
+
     R = random_float(rng, params.min_R, params.max_R)
     d = random_float(rng, params.min_d, params.max_d)
-    rho = random_float(rng, params.min_rho, params.max_rho)
-    if params.max_fe > 0:
-        f_e = random_float(rng, params.min_fe, params.max_fe)
-        d_e = f_e * d
-        d_i = d - d_e
-        psi = 1 / d_i
-        mu = 1 / d_e
-    else:
-        psi = 1 / d
-        f_e = 0
-        mu = np.inf
+    f_e = random_float(rng, params.min_fe, params.max_fe) if 'EI' in model_name else 0
+    d_e = f_e * d
+    mu = 1 / d_e if f_e > 0 else np.inf
+    avg_d_i = d - d_e
 
-    if params.max_fss > 0:
+    if 'SS' in model_name:
         f_ss = random_float(rng, params.min_fss, params.max_fss)
         x_ss = random_float(rng, params.min_xss, params.max_xss)
     else:
-        f_ss = 0
-        x_ss = 1
+        f_ss, x_ss = 0, 1
 
-    la = psi * R / (1 + f_ss * (x_ss - 1))
+    la = R / (1 + f_ss * (x_ss - 1)) / avg_d_i
 
-    if params.max_ups > 0:
+    if 'CT' in model_name:
         upsilon = random_float(rng, params.min_ups, params.max_ups)
         x_c = random_float(rng, params.min_xc, params.max_xc)
-        kappa = rng.integers(params.min_kappa, params.max_kappa) \
-            if params.max_kappa > params.min_kappa else params.max_kappa
+        kappa = rng.integers(params.min_kappa, params.max_kappa + 1)
     else:
-        upsilon, kappa, x_c = 0, 1, 1
+        upsilon, x_c, kappa = 0, 1, 0
 
 
+    ## For infectious duration avg_d_i: 1 / (x_c * psi) <= avg_d_i <= 1 / psi.
+    ## Hence 1 / (x_c * avg_d_i) <= psi <= 1 / avg_d_i
+    ## In practice, psi depends on avg_d_i, x_c, upsilon and maybe also rho, but since we do not know how,
+    ## we will just sample it from its range and hope for the best (and reject the trees outside of parameter ranges).
+    psi = random_float(rng, 1 / (x_c * avg_d_i), 1 / avg_d_i)
 
-    if f_e > 0:
-        if f_ss > 0:
-            model = BirthDeathExposedInfectiousWithSuperSpreadingModel(mu_n=(1 - f_ss) * mu, mu_s=f_ss * mu,
-                                                                       la_n=la, la_s=la * x_ss, psi=psi, p=rho)
-        else:
-            model = BirthDeathExposedInfectiousModel(mu=mu, la=la, psi=psi, p=rho)
-    else:
-        if f_ss > 0:
-            model = BirthDeathWithSuperSpreadingModel(la_nn=(1 - f_ss) * la, la_ns=f_ss * la,
-                                                      la_sn=x_ss * (1 - f_ss) * la, la_ss=x_ss * f_ss * la,
-                                                      psi=psi, p=rho)
-        else:
-            model = BirthDeathModel(la=la, psi=psi, p=rho)
-    if upsilon > 0:
-        model = CTModel(model=model, upsilon=upsilon, phi=x_c * psi, allow_irremovable_states=True)
+    ## Average sampling proportion depends on rho and upsilon and maybe other parameters,
+    ## and is larger than rho when upsilon > 0.
+    ## However, since we do not know the exact formula, we will just sample rho independently
+    ## (and reject the trees outside of parameter ranges later).
+    avg_rho = random_float(rng, params.min_rho, params.max_rho)
+    rho = avg_rho
+
+    model = get_model(la, psi, rho, mu, f_ss, x_ss, upsilon, x_c)
 
     tips = rng.integers(params.min_tips, params.max_tips + 1)
 
     epidemic = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa, return_stats=True)
 
-    results[pid] = model, epidemic
+    # Check if we need to reject the tree based on actual parameters
+    if not upsilon  \
+            or ((params.min_R <= epidemic.R_e < params.max_R) \
+                and (params.min_d <= epidemic.d < params.max_d) \
+                    and (params.min_rho <= epidemic.p < params.max_rho)):
+        results[pid] = model, epidemic
+    else:
+        # Reject and restart
+        generate_tree(params, pid, results)
+
+def get_model(la: float, psi: float, rho: float, mu: float, f_ss: float, x_ss: float, upsilon: float,
+              x_c: float) -> Model:
+    if mu < np.inf:
+        model = BirthDeathExposedInfectiousWithSuperSpreadingModel(mu_n=(1 - f_ss) * mu, mu_s=f_ss * mu,
+                                                                   la_n=la, la_s=la * x_ss, psi=psi, p=rho) if f_ss > 0 \
+            else BirthDeathExposedInfectiousModel(mu=mu, la=la, psi=psi, p=rho)
+    else:
+        model = BirthDeathWithSuperSpreadingModel(la_nn=(1 - f_ss) * la, la_ns=f_ss * la,
+                                                  la_sn=x_ss * (1 - f_ss) * la, la_ss=x_ss * f_ss * la,
+                                                  psi=psi, p=rho) if f_ss > 0 \
+            else BirthDeathModel(la=la, psi=psi, p=rho)
+    if upsilon > 0:
+        model = CTModel(model=model, upsilon=upsilon, phi=x_c * psi, allow_irremovable_states=True)
+    return model
 
 
 if __name__ == "__main__":
@@ -87,7 +110,7 @@ if __name__ == "__main__":
     parser.add_argument('--log', required=True, type=str, help="output parameters")
     parser.add_argument('--nwk', required=True, type=str, help="output trees")
 
-    parser.add_argument('--min_R', default=0.5, type=float, help="min R0 (included)")
+    parser.add_argument('--min_R', default=1, type=float, help="min R0 (included)")
     parser.add_argument('--max_R', default=10., type=float, help="max R0 (excluded)")
     parser.add_argument('--min_d', default=0.5, type=float, help="min infection time (included)")
     parser.add_argument('--max_d', default=12., type=float, help="max infection time (excluded)")
@@ -107,6 +130,9 @@ if __name__ == "__main__":
     parser.add_argument('--max_xss', default=25., type=float, help="max superspreading rate ratio (excluded)")
     parser.add_argument('--min_tips', default=100, type=int, help="min tips (included)")
     parser.add_argument('--max_tips', default=200, type=int, help="max tips (included)")
+    parser.add_argument('--model',
+                        choices=['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT'],
+                        default='BDEISSCT', type=str, help='tree model to use for generation')
 
     parser.add_argument('--n', default=20, type=int, help="number of trees to generate")
     params = parser.parse_args()
@@ -134,27 +160,35 @@ if __name__ == "__main__":
                 break
     forest = []
     with open(params.log, 'w+') as f:
-        model = return_dict[0][0]
-        is_ct = isinstance(model, CTModel)
-        keys = model.get_epidemiological_parameters().keys()
-        f.write('{}{},{},tips,end_time,avg_Re,avg_d,zeta\n' \
-                .format(','.join(keys),
-                        ',kappa' if is_ct else '',
-                        ','.join(f'pi_{s}_observed' for s in model.states)))
+        f.write(f'{REPRODUCTIVE_NUMBER},{INFECTION_DURATION},{RHO},{F_E},{F_S},{X_S},{UPSILON},{X_C},{KAPPA},tips,end_time\n')
+
         for model, epidemic in return_dict.values():
             tree = epidemic.sampled_forest[0]
-            obs = epidemic.pis
-            kappa = epidemic.kappa
-            T = epidemic.T
-            avg_Re = epidemic.R_e
-            avg_d = epidemic.d
-            zeta = epidemic.z
-            tips = len(tree)
-            ps = model.get_epidemiological_parameters()
-            f.write('{}{},{},{},{:g},{:g},{:g},{:g}\n'.format(','.join(f'{ps[k]:g}' for k in keys),
-                                               f',{kappa:g}' if is_ct else '',
-                                               ','.join(f'{o:g}' for o in obs[0]),
-                                               tips, T, avg_Re, avg_d, zeta))
+
+            is_ct = isinstance(model, CTModel)
+            model_params = model.get_epidemiological_parameters()
+            keys = model_params.keys()
+            la = (model_params['la_II'] + (model_params['la_IS'] if 'la_IS' in keys else 0)) if 'la_II' in keys \
+                else model_params['la_IE']
+            psi = model_params['psi_I']
+            mu = (model_params['mu_EI'] if 'mu_EI' in keys else np.inf) + (
+                model_params['mu_ES'] if 'mu_ES' in keys else 0)
+            d_E = 1 / mu
+            d_I = 1 / psi
+            d = epidemic.d if is_ct else (d_E + d_I)
+            f_e = d_E / d
+            rho = epidemic.p if is_ct else model.params['p_I']
+            f_s = (model_params['mu_ES'] if 'mu_ES' in keys else 0) / mu if f_e \
+                else (model_params['la_IS'] if 'la_IS' in keys else 0) / la
+            x_s = (model_params['la_SI' if 'la_SI' in keys else 'la_SE'] \
+                   / model_params['la_II' if 'la_II' in keys else 'la_IE']) if f_s else 1
+            upsilon = model_params['upsilon'] if is_ct else 0
+            x_c = model_params['phi_I-C'] / psi if is_ct else 1
+            kappa = epidemic.kappa if is_ct else 0
+
+            R = epidemic.R_e if is_ct else (1 + f_s * (x_s - 1)) * la / psi
+
+            f.write(f'{R},{d},{rho},{f_e},{f_s},{x_s},{upsilon},{x_c},{kappa},{len(tree)},{epidemic.T}\n')
 
             forest.append(tree)
     save_forest(forest, params.nwk)

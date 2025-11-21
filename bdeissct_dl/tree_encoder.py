@@ -67,42 +67,19 @@ def scale_back_array(Y, SF, columns):
 
 
 def parse_parameters(log):
-    # BD: R_I,t_I,d_I,la_II,psi_I,p_I,R,d,pi_I_observed,tips,end_time,avg_Re,avg_d,zeta
-    # BDCT: t_I,pi_I,la_II,psi_I,p_I,R_I-C,t_I-C,d_I-C,pi_I-C,la_I-CI,upsilon,phi_I-C,kappa,pi_I_observed,pi_I-C_observed,tips,end_time,avg_Re,avg_d,zeta
-    # BDEI: R_E,t_E,d_E,pi_E,mu_EI,R_I,t_I,d_I,pi_I,la_IE,psi_I,p_I,R,d,f_E,pi_E_observed,pi_I_observed,tips,end_time,avg_Re,avg_d,zeta
-    # BDEICT: t_E,pi_E,mu_EI,t_I,pi_I,la_IE,psi_I,p_I,R_E-C,t_E-C,d_E-C,pi_E-C,mu_E-CI-C,R_I-C,t_I-C,d_I-C,pi_I-C,la_I-CE,upsilon,phi_I-C,kappa,pi_E_observed,pi_I_observed,pi_E-C_observed,pi_I-C_observed,tips,end_time,avg_Re,avg_d,zeta
-    # BDSS: R_I,t_I,d_I,pi_I,la_II,la_IS,psi_I,p_I,R_S,t_S,d_S,pi_S,la_SI,la_SS,psi_S,p_S,R,d,X_S,f_S,pi_I_observed,pi_S_observed,tips,end_time,avg_Re,avg_d,zeta
-    # BDSSCT: t_I,pi_I,la_II,la_IS,psi_I,p_I,t_S,pi_S,la_SI,la_SS,psi_S,p_S,R_I-C,t_I-C,d_I-C,pi_I-C,la_I-CI,la_I-CS,R_S-C,t_S-C,d_S-C,pi_S-C,la_S-CI,la_S-CS,upsilon,phi_I-C,phi_S-C,kappa,pi_I_observed,pi_S_observed,pi_I-C_observed,pi_S-C_observed,tips,end_time,avg_Re,avg_d,zeta
-    # BDEISS: R_E,t_E,d_E,pi_E,mu_EI,mu_ES,R_I,t_I,d_I,pi_I,la_IE,psi_I,p_I,R_S,t_S,d_S,pi_S,la_SE,psi_S,p_S,R,d,X_S,f_S,f_E,pi_E_observed,pi_I_observed,pi_S_observed,tips,end_time,avg_Re,avg_d,zeta
-    # BDEISSCT: t_E,pi_E,mu_EI,mu_ES,t_I,pi_I,la_IE,psi_I,p_I,t_S,pi_S,la_SE,psi_S,p_S,R_E-C,t_E-C,d_E-C,pi_E-C,mu_E-CI-C,mu_E-CS-C,R_I-C,t_I-C,d_I-C,pi_I-C,la_I-CE,R_S-C,t_S-C,d_S-C,pi_S-C,la_S-CE,upsilon,phi_I-C,phi_S-C,kappa,pi_E_observed,pi_I_observed,pi_S_observed,pi_E-C_observed,pi_I-C_observed,pi_S-C_observed,tips,end_time,avg_Re,avg_d,zeta
-
     df = pd.read_csv(log)
     for i in df.index:
-        R = df.loc[i, 'R'] if 'R' in df.columns else df.loc[i, 'avg_Re']
-        d = df.loc[i, 'd'] if 'd' in df.columns else df.loc[i, 'avg_d']
-        # if there is contact-tracing involved use averaged sampling probability over notified and unnotified infectious individuals
-        rho = df.loc[i, 'p_I'] if 'd' in df.columns else df.loc[i, 'zeta'] * df.loc[i, 'avg_Re']
-        if 'mu_EI' in df.columns:
-            mu = df.loc[i, 'mu_EI'] + (0 if 'mu_ES' not in df.columns else df.loc[i, 'mu_ES'])
-            d_E = 1 / mu
-            f_E = d_E / d
-        else:
-            f_E = 0
-            mu = np.inf
-        f_S = (df.loc[i, 'mu_ES'] / mu if 'mu_ES' in df.columns
-               else (df.loc[i, 'la_SS'] / (df.loc[i, 'la_SI'] + df.loc[i, 'la_SS']) if 'la_SI' in df.columns else 0))
-        if f_S:
-            X_S = (df.loc[i, 'la_SE'] if 'la_SE' in df.columns else (df.loc[i, 'la_SI'] if 'la_SI' in df.columns else 0)) \
-                  /  df.loc[i, 'la_IE' if 'la_IE' in df.columns else 'la_II']
-        else:
-            X_S = 1
+        R = df.loc[i, REPRODUCTIVE_NUMBER]
+        d = df.loc[i, INFECTION_DURATION]
+        rho = df.loc[i, RHO]
+        f_e = df.loc[i, F_E] if F_E in df.columns else 0
+        f_ss = df.loc[i, F_S] if F_S in df.columns else 0
+        x_ss = df.loc[i, X_S] if X_S in df.columns else 1
+        upsilon = df.loc[i, UPSILON] if UPSILON in df.columns else 0
+        x_c = df.loc[i, X_C] if X_C in df.columns else 1
+        kappa = df.loc[i, KAPPA] if KAPPA in df.columns else 0
 
-        upsilon = df.loc[i, 'upsilon'] if 'upsilon' in df.columns else 0
-        kappa = df.loc[i, 'kappa'] if 'kappa' in df.columns else 1
-        X_C = df.loc[i, 'phi_I-C'] / df.loc[i, 'psi_I'] if 'phi_I-C' in df.columns else 1
-
-
-        yield R, d, rho, f_E, f_S, X_S, upsilon, X_C, kappa
+        yield R, d, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa
 
 
 class BDEISSCTFeatureCalculator(FeatureCalculator):

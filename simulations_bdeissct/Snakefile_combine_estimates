@@ -13,7 +13,7 @@ os.makedirs('logs', exist_ok=True)
 
 sim_folder = os.path.join(folder, config.get("sf", 'test'))
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['2000_5000']
+SIZES=['200_500']
 
 
 
@@ -52,7 +52,6 @@ rule combine_estimates:
         """
         python3 py/summary_table.py --real {input.tree_stats} \
         --estimates_bd {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bd \
-        --estimates_bdct {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bdct \
         --estimates_bdei {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bdei \
         --tab {output.tab} \
         --estimates_bddl {input.est_bddl}  \
@@ -64,7 +63,3 @@ rule combine_estimates:
         --estimates_bdeissdl {input.est_bdeissdl} \
         --estimates_bdeissctdl {input.est_bdeissctdl}
         """
-
-# est_mfdl = os.path.join(sim_folder,'{size}','{model}','trees.estimates_MF.csv.xz'),
-# \
-#         --estimates_mfdl {input.est_mfdl}

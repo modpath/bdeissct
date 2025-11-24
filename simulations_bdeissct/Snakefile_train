@@ -23,8 +23,9 @@ N_VAL_OTHER = N_VAL
 
 os.makedirs('logs', exist_ok=True)
 
-sim_folder = os.path.join(folder, config.get("sf", 'train'), '200_500')
-model_folder = os.path.join(folder, 'models', '2000_5000')
+SIZE = '200_500'
+sim_folder = os.path.join(folder, config.get("sf", 'train'), SIZE)
+model_folder = os.path.join(folder, 'models', SIZE)
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
 

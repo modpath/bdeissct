@@ -1,0 +1,102 @@
+import os
+
+# To run locally:
+# snakemake --snakefile Snakefile_simulate_train_ct --keep-going --cores 10 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+# To run on maestro:
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/pasteur/anna/projects/bdext/simulations_bdeissct
+# snakemake --snakefile Snakefile_simulate_train_ct --rerun-triggers mtime --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common --qos=normal  -J {params.name}" --jobs 1000
+
+
+localrules: all
+
+
+
+folder = os.path.abspath(config.get("folder", '.'))
+num = int(config.get("num", 128))
+REPETITIONS = list(range(num))
+os.makedirs('logs', exist_ok=True)
+
+sim_folder = os.path.join(folder, config.get("sf", 'train'))
+model_folder = os.path.join(folder, 'models')
+MODELS = ['BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
+SIZES=['5000']
+
+TREES_PER_FILE = 8
+
+
+N_TRAIN = 112
+N_TRAIN_OTHER = N_TRAIN
+N_TOTAL = num
+N_VAL = N_TOTAL - N_TRAIN
+N_VAL_OTHER = N_VAL
+
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+
+
+rule all:
+    input:
+        expand(os.path.join(model_folder, '{size}', 'CT.la.keras'), size=SIZES)
+
+rule simulate_training_set:
+    '''
+    Simulate TREES_PER_FILE observed and rate parameters under the given -CT model.
+    '''
+    output:
+        log=os.path.join(sim_folder, '{t}', '{model,[BDEIS]+CT}', '{k}','params.{i}.csv'),
+    params:
+        mem=2000,
+        name='ct.{model}',
+        qos='fast'
+    threads: 1
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
+    shell:
+        """         
+        python3 py/generate_ct_data.py --log {output.log} \
+        --min_tips {wildcards.t} --max_tips {wildcards.t} \
+        --n {TREES_PER_FILE} \
+        --min_R 1 \
+        --max_R 10  \
+        --min_d 0.5  \
+        --max_d 12  \
+        --min_rho 0.01  \
+        --max_rho 1.  \
+        --min_ups 0  \
+        --max_ups 1.  \
+        --min_xc 10  \
+        --max_xc 100  \
+        --min_kappa 1000 \
+        --max_kappa 1000 \
+        --min_fe 0  \
+        --max_fe 1  \
+        --min_fss 0  \
+        --max_fss 1.  \
+        --min_xss 2  \
+        --max_xss 50 \
+        --model {wildcards.model}
+        """
+
+
+
+rule train_model:
+    '''
+    Trains a CT model.
+    '''
+    input:
+        train_data = expand(os.path.join(sim_folder, '{size}', '{model}', '{k}', 'params.{i}.csv'), \
+            i=REPETITIONS, model=MODELS, size=SIZE, k=range(N_TRAIN)),
+        val_data = expand(os.path.join(sim_folder, '{size}', '{model}', '{k}', 'params.{i}.csv'), \
+            i=REPETITIONS, model=MODELS, size=SIZE, k=range(N_TRAIN,N_TOTAL)),
+    output:
+        model = os.path.join(model_folder, '{size}', 'CT.la.keras')
+    params:
+        mem=32000,
+        name='tr_CT',
+        qos='normal',
+        path = os.path.join(model_folder, '{size}')
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.59"
+    shell:
+        """        
+        ct_train --train_data {input.train_data} --val_data {input.val_data}  --model_path {params.path}
+        """

@@ -87,7 +87,7 @@ rule estimate_params_bd:
     singularity: "docker://evolbioinfo/bdct:v0.1.25"
     shell:
         """
-        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_I") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
+        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "rho") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
 
         bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}
         """
@@ -111,7 +111,7 @@ rule estimate_params_bdei:
     singularity: "docker://evolbioinfo/bdei:v0.13"
     shell:
         """
-        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "p_I") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
+        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "rho") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
         la=`awk -F, 'NR==2 {{ print $5 }}' {input.bd_est}`
         psi=`awk -F, 'NR==2 {{ print $6 }}' {input.bd_est}`
 

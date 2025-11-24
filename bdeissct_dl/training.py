@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, F_E, F_S, \
-    X_S, TARGET_COLUMNS_BDCT, UPS_X_C, F_S_X_S, REPRODUCTIVE_NUMBER, INFECTION_DURATION, BDEI
+    X_S, TARGET_COLUMNS_BDCT, UPS_X_C, F_S_X_S, REPRODUCTIVE_NUMBER, INFECTION_DURATION, BDEI, LA, PSI, RHO
 from bdeissct_dl.dl_model import build_model
 from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, \
     load_model_keras
@@ -53,13 +53,13 @@ def get_test_data(dfs=None, paths=None, scaler_x=None):
     return X, SF
 
 
-def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT):
+def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT, feature_columns=None):
     x_indices = []
     y_indices = []
     col2index = {}
 
     df = pd.read_csv(paths[0])
-    feature_columns = set(get_X_columns(df.columns))
+    feature_columns = set(get_X_columns(df.columns)) if feature_columns is None else set(feature_columns)
     target_columns = set(target_columns) if target_columns is not None else set()
     for i, col in enumerate(df.columns):
         if col in feature_columns:
@@ -129,6 +129,15 @@ def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, file
         col_i += 1
     if X_S in target_columns:
         train_labels[X_S] = Y[:, col_i]
+        col_i += 1
+    if LA in target_columns:
+        train_labels[LA] = Y[:, col_i]
+        col_i += 1
+    if PSI in target_columns:
+        train_labels[PSI] = Y[:, col_i]
+        col_i += 1
+    if RHO in target_columns:
+        train_labels[RHO] = Y[:, col_i]
         col_i += 1
 
     dataset = tf.data.Dataset.from_tensor_slices((X, train_labels))

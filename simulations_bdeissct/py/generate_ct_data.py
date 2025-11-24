@@ -2,7 +2,6 @@ import multiprocessing
 import time
 
 import numpy as np
-from treesimulator import save_forest
 from treesimulator.generator import generate
 from treesimulator.mtbd_models import CTModel, BirthDeathModel, BirthDeathExposedInfectiousModel, \
     BirthDeathWithSuperSpreadingModel, BirthDeathExposedInfectiousWithSuperSpreadingModel, Model
@@ -10,7 +9,7 @@ from treesimulator.mtbd_models import CTModel, BirthDeathModel, BirthDeathExpose
 TIMEOUT = int(5 * 60) # seconds
 
 REPRODUCTIVE_NUMBER = 'R'
-RHO = 'rho'
+P = 'p'
 INFECTION_DURATION = 'd'
 F_E = 'f_E'
 F_S = 'f_S'
@@ -18,6 +17,13 @@ X_S = 'X_S'
 X_C = 'X_C'
 UPSILON = 'upsilon'
 KAPPA = 'kappa'
+
+
+LA = 'la'
+PSI = 'psi'
+RHO = 'rho'
+MU = 'mu'
+
 
 
 def random_float(rng: np.random.Generator, min_value: float=0, max_value: float=1) -> float:
@@ -41,7 +47,8 @@ def generate_tree(params, pid, results):
     f_e = random_float(rng, params.min_fe, params.max_fe) if 'EI' in model_name else 0
     d_e = f_e * d
     mu = 1 / d_e if f_e > 0 else np.inf
-    avg_d_i = d - d_e
+    d_i = d - d_e
+    psi = 1 / d_i
 
     if 'SS' in model_name:
         f_ss = random_float(rng, params.min_fss, params.max_fss)
@@ -49,44 +56,23 @@ def generate_tree(params, pid, results):
     else:
         f_ss, x_ss = 0, 1
 
-    la = R / (1 + f_ss * (x_ss - 1)) / avg_d_i
-
-    if 'CT' in model_name:
-        upsilon = random_float(rng, params.min_ups, params.max_ups)
-        x_c = random_float(rng, params.min_xc, params.max_xc)
-        kappa = rng.integers(params.min_kappa, params.max_kappa + 1)
-    else:
-        upsilon, x_c, kappa = 0, 1, 0
+    la = R * psi / (1 + f_ss * (x_ss - 1))
 
 
-    ## For infectious duration avg_d_i: 1 / (x_c * psi) <= avg_d_i <= 1 / psi.
-    ## Hence 1 / (x_c * avg_d_i) <= psi <= 1 / avg_d_i
-    ## In practice, psi depends on avg_d_i, x_c, upsilon and maybe also rho, but since we do not know how,
-    ## we will just sample it from its range and hope for the best (and reject the trees outside of parameter ranges).
-    psi = random_float(rng, 1 / (x_c * avg_d_i), 1 / avg_d_i)
+    upsilon = random_float(rng, params.min_ups, params.max_ups)
+    x_c = random_float(rng, params.min_xc, params.max_xc)
+    kappa = rng.integers(params.min_kappa, params.max_kappa + 1)
 
-    ## Average sampling proportion depends on rho and upsilon and maybe other parameters,
-    ## and is larger than rho when upsilon > 0.
-    ## However, since we do not know the exact formula, we will just sample rho independently
-    ## (and reject the trees outside of parameter ranges later).
-    avg_rho = random_float(rng, params.min_rho, params.max_rho)
-    rho = avg_rho
+    rho = random_float(rng, params.min_rho, params.max_rho)
 
     model = get_model(la, psi, rho, mu, f_ss, x_ss, upsilon, x_c)
 
     tips = rng.integers(params.min_tips, params.max_tips + 1)
 
-    epidemic = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa, return_stats=True)
+    epidemic = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa, return_stats=True,
+                        return_sampled_forest=False, return_LTT=False, return_full_forest=False)
 
-    # Check if we need to reject the tree based on actual parameters
-    if not upsilon  \
-            or ((params.min_R <= epidemic.R_e < params.max_R) \
-                and (params.min_d <= epidemic.d < params.max_d) \
-                    and (params.min_rho <= epidemic.p < params.max_rho)):
-        results[pid] = model, epidemic
-    else:
-        # Reject and restart
-        generate_tree(params, pid, results)
+    results[pid] = model, epidemic
 
 def get_model(la: float, psi: float, rho: float, mu: float, f_ss: float, x_ss: float, upsilon: float,
               x_c: float) -> Model:
@@ -109,7 +95,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generates parameters for BDEISS-CT simulations.")
     parser.add_argument('--log', required=True, type=str, help="output parameters")
-    parser.add_argument('--nwk', required=True, type=str, help="output trees")
 
     parser.add_argument('--min_R', default=1, type=float, help="min R0 (included)")
     parser.add_argument('--max_R', default=10., type=float, help="max R0 (excluded)")
@@ -120,17 +105,17 @@ if __name__ == "__main__":
     parser.add_argument('--min_kappa', default=1, type=int, help="min kappa (included)")
     parser.add_argument('--max_kappa', default=1, type=int, help="max kappa (excluded)")
     parser.add_argument('--min_ups', default=0., type=float, help="min upsilon (included)")
-    parser.add_argument('--max_ups', default=0., type=float, help="max upsilon (excluded)")
-    parser.add_argument('--min_xc', default=10., type=float, help="min phi / psi (included)")
-    parser.add_argument('--max_xc', default=500., type=float, help="max phi / psi (excluded)")
+    parser.add_argument('--max_ups', default=0.5, type=float, help="max upsilon (excluded)")
+    parser.add_argument('--min_xc', default=20., type=float, help="min phi / psi (included)")
+    parser.add_argument('--max_xc', default=100., type=float, help="max phi / psi (excluded)")
     parser.add_argument('--min_fe', default=0., type=float, help="min incubation fraction (included)")
-    parser.add_argument('--max_fe', default=0., type=float, help="max incubation fraction (excluded)")
+    parser.add_argument('--max_fe', default=1., type=float, help="max incubation fraction (excluded)")
     parser.add_argument('--min_fss', default=0., type=float, help="min superspreading fraction (included)")
-    parser.add_argument('--max_fss', default=0., type=float, help="max superspreading fraction (excluded)")
-    parser.add_argument('--min_xss', default=2., type=float, help="min superspreading rate ratio (included)")
-    parser.add_argument('--max_xss', default=25., type=float, help="max superspreading rate ratio (excluded)")
-    parser.add_argument('--min_tips', default=100, type=int, help="min tips (included)")
-    parser.add_argument('--max_tips', default=200, type=int, help="max tips (included)")
+    parser.add_argument('--max_fss', default=0.5, type=float, help="max superspreading fraction (excluded)")
+    parser.add_argument('--min_xss', default=5., type=float, help="min superspreading rate ratio (included)")
+    parser.add_argument('--max_xss', default=20., type=float, help="max superspreading rate ratio (excluded)")
+    parser.add_argument('--min_tips', default=500, type=int, help="min tips (included)")
+    parser.add_argument('--max_tips', default=1000, type=int, help="max tips (included)")
     parser.add_argument('--model',
                         choices=['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT'],
                         default='BDEISSCT', type=str, help='tree model to use for generation')
@@ -161,11 +146,10 @@ if __name__ == "__main__":
                 break
     forest = []
     with open(params.log, 'w+') as f:
-        f.write(f'{REPRODUCTIVE_NUMBER},{INFECTION_DURATION},{RHO},{F_E},{F_S},{X_S},{UPSILON},{X_C},{KAPPA},tips,end_time\n')
+        f.write(f'{REPRODUCTIVE_NUMBER},{INFECTION_DURATION},{P},'
+                f'{LA},{PSI},{RHO},{F_E},{F_S},{X_S},{UPSILON},{X_C},{KAPPA}\n')
 
         for model, epidemic in return_dict.values():
-            tree = epidemic.sampled_forest[0]
-
             is_ct = isinstance(model, CTModel)
             model_params = model.get_epidemiological_parameters()
             keys = model_params.keys()
@@ -176,9 +160,7 @@ if __name__ == "__main__":
                 model_params['mu_ES'] if 'mu_ES' in keys else 0)
             d_E = 1 / mu
             d_I = 1 / psi
-            d = epidemic.d if is_ct else (d_E + d_I)
-            f_e = d_E / d
-            rho = epidemic.p if is_ct else model_params['p_I']
+            f_e = d_E / (d_E + d_I)
             f_s = (model_params['mu_ES'] if 'mu_ES' in keys else 0) / mu if f_e \
                 else (model_params['la_IS'] if 'la_IS' in keys else 0) / la
             x_s = (model_params['la_SI' if 'la_SI' in keys else 'la_SE'] \
@@ -187,12 +169,12 @@ if __name__ == "__main__":
             x_c = model_params['phi_I-C'] / psi if is_ct else 1
             kappa = epidemic.kappa if is_ct else 0
 
-            R = epidemic.R_e if is_ct else (1 + f_s * (x_s - 1)) * la / psi
+            rho = model_params['p_I']
 
-            f.write(f'{R},{d},{rho},{f_e},{f_s},{x_s},{upsilon},{x_c},{kappa},{len(tree)},{epidemic.T}\n')
+            R_non_ct = (1 + f_s * (x_s - 1)) * la / psi
+            R = min(epidemic.R_e, R_non_ct) if is_ct else R_non_ct
+            d = min(epidemic.d, d_E + d_I) if is_ct else (d_E + d_I)
+            p = max(rho, epidemic.p) if is_ct else rho
 
-            forest.append(tree)
-    save_forest(forest, params.nwk)
-
-
-
+            f.write(f'{R},{d},{p},'
+                    f'{la},{psi},{rho},{f_e},{f_s},{x_s},{upsilon},{x_c},{kappa}\n')

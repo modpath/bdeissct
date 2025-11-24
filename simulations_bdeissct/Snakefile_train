@@ -156,7 +156,7 @@ rule train_model_BDEICT:
     params:
         mem=16000,
         name='tr_BDEICT',
-        qos='fast',
+        qos='normal',
         path = model_folder
     threads: 1
     singularity: "docker://evolbioinfo/bdext:v0.1.58"
@@ -212,7 +212,7 @@ rule train_model_BDSSCT:
     params:
         mem=16000,
         name='tr_BDSSCT',
-        qos='fast',
+        qos='normal',
         path = model_folder
     threads: 1
     singularity: "docker://evolbioinfo/bdext:v0.1.58"
@@ -240,7 +240,7 @@ rule train_model_BDEISS:
     params:
         mem=16000,
         name='tr_BDEISS',
-        qos='fast',
+        qos='normal',
         path = model_folder
     threads: 1
     singularity: "docker://evolbioinfo/bdext:v0.1.58"
@@ -268,7 +268,7 @@ rule train_model_BDEISSCT:
     params:
         mem=32000,
         name='tr_BDEISSCT',
-        qos='fast',
+        qos='normal',
         path = model_folder
     threads: 1
     singularity: "docker://evolbioinfo/bdext:v0.1.58"

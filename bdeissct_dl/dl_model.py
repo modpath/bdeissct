@@ -2,12 +2,14 @@ import tensorflow as tf
 from tensorflow.python.keras.utils.generic_utils import register_keras_serializable
 
 from bdeissct_dl.bdeissct_model import F_E, F_S, UPSILON, F_S_X_S, UPS_X_C, REPRODUCTIVE_NUMBER, \
-    INFECTION_DURATION, X_S, X_C
+    INFECTION_DURATION, X_S, X_C, LA, PSI, RHO
 
 LEARNING_RATE = 0.001
 
 DELTA = 0.001
 LOSS_WEIGHTS = {
+    LA: 1,
+    PSI: 1,
     REPRODUCTIVE_NUMBER: 1,
     INFECTION_DURATION: 1,
     UPS_X_C: 200,  # as there are 2 outputs, we multiply by 200 to scale it to [0, 200]
@@ -16,7 +18,8 @@ LOSS_WEIGHTS = {
     UPSILON: 100,
     F_S_X_S: 200,  # as there are 2 outputs, we multiply by 200 to scale it to [0, 200]
     X_C: 1,
-    X_S: 1
+    X_S: 1,
+    RHO: 100,
 }
 
 QUANTILES = (0.5, )
@@ -127,10 +130,13 @@ def relu_plus_one(x):
 
 
 LOSS_FUNCTIONS = {
+    LA: "mean_absolute_percentage_error",
+    PSI: "mean_absolute_percentage_error",
     REPRODUCTIVE_NUMBER: "mean_absolute_percentage_error",
     INFECTION_DURATION: "mean_absolute_percentage_error",
     UPS_X_C: loss_ct,
     UPSILON: 'mae',
+    RHO: 'mae',
     X_C: "mean_absolute_percentage_error",
     F_E: 'mae',
     F_S_X_S: loss_ss,

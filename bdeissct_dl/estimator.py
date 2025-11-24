@@ -141,18 +141,17 @@ def main():
                              f'model finder will be used to pick the model.')
     parser.add_argument('--model_path', default=MODEL_PATH,
                         help='By default our pretrained BD(EI)(SS)(CT) models are used, '
-                             'but it is possible to specify a pattern of a path to a custom folder here, '
+                             'but it is possible to specify a path to a custom folder here, '
                              'containing files "<model_name>.keras" (with the model), '
                              'and scaler-related files to rescale the input data X, and the output Y: '
                              'for X: "data_scalerx_mean.npy", "data_scalerx_scale.npy", "data_scalerx_var.npy" '
                              '(unpickled numpy-saved arrays), '
                              'and "data_scalerx_n_samples_seen.txt" '
                              'a text file containing the number of examples in the training set). '
-                             'For Y the file names are the same, just x replaced by y, e.g., "data_scalery_mean.npy". '
-                             'The path pattern should contain a part "{}", which will be replaced by the model name, '
-                             'e.g., "/home/user/models/", which for a model BD will contain a file "BD.keras"')
+                             'For Y the file names are the same, just x replaced by y, e.g., "data_scalery_mean.npy".'
+                        )
     parser.add_argument('--p', default=0, type=float, help='sampling probability')
-    parser.add_argument('--log', default='/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/500_1000/BD/trees.estimates_BD', type=str, help="output log file")
+    parser.add_argument('--log', default=None, type=str, help="output log file")
     parser.add_argument('--nwk', default=None, type=str, help="input tree file")
     parser.add_argument('--sumstats', default=None, type=str, help="input tree file(s) encoded as sumstats")
     parser.add_argument('--ci', action='store_true', help="calculate CIs")

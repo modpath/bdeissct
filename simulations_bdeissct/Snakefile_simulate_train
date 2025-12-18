@@ -3,8 +3,8 @@ import os
 # To run locally:
 # snakemake --snakefile Snakefile_simulate_train --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 # To run on maestro:
-# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/zeus/projets/p02/pasteur/anna/projects/bdext/simulations_bdeissct
-# snakemake --snakefile Snakefile_simulate_train --config model=BDSS --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 300
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
+# snakemake --snakefile Snakefile_simulate_train --config model=BDSS --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 8000
 
 
 localrules: all
@@ -17,8 +17,7 @@ REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
 
 sim_folder = os.path.join(folder, config.get("sf", 'train'))
-model = config.get('model', None)
-MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 SIZES=['200_500']
 
 TREES_PER_FILE = 8
@@ -33,8 +32,8 @@ rule all:
             k=REPETITIONS, i=REPETITIONS, model=MODELS, size=SIZES)
     shell:
         """
-        snakemake --snakefile Snakefile_encode --config model={model} num={num} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_encode --config model={model} num={num}  {snakemake_settings}
+        snakemake --snakefile Snakefile_encode --config num={num} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_encode --config num={num}  {snakemake_settings}
         """
 
 rule simulate_trees:
@@ -47,9 +46,9 @@ rule simulate_trees:
     params:
         mem=2000,
         name='sim.{model}',
-        qos='fast'
+        qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
+    singularity: "docker://evolbioinfo/bdext:v0.1.65"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -73,5 +72,5 @@ rule simulate_trees:
         --max_fss 0.5  \
         --min_xss 2  \
         --max_xss 25 \
-        --model {wildcards.model}
+        --model {wildcards.model} 
         """

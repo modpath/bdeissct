@@ -19,7 +19,7 @@ LOSS_WEIGHTS = {
     F_S_X_S: 200,  # as there are 2 outputs, we multiply by 200 to scale it to [0, 200]
     X_C: 1,
     X_S: 1,
-    RHO: 100,
+    RHO: 1,
 }
 
 QUANTILES = (0.5, )
@@ -136,7 +136,7 @@ LOSS_FUNCTIONS = {
     INFECTION_DURATION: "mean_absolute_percentage_error",
     UPS_X_C: loss_ct,
     UPSILON: 'mae',
-    RHO: 'mae',
+    RHO: 'mean_absolute_percentage_error',
     X_C: "mean_absolute_percentage_error",
     F_E: 'mae',
     F_S_X_S: loss_ss,

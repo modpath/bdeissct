@@ -1,0 +1,56 @@
+import os
+
+# To run locally:
+# snakemake --snakefile Snakefile_train_ct --keep-going --cores 10 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+# To run on maestro:
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss/
+# snakemake --snakefile Snakefile_train_ct --rerun-triggers mtime --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common --qos=normal  -J {params.name}" --jobs 1000
+
+
+localrules: all
+
+
+
+folder = os.path.abspath(config.get("folder", '.'))
+os.makedirs('logs', exist_ok=True)
+
+sim_folder = os.path.join(folder, config.get("sf", 'train'))
+model_folder = os.path.join(folder, 'models')
+MODELS = ['BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
+SIZES=['5000']
+
+
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+
+
+rule all:
+    input:
+        expand(os.path.join(model_folder, '{size}', 'CT.psi.keras'), size=SIZES),
+    shell:
+        """
+        snakemake --snakefile Snakefile_assess_ct {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_assess_ct {snakemake_settings}
+        """
+
+
+rule train_model:
+    '''
+    Trains a CT model.
+    '''
+    input:
+        train_data = expand(os.path.join(sim_folder, '{{size}}', '{model}', 'params.train.csv.xz'), model=MODELS),
+        val_data = expand(os.path.join(sim_folder, '{{size}}', '{model}', 'params.val.csv.xz'), model=MODELS),
+    output:
+        model = os.path.join(model_folder, '{size}', 'CT.psi.keras')
+    params:
+        mem=32000,
+        name='tr_CT',
+        qos='normal',
+        path = os.path.join(model_folder, '{size}')
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    shell:
+        """        
+        ct_train --train_data {input.train_data} --val_data {input.val_data}  --model_path {params.path}
+        """

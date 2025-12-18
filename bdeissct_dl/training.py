@@ -54,20 +54,20 @@ def get_test_data(dfs=None, paths=None, scaler_x=None):
 
 
 def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT, feature_columns=None):
-    x_indices = []
-    y_indices = []
-    col2index = {}
+    col2index_y = {}
+    col2index_x = {}
 
     df = pd.read_csv(paths[0])
-    feature_columns = set(get_X_columns(df.columns)) if feature_columns is None else set(feature_columns)
-    target_columns = set(target_columns) if target_columns is not None else set()
+    feature_columns = get_X_columns(df.columns) if feature_columns is None else feature_columns
+    feature_column_set = set(feature_columns)
+    target_columns = target_columns if target_columns is not None else []
+    target_column_set = set(target_columns)
     for i, col in enumerate(df.columns):
-        if col in feature_columns:
-            x_indices.append(i)
-        if col in target_columns:
-            y_indices.append(i)
-            col2index[col] = i
-    return x_indices, y_indices, col2index
+        if col in feature_column_set:
+            col2index_x[col] = i
+        if col in target_column_set:
+            col2index_y[col] = i
+    return [col2index_x[_] for _ in feature_columns], col2index_y
 
 
 def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, filenames=None, scaler_x=None, \
@@ -192,7 +192,7 @@ def main():
         np.random.shuffle(params.val_data)
 
 
-    x_indices, y_indices, y_col2index = get_data_characteristics(paths=params.train_data, target_columns=target_columns)
+    x_indices, y_col2index = get_data_characteristics(paths=params.train_data, target_columns=target_columns)
 
     scaler_x = load_scaler_numpy(params.model_path, suffix='x')
 

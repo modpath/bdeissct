@@ -1,14 +1,14 @@
+import numpy as np
 import pandas as pd
 
 from bdeissct_dl import MODEL_PATH
-from bdeissct_dl.bdeissct_model import CT_EPI_COLUMNS, CT_RATE_COLUMNS
+from bdeissct_dl.bdeissct_model import CT_EPI_COLUMNS, CT_RATE_COLUMNS, PSI, REPRODUCTIVE_NUMBER, LA, X_C
 from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
 
 
 def predict_parameters(df, model_path=MODEL_PATH):
-
-    X = df.loc[:, CT_EPI_COLUMNS].to_numpy(dtype=float, na_value=0)
-
+    feature_columns = CT_EPI_COLUMNS
+    X = df.loc[:, feature_columns].to_numpy(dtype=float, na_value=0)
 
     # Standardization of the input features with a
     # standard scaler
@@ -28,6 +28,12 @@ def predict_parameters(df, model_path=MODEL_PATH):
 
         res_df = pd.DataFrame.from_dict(Y_pred, orient='columns')
         result = result.join(res_df, how='outer') if result is not None else res_df
+    if PSI in result.columns:
+        d_I_effective = df[REPRODUCTIVE_NUMBER] / df[LA]
+        psi_effective = 1 / d_I_effective
+        # psi_effective = alpha  psi + (1 - alpha) X_C psi
+        # then psi = psi_effective / (alpha + (1 - alpha) X_C)
+        result[PSI] = np.maximum(np.minimum(result[PSI], psi_effective), psi_effective / df[X_C])
 
     return result
 
@@ -54,7 +60,6 @@ def main():
                              )
     parser.add_argument('--log', default=None, type=str, help="output log file")
     parser.add_argument('--sumstats', default=None, type=str, help="input file(s) with epi parameters")
-    parser.add_argument('--ci', action='store_true', help="calculate CIs")
     params = parser.parse_args()
 
     df = pd.read_csv(params.sumstats)

@@ -24,7 +24,7 @@ for p in PARAMETERS:
 
 greek2par = {v: k for k, v in par2greek.items()}
 
-EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdct', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
+EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
 # EST_ORDER = ['bd', 'bddl', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
 
 BIAS_COL = 'bias'
@@ -202,8 +202,8 @@ if __name__ == "__main__":
                             hatch += '////'
                         # if 'ss' in plot_est.lower():
                         #     hatch += '\\\\\\\\'
-                        if hatch:
-                            par_bars[bar_idx].set_hatch(hatch)
+                        # if hatch:
+                        #     par_bars[bar_idx].set_hatch(hatch)
                         bar_idx += 1
 
             if BIAS_COL == col:

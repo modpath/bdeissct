@@ -5,7 +5,7 @@ import os
 # snakemake --snakefile Snakefile_estimate --rerun-triggers mtime --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 
 # To run on maestro:
-# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projets/mPath/anna/projects/bdext/sim_bdeiss
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
 # snakemake --snakefile Snakefile_estimate --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o logs/{params.name}.log -e logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast -J {params.name}" --jobs 600
 
 localrules: all
@@ -62,7 +62,7 @@ rule estimate_params_dl:
         qos = 'fast',
         pattern = os.path.join(sim_folder, '..', 'models', '{size}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.58"
+    singularity: "docker://evolbioinfo/bdext:v0.1.65"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \

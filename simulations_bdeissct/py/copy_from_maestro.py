@@ -33,15 +33,15 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
         # Construct the corresponding output directory path
         new_root = os.path.join(dest_dir, rel_path)
 
-        # Create the directory in the destination if it doesn't exist
-        os.makedirs(new_root, exist_ok=True)
-
         # Check each file in the current directory
         for file_name in files:
             if target_filename in file_name:
                 # Define full source and destination file paths
                 src_file = os.path.join(root, file_name)
                 dst_file = os.path.join(new_root, file_name)
+
+                # Create the directory in the destination if it doesn't exist
+                os.makedirs(new_root, exist_ok=True)
 
                 # Copy the file, preserving metadata
                 shutil.copy2(src_file, dst_file)

@@ -10,7 +10,7 @@ from bdeissct_dl.dl_model import build_model, LEARNING_RATE, LOSS_FUNCTIONS, LOS
 from bdeissct_dl.model_serializer import save_model_keras, save_scaler_joblib, save_scaler_numpy
 from bdeissct_dl.scaler_fitting import fit_scalers
 from bdeissct_dl.training import get_data_characteristics, get_train_data
-from bdeissct_model import CT_EPI_COLUMNS, CT_RATE_COLUMNS
+from bdeissct_dl.bdeissct_model import CT_EPI_COLUMNS, CT_RATE_COLUMNS
 
 
 def build_model(target_columns, n_x, optimizer=None, metrics=None):
@@ -29,10 +29,9 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
 
     # (Your hidden layers go here)
     x = tf.keras.layers.Dense(8, activation='elu', name=f'layer1_dense8_elu')(inputs)
-    x = tf.keras.layers.Dropout(0.5, name='dropout1_50')(x)
+    x = tf.keras.layers.Dense(4, activation='elu', name=f'layer2_dense6_elu')(x)
     x = tf.keras.layers.Dense(4, activation='elu', name=f'layer2_dense4_elu')(x)
-    # x = tf.keras.layers.Dropout(0.5, name='dropout2_50')(x)
-    x = tf.keras.layers.Dense(2, activation='elu', name=f'layer3_dense64elu')(x)
+    x = tf.keras.layers.Dense(2, activation='elu', name=f'layer3_dense2_elu')(x)
 
     outputs = {}
 
@@ -75,8 +74,8 @@ def main():
 
     os.makedirs(params.model_path, exist_ok=True)
 
-    # R,d,p,f_E,f_S,X_S,upsilon,X_C,kappa are given
-    # la,psi,rho are to be predicted
+    # R,f_E,f_S,X_S,upsilon,X_C,kappa,la are given
+    # psi is to be predicted
 
     feature_columns = CT_EPI_COLUMNS
     target_columns = CT_RATE_COLUMNS
@@ -87,12 +86,12 @@ def main():
         np.random.shuffle(params.val_data)
 
 
-    x_indices, y_indices, y_col2index = get_data_characteristics(paths=params.train_data,
-                                                                 feature_columns=feature_columns,
-                                                                 target_columns=target_columns)
+    x_indices, y_col2index = get_data_characteristics(paths=params.train_data,
+                                                      feature_columns=feature_columns,
+                                                      target_columns=target_columns)
 
-    scaler_x, scaler_y = StandardScaler(), None
-    fit_scalers(paths=params.train_data, x_indices=x_indices, y_indices=y_indices, scaler_x=scaler_x, scaler_y=scaler_y)
+    scaler_x = StandardScaler()
+    fit_scalers(paths=params.train_data, x_indices=x_indices, scaler_x=scaler_x)
 
     if scaler_x is not None:
         save_scaler_joblib(scaler_x, params.model_path, suffix='ct.x')

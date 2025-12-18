@@ -6,7 +6,7 @@ from treesimulator.generator import generate
 from treesimulator.mtbd_models import CTModel, BirthDeathModel, BirthDeathExposedInfectiousModel, \
     BirthDeathWithSuperSpreadingModel, BirthDeathExposedInfectiousWithSuperSpreadingModel, Model
 
-TIMEOUT = int(5 * 60) # seconds
+TIMEOUT = int(10 * 60) # seconds
 
 REPRODUCTIVE_NUMBER = 'R'
 P = 'p'
@@ -69,8 +69,9 @@ def generate_tree(params, pid, results):
 
     tips = rng.integers(params.min_tips, params.max_tips + 1)
 
-    epidemic = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa, return_stats=True,
-                        return_sampled_forest=False, return_LTT=False, return_full_forest=False)
+    epidemic = generate([model], min_tips=tips, max_tips=tips,
+                        max_notified_contacts=kappa, notify_at_removal=True,
+                        return_stats=True, return_sampled_forest=False, return_LTT=False, return_full_forest=False)
 
     results[pid] = model, epidemic
 
@@ -86,7 +87,7 @@ def get_model(la: float, psi: float, rho: float, mu: float, f_ss: float, x_ss: f
                                                   psi=psi, p=rho) if f_ss > 0 \
             else BirthDeathModel(la=la, psi=psi, p=rho)
     if upsilon > 0:
-        model = CTModel(model=model, upsilon=upsilon, phi=x_c * psi, allow_irremovable_states=True)
+        model = CTModel(model=model, upsilon=upsilon, X_C=x_c, X_p=1)
     return model
 
 
@@ -102,12 +103,12 @@ if __name__ == "__main__":
     parser.add_argument('--max_d', default=12., type=float, help="max infection time (excluded)")
     parser.add_argument('--min_rho', default=0.01, type=float, help="min rho (included)")
     parser.add_argument('--max_rho', default=0.75, type=float, help="max rho (excluded)")
-    parser.add_argument('--min_kappa', default=1, type=int, help="min kappa (included)")
-    parser.add_argument('--max_kappa', default=1, type=int, help="max kappa (excluded)")
+    parser.add_argument('--min_kappa', default=1000, type=int, help="min kappa (included)")
+    parser.add_argument('--max_kappa', default=1000, type=int, help="max kappa (excluded)")
     parser.add_argument('--min_ups', default=0., type=float, help="min upsilon (included)")
     parser.add_argument('--max_ups', default=0.5, type=float, help="max upsilon (excluded)")
-    parser.add_argument('--min_xc', default=20., type=float, help="min phi / psi (included)")
-    parser.add_argument('--max_xc', default=100., type=float, help="max phi / psi (excluded)")
+    parser.add_argument('--min_xc', default=1., type=float, help="min X_C (included)")
+    parser.add_argument('--max_xc', default=100., type=float, help="max X_C (excluded)")
     parser.add_argument('--min_fe', default=0., type=float, help="min incubation fraction (included)")
     parser.add_argument('--max_fe', default=1., type=float, help="max incubation fraction (excluded)")
     parser.add_argument('--min_fss', default=0., type=float, help="min superspreading fraction (included)")
@@ -146,7 +147,7 @@ if __name__ == "__main__":
                 break
     forest = []
     with open(params.log, 'w+') as f:
-        f.write(f'{REPRODUCTIVE_NUMBER},{INFECTION_DURATION},{P},'
+        f.write(f'{REPRODUCTIVE_NUMBER},{INFECTION_DURATION},'
                 f'{LA},{PSI},{RHO},{F_E},{F_S},{X_S},{UPSILON},{X_C},{KAPPA}\n')
 
         for model, epidemic in return_dict.values():
@@ -166,7 +167,7 @@ if __name__ == "__main__":
             x_s = (model_params['la_SI' if 'la_SI' in keys else 'la_SE'] \
                    / model_params['la_II' if 'la_II' in keys else 'la_IE']) if f_s else 1
             upsilon = model_params['upsilon'] if is_ct else 0
-            x_c = model_params['phi_I-C'] / psi if is_ct else 1
+            x_c = model_params['psi_I-C'] / psi if is_ct else 1
             kappa = epidemic.kappa if is_ct else 0
 
             rho = model_params['p_I']
@@ -174,7 +175,6 @@ if __name__ == "__main__":
             R_non_ct = (1 + f_s * (x_s - 1)) * la / psi
             R = min(epidemic.R_e, R_non_ct) if is_ct else R_non_ct
             d = min(epidemic.d, d_E + d_I) if is_ct else (d_E + d_I)
-            p = max(rho, epidemic.p) if is_ct else rho
 
-            f.write(f'{R},{d},{p},'
+            f.write(f'{R},{d},'
                     f'{la},{psi},{rho},{f_e},{f_s},{x_s},{upsilon},{x_c},{kappa}\n')

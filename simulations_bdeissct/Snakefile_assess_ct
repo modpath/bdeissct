@@ -1,0 +1,141 @@
+import os
+
+# To run locally:
+# snakemake --snakefile Snakefile_simulate_assess_ct --keep-going --cores 10 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+# To run on maestro:
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
+# snakemake --snakefile Snakefile_simulate_assess_ct --rerun-triggers mtime --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 1000
+
+
+localrules: all
+
+
+
+folder = os.path.abspath(config.get("folder", '.'))
+num = int(config.get("num", 1000))
+REPETITIONS = list(range(num))
+os.makedirs('logs', exist_ok=True)
+
+sim_folder = os.path.join(folder, config.get("sf", 'test'))
+model_folder = os.path.join(folder, 'models')
+MODELS = ['BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
+SIZES=['5000']
+
+TREES_PER_FILE = 1
+
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 8000 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+
+
+rule all:
+    input:
+        expand(os.path.join(sim_folder, '{size}', 'errors_ct.tab'), size=SIZES)
+    shell:
+        """
+        snakemake --snakefile Snakefile_simulate_train {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_simulate_train {snakemake_settings}
+        """
+
+rule simulate_test_set:
+    '''
+    Simulate observed and rate parameters under the given -CT model.
+    '''
+    output:
+        log=os.path.join(sim_folder, '{t}', '{model,[BDEIS]+CT}','params.{i}.csv'),
+    params:
+        mem=2000,
+        name='ct.{model}',
+        qos='fast'
+    threads: 1
+    singularity: "docker://evolbioinfo/treesimulator:v0.2.26"
+    shell:
+        """
+        python3 py/generate_ct_data.py --log {output.log} \
+        --min_tips {wildcards.t} --max_tips {wildcards.t} \
+        --n {TREES_PER_FILE} \
+        --min_R 1 \
+        --max_R 15  \
+        --min_d 0.5  \
+        --max_d 20  \
+        --min_rho 0.01  \
+        --max_rho 0.75  \
+        --min_ups 0  \
+        --max_ups 0.75  \
+        --min_xc 10  \
+        --max_xc 100  \
+        --min_kappa 1000 \
+        --max_kappa 1000 \
+        --min_fe 0  \
+        --max_fe 1  \
+        --min_fss 0  \
+        --max_fss 0.5  \
+        --min_xss 2  \
+        --max_xss 25 \
+        --model {wildcards.model}
+        """
+
+
+rule merge_batches:
+    '''
+    Merges several encoded tree/forest sets.
+    '''
+    input:
+        stats=expand(os.path.join(sim_folder, '{{t}}', '{{model}}','params.{i}.csv'), i=REPETITIONS),
+    output:
+        stats = os.path.join(sim_folder, '{t}', '{model,[BDEIS]+CT}', 'params.csv.xz')
+    params:
+        mem=2000,
+        name='enc.ct.{model}',
+        qos='fast',
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    shell:
+        """
+        python py/merge_xz.py --output {output.stats} --input {input.stats}
+        """
+
+
+rule estimate_params_dl:
+    '''
+    Estimate parameters.
+    '''
+    input:
+        stats = os.path.join(sim_folder, '{t}', '{model,[BDEIS]+CT}', 'params.csv.xz'),
+        dl_model = os.path.join(model_folder, '{t}', 'CT.psi.keras')
+    output:
+        est = os.path.join(sim_folder, '{t}', '{model,[BDEIS]+CT}', 'params.estimates_CT.csv.xz')
+    params:
+        mem = 2000,
+        name = 'dl',
+        qos = 'fast',
+        pattern = os.path.join(model_folder, '{t}')
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    shell:
+        """
+        ct_infer --sumstats {input.stats} --log {output.est}  \
+        --model_path {params.pattern}
+        """
+
+
+rule combine_estimates:
+    '''
+    Combine estimates.
+    '''
+    input:
+        stats = expand(os.path.join(sim_folder, '{{t}}', '{model}', 'params.csv.xz'), model=MODELS),
+        est_dl = expand(os.path.join(sim_folder, '{{t}}', '{model}', 'params.estimates_CT.csv.xz'), model=MODELS)
+    output:
+        tab = os.path.join(sim_folder, '{t}', 'errors_ct.tab'),
+    params:
+        mem = 2000,
+        name = 'estimates',
+        qos = 'fast',
+    threads: 1
+    singularity: "docker://evolbioinfo/python-evol:v3.8.2b"
+    shell:
+        """
+        python3 py/print_error_table_ct.py --real {input.stats} \
+        --tab {output.tab} \
+        --estimates {input.est_dl}
+        """

@@ -3,7 +3,7 @@ import os
 # To run locally:
 # snakemake --snakefile Snakefile_simulate_test --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 # To run on maestro:
-# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projets/mPath/anna/projects/bdext/sim_bdeiss
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
 # snakemake --snakefile Snakefile_simulate_test --rerun-triggers mtime --config model=BD --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 500
 
 
@@ -39,13 +39,13 @@ rule simulate_tree:
     '''
     output:
         log=os.path.join(sim_folder, '{mint}_{maxt}', '{model}', 'tree.{i}.log'),
-        nwk=os.path.join(sim_folder, '{mint}_{maxt}', '{model,[BDEISCT]+}', 'tree.{i}.nwk'),
+        nwk=os.path.join(sim_folder, '{mint}_{maxt}', '{model,[BDEIS]+CT}', 'tree.{i}.nwk'),
     params:
         mem=2000,
         name='sim.{model}.test',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/treesimulator:v0.2.24"
+    singularity: "docker://evolbioinfo/bdext:v0.1.65"
     shell:
         """
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -69,7 +69,7 @@ rule simulate_tree:
         --max_fss 0.5  \
         --min_xss 5  \
         --max_xss 20 \
-        --model {wildcards.model}
+        --model {wildcards.model} 
         """
 
 rule encode_test:
@@ -86,7 +86,7 @@ rule encode_test:
         name='enc.{model}.test',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.58"
+    singularity: "docker://evolbioinfo/bdext:v0.1.65"
     shell:
         """
         bdeissct_encode --nwks {input.nwk} --logs {input.log} --out {output.stats}

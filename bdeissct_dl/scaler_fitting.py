@@ -10,16 +10,12 @@ from bdeissct_dl.model_serializer import save_scaler_joblib, save_scaler_numpy
 from bdeissct_dl.training import get_data_characteristics
 
 
-def fit_scalers(paths, x_indices, y_indices, scaler_x=None, scaler_y=None):
-    # First pass: calculate mean and var
-    for path in paths:
+def fit_scalers(paths, x_indices, scaler_x=None):
+   for path in paths:
         df = pd.read_csv(path)
         if scaler_x:
             X = df.iloc[:, x_indices].to_numpy(dtype=float, na_value=0)
-            scaler_x.partial_fit(X)
-        if scaler_y:
-            Y = df.iloc[:, y_indices].to_numpy(dtype=float, na_value=0)
-            scaler_y.partial_fit(Y)
+            scaler_x.fit(X)
 
 
 def main():
@@ -41,17 +37,14 @@ def main():
 
     os.makedirs(params.model_path, exist_ok=True)
 
-    scaler_x, scaler_y = StandardScaler(), None
-    x_indices, y_indices, _ = \
+    scaler_x = StandardScaler()
+    x_indices, _ = \
         get_data_characteristics(paths=params.train_data, target_columns=TARGET_COLUMNS_BDEISSCT)
-    fit_scalers(paths=params.train_data, x_indices=x_indices, y_indices=y_indices, scaler_x=scaler_x, scaler_y=scaler_y)
+    fit_scalers(paths=params.train_data, x_indices=x_indices, scaler_x=scaler_x)
 
     if scaler_x is not None:
         save_scaler_joblib(scaler_x, params.model_path, suffix='x')
         save_scaler_numpy(scaler_x, params.model_path, suffix='x')
-    if scaler_y is not None:
-        save_scaler_joblib(scaler_y, params.model_path, suffix='y')
-        save_scaler_numpy(scaler_y, params.model_path, suffix='y')
 
 
 if '__main__' == __name__:

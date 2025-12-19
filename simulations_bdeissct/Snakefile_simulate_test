@@ -39,7 +39,7 @@ rule simulate_tree:
     '''
     output:
         log=os.path.join(sim_folder, '{mint}_{maxt}', '{model}', 'tree.{i}.log'),
-        nwk=os.path.join(sim_folder, '{mint}_{maxt}', '{model,[BDEIS]+CT}', 'tree.{i}.nwk'),
+        nwk=os.path.join(sim_folder, '{mint}_{maxt}', '{model,[BDEISCT]+}', 'tree.{i}.nwk'),
     params:
         mem=2000,
         name='sim.{model}.test',

@@ -48,7 +48,7 @@ rule simulate_trees:
         name='sim.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.66"
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
@@ -56,21 +56,20 @@ rule simulate_trees:
         --n {TREES_PER_FILE} \
         --min_R 1 \
         --max_R 10  \
-        --min_d 0.5  \
-        --max_d 12  \
-        --min_rho 0.01  \
+        --min_d 1  \
+        --max_d 31  \
+        --min_d_inc 0  \
+        --min_rho 0.05  \
         --max_rho 0.75  \
         --min_ups 0  \
         --max_ups 0.75  \
-        --min_xc 10  \
+        --min_xc 1  \
         --max_xc 100  \
         --min_kappa 1000 \
         --max_kappa 1000 \
-        --min_fe 0  \
-        --max_fe 1  \
         --min_fss 0  \
         --max_fss 0.5  \
-        --min_xss 2  \
+        --min_xss 1  \
         --max_xss 25 \
         --model {wildcards.model} 
         """

@@ -4,9 +4,8 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl import MODEL_PATH
-from bdeissct_dl.bdeissct_model import BD, BDCT, BDEI, BDEICT, \
-    BDSS, BDSSCT, BDEISS, BDEISSCT, TARGET_COLUMNS_BDEISSCT
-from bdeissct_dl.model_serializer import save_scaler_joblib, save_scaler_numpy
+from bdeissct_dl.bdeissct_model import TARGET_COLUMNS_BDEISSCT
+from bdeissct_dl.model_serializer import save_scaler_numpy
 from bdeissct_dl.training import get_data_characteristics
 
 
@@ -28,8 +27,7 @@ def main():
     parser = \
         argparse.ArgumentParser(description="Fit a BD(EI)(SS)(CT) data scaler.")
     parser.add_argument('--train_data', type=str, nargs='+',
-                        default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/{model}/{i}/trees.csv.xz' for i in range(120) for model in [BD, BDCT, BDEI, BDEICT, BDSS, BDSSCT, BDEISS, BDEISSCT]]
-                        ,
+                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/{model}/{i}/trees.csv.xz' for i in range(120) for model in [BD, BDCT, BDEI, BDEICT, BDSS, BDSSCT, BDEISS, BDEISSCT]],
                         help="path to the files where the encoded training data are stored")
     parser.add_argument('--model_path', default=MODEL_PATH, type=str,
                         help="path to the folder where the scaler should be stored.")
@@ -43,7 +41,6 @@ def main():
     fit_scalers(paths=params.train_data, x_indices=x_indices, scaler_x=scaler_x)
 
     if scaler_x is not None:
-        save_scaler_joblib(scaler_x, params.model_path, suffix='x')
         save_scaler_numpy(scaler_x, params.model_path, suffix='x')
 
 

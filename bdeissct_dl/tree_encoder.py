@@ -2,7 +2,6 @@ import io
 import os
 from glob import iglob
 
-import numpy as np
 import pandas as pd
 from treesumstats import FeatureCalculator, FeatureRegistry, FeatureManager
 from treesumstats.balance_sumstats import BalanceFeatureCalculator
@@ -13,8 +12,8 @@ from treesumstats.ltt_sumstats import LTTFeatureCalculator
 from treesumstats.subtree_sumstats import SubtreeFeatureCalculator
 from treesumstats.transmission_chain_sumstats import TransmissionChainFeatureCalculator
 
-from bdeissct_dl.bdeissct_model import RHO, LA, PSI, F_E, UPSILON, X_C, KAPPA, F_S, X_S, RATE_PARAMETERS, \
-    TIME_PARAMETERS, PI_E, PI_I, PI_S, PI_EC, PI_IC, PI_SC, LA_AVG, INFECTION_DURATION, REPRODUCTIVE_NUMBER
+from bdeissct_dl.bdeissct_model import RHO, UPSILON, X_C, KAPPA, F_S, X_S, RATE_PARAMETERS, \
+    TIME_PARAMETERS, INFECTION_DURATION, REPRODUCTIVE_NUMBER, INCUBATION_PERIOD
 from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
 
 TARGET_AVG_BL = 1
@@ -39,30 +38,30 @@ def get_write_handle(path, temp_suffix=''):
 def scale(Y, SF):
     for col in (Y.keys() if type(Y) == dict else Y.columns):
         for rate in RATE_PARAMETERS:
-            if col.startswith(rate):
+            if col == rate:
                 Y[col] *= SF
         for time in TIME_PARAMETERS:
-            if col.startswith(time):
+            if col == time:
                 Y[col] /= SF
 
 
 def scale_back(Y, SF):
     for col in (Y.keys() if type(Y) == dict else Y.columns):
         for rate in RATE_PARAMETERS:
-            if col.startswith(rate):
+            if col == rate:
                 Y[col] /= SF
         for time in TIME_PARAMETERS:
-            if col.startswith(time):
+            if col == time:
                 Y[col] *= SF
 
 
 def scale_back_array(Y, SF, columns):
     for i, col in enumerate(columns):
         for rate in RATE_PARAMETERS:
-            if col.startswith(rate):
+            if col == rate:
                 Y[:, i] /= SF
         for time in TIME_PARAMETERS:
-            if col.startswith(time):
+            if col == time:
                 Y[:, i] *= SF
 
 
@@ -72,14 +71,14 @@ def parse_parameters(log):
         R = df.loc[i, REPRODUCTIVE_NUMBER]
         d = df.loc[i, INFECTION_DURATION]
         rho = df.loc[i, RHO]
-        f_e = df.loc[i, F_E] if F_E in df.columns else 0
+        d_inc = df.loc[i, INCUBATION_PERIOD] if INCUBATION_PERIOD in df.columns else 0
         f_ss = df.loc[i, F_S] if F_S in df.columns else 0
         x_ss = df.loc[i, X_S] if X_S in df.columns else 1
         upsilon = df.loc[i, UPSILON] if UPSILON in df.columns else 0
         x_c = df.loc[i, X_C] if X_C in df.columns else 1
         kappa = df.loc[i, KAPPA] if KAPPA in df.columns else 0
 
-        yield R, d, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa
+        yield R, d, rho, d_inc, f_ss, x_ss, upsilon, x_c, kappa
 
 
 class BDEISSCTFeatureCalculator(FeatureCalculator):
@@ -89,7 +88,7 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
         pass
 
     def feature_names(self):
-        return [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO, F_E, F_S, X_S, UPSILON, X_C, KAPPA, \
+        return [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO, INCUBATION_PERIOD, F_S, X_S, UPSILON, X_C, KAPPA, \
                 SCALING_FACTOR]
 
     def set_forest(self, forest, **kwargs):
@@ -99,12 +98,6 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
         return kwargs[feature_name] if feature_name in kwargs else None
 
     def help(self, feature_name, *args, **kwargs):
-        if LA == feature_name:
-            return 'transmission rate.'
-        if LA_AVG == feature_name:
-            return 'average transmission rate.'
-        if PSI == feature_name:
-            return 'removal rate.'
         if RHO == feature_name:
             return 'sampling probability.'
         if UPSILON == feature_name:
@@ -117,26 +110,14 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
             return 'super-spreading ratio.'
         if F_S == feature_name:
             return 'fraction of super-spreaders.'
-        if F_E == feature_name:
-            return 'fraction of incubation over total infected-to-removed time.'
-        if PI_E == feature_name:
-            return 'fraction of unnotified exposed individuals'
-        if PI_EC == feature_name:
-            return 'fraction of notified exposed individuals'
-        if PI_I == feature_name:
-            return 'fraction of unnotified infectious regular spreaders'
-        if PI_IC == feature_name:
-            return 'fraction of notified infectious regular spreaders'
-        if PI_S == feature_name:
-            return 'fraction of unnotified infectious superpreaders'
-        if PI_SC == feature_name:
-            return 'fraction of notified infectious superspreaders'
         if SCALING_FACTOR == feature_name:
             return 'tree scaling factor.'
         if REPRODUCTIVE_NUMBER == feature_name:
             return 'reproduction number.'
         if INFECTION_DURATION == feature_name:
             return 'infection duration.'
+        if INCUBATION_PERIOD == feature_name:
+            return 'incubation period.'
         return None
 
 
@@ -252,14 +233,14 @@ TIME_DIFF_STATS = ['time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'tim
 
 EPI_STATS = [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO,
              UPSILON, X_C, KAPPA,
-             F_E,
+             INCUBATION_PERIOD,
              F_S, X_S]
 
 STATS = ['n_tips'] \
         + BRLEN_STATS + TIME_STATS + CHAIN_STATS + LTT_STATS + BALANCE_STATS + TOPOLOGY_STATS + TIME_DIFF_STATS \
         + EPI_STATS + [SCALING_FACTOR]
 
-def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, f_e=0, f_ss=0, x_ss=1,
+def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, d_inc=0, f_ss=0, x_ss=1,
                       target_avg_brlen=TARGET_AVG_BL):
     """
     Rescales the input forest to have mean branch lengths of 1, calculates its summary statistics,
@@ -269,7 +250,7 @@ def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, f_e=0, f
     :param x_ss: presumed superspreading ratio (how many times superspreader's transmission rate is higher
         than that of a standard spreader, 1 by default)
     :param f_ss: presumed fraction of superspreaders in the infectious population (0 by default)
-    :param f_e: presumed fraction of incubation over total infected-to-removed time (0 by default)
+    :param d_inc: presumed incubation period length (0 by default)
     :param forest: list(ete3.Tree) forest to encode
     :param rho: presumed sampling probability
     :param upsilon: presumed notification probability
@@ -286,7 +267,7 @@ def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, f_e=0, f
 
     kwargs = {SCALING_FACTOR: scaling_factor,
               REPRODUCTIVE_NUMBER: R, INFECTION_DURATION: d, RHO: rho,
-              F_E: f_e,
+              INCUBATION_PERIOD: d_inc,
               F_S: f_ss, X_S: x_ss,
               X_C: x_c, UPSILON: upsilon, KAPPA: kappa}
     scale(kwargs, scaling_factor)
@@ -337,11 +318,11 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
             for ps, forest in zip(parameters, forests):
 
                 scaling_factor = rescale_forest_to_avg_brlen(forest, target_avg_length=target_avg_brlen)
-                R, d, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa = ps
+                R, d, rho, d_inc, f_ss, x_ss, upsilon, x_c, kappa = ps
                 kwargs = {SCALING_FACTOR: scaling_factor}
                 kwargs[REPRODUCTIVE_NUMBER], kwargs[INFECTION_DURATION], kwargs[RHO] = R, d, rho
                 kwargs[UPSILON], kwargs[KAPPA], kwargs[X_C] = upsilon, kappa, x_c
-                kwargs[F_E] = f_e
+                kwargs[INCUBATION_PERIOD] = d_inc
                 kwargs[F_S], kwargs[X_S] = f_ss, x_ss
 
                 scale(kwargs, scaling_factor)

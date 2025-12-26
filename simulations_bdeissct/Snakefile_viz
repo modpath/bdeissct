@@ -6,17 +6,11 @@ import os
 localrules: all
 
 folder = os.path.abspath(config.get("folder", '.'))
-num = int(config.get("num", 100))
-REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
 
 sim_folder = os.path.join(folder, config.get("sf", 'test'))
-model = config.get('model', None)
-MODELS = [model] if model else ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['1000_1000']
-
-EST_DL = ['MF', 'BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-EST_ML = ['bd', 'bdct', 'bdei']
+MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+SIZES=['200_500']
 
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
@@ -26,35 +20,11 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        # expand(os.path.join(sim_folder, '{model}', 'errors.svg'), model=MODELS),
-        # expand(os.path.join(sim_folder, '{model}', 'error_bars.svg'), model=MODELS),
-        # os.path.join(sim_folder, 'error_bars.svg'),
-        # expand(os.path.join(sim_folder, '{model}', 'errors_trees.svg'), model=MODELS),
-        expand(os.path.join(sim_folder, '{model}_error_bars.svg'), model=MODELS),
-        expand(os.path.join(sim_folder, '{size}', '{model}', 'error_bars.svg'), model=MODELS, size=SIZES),
         expand(os.path.join(sim_folder, '{size}', 'error_bars.svg'), size=SIZES),
+        expand(os.path.join(sim_folder, '{size}', 'error_tables.tex'), size=SIZES)
 
 
 rule plot_error_bars:
-    '''
-    Plots the errors.
-    '''
-    input:
-        tab = os.path.join(sim_folder, '{size}', '{model}', 'estimates.tab'),
-    output:
-        pdf = os.path.join(sim_folder, '{size}', '{model,[BDCTEIS0-9]+}', 'error_bars.svg'),
-    params:
-        mem = 2000,
-        name = 'errors',
-        qos = 'fast'
-    threads: 1
-    singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
-    shell:
-        """
-        python3 py/plot_error_bars.py --estimates {input.tab}  --pdf {output.pdf} 
-        """
-
-rule plot_error_bars_all_models:
     '''
     Plots the errors.
     '''
@@ -70,17 +40,17 @@ rule plot_error_bars_all_models:
     singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
     shell:
         """
-        python3 py/plot_error_bars_all.py --estimates {input.tab} --pdf {output.pdf}
+        python3 py/plot_error_bars.py --estimates {input.tab}  --pdf {output.pdf} 
         """
 
-rule plot_error_bars_all_sizes:
+rule print_error_table:
     '''
     Plots the errors.
     '''
     input:
-        tab = expand(os.path.join(sim_folder, '{size}', '{{model}}', 'estimates.tab'), size=SIZES),
+        tab = expand(os.path.join(sim_folder, '{{size}}', '{model}', 'estimates.tab'), model=MODELS),
     output:
-        pdf = os.path.join(sim_folder, '{model}_error_bars.svg'),
+        tex = os.path.join(sim_folder, '{size}', 'error_tables.tex'),
     params:
         mem = 2000,
         name = 'errors',
@@ -89,5 +59,5 @@ rule plot_error_bars_all_sizes:
     singularity: "docker://evolbioinfo/python-evol:v3.6richer.2"
     shell:
         """
-        python3 py/plot_error_bars_all.py --estimates {input.tab} --pdf {output.pdf}
+        python3 py/print_error_table.py --estimates {input.tab}  --latex {output.tex} 
         """

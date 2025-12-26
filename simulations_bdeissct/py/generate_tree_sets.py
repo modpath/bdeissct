@@ -8,23 +8,22 @@ from treesimulator.mtbd_models import CTModel, BirthDeathModel, BirthDeathExpose
     BirthDeathWithSuperSpreadingModel, BirthDeathExposedInfectiousWithSuperSpreadingModel, Model
 import re
 
-TIMEOUT = int(10 * 60) # seconds
-
+TIMEOUT = int(10 * 60)  # seconds
 
 RHO = 'rho'
 REPRODUCTIVE_NUMBER = 'R'
 INFECTION_DURATION = 'd'
 
-F_E = 'f_E'
 F_S = 'f_S'
 X_S = 'X_S'
+INCUBATION_PERIOD = 'd_E'
 
 X_C = 'X_C'
 UPSILON = 'upsilon'
 KAPPA = 'kappa'
 
 
-def random_float(rng: np.random.Generator, min_value: float=0, max_value: float=1, size=1) -> float:
+def random_float(rng: np.random.Generator, min_value: float = 0, max_value: float = 1, size=1) -> float:
     """
     Generate a random float in [min_value, max_value[
     :param rng: random generator
@@ -42,8 +41,8 @@ def generate_tree(params, pid, results, i, rep):
 
     R = random_float(rng, params.min_R, params.max_R)
     d = random_float(rng, params.min_d, params.max_d)
-    f_e = random_float(rng, params.min_fe, params.max_fe) \
-        if 'EI' in model_name else 0
+    d_inc = random_float(rng, params.min_d_inc, d) if 'EI' in model_name else 0
+    mu = 1 / d_inc if d_inc > 0 else np.inf
     if 'SS' in model_name:
         f_ss = random_float(rng, params.min_fss, params.max_fss)
         x_ss = random_float(rng, params.min_xss, params.max_xss)
@@ -56,48 +55,46 @@ def generate_tree(params, pid, results, i, rep):
     else:
         upsilon, x_c, kappa = 0, 1, 0
     rho = random_float(rng, params.min_rho, params.max_rho)
-    d_I = d * (1 - f_e)
-    la = R / d_I / (1 + f_ss * (x_ss - 1))
+    d_inf = d - d_inc
+    la = R / d_inf / (1 + f_ss * (x_ss - 1))
 
     if upsilon > 0 and x_c > 1:
         # 1/psi/X_C <= d_I <= 1/psi
         # => psi <= 1/d_I <= psi * X_C
-        psi_min = 1 / d_I / x_c
-        psi_max = 1 / d_I
+        psi_min = 1 / d_inf / x_c
+        psi_max = 1 / d_inf
         # cap psi_min is such a way that the infectious period is <= 100
         psi_min = max(psi_min, 1 / 100)
         psi = random_float(rng, psi_min, psi_max)
-        d_I = 1 / psi
-        d_E = f_e * d_I / (1 - f_e)
-        mu = 1 / d_E if f_e > 0 else np.inf
     else:
-        psi = 1 / d_I
-        d_E = f_e * d
-        mu = 1 / d_E if f_e > 0 else np.inf
+        psi = 1 / d_inf
 
-    print(f'la={la}, psi={psi}, rho={rho}, mu={mu}, f_e={f_e}, f_ss={f_ss}, x_ss={x_ss}, ups={upsilon}, x_c={x_c}')
+    print(f'la={la}, psi={psi}, rho={rho}, mu={mu}, f_ss={f_ss}, x_ss={x_ss}, ups={upsilon}, x_c={x_c}')
     model = get_model(la=la, psi=psi, rho=rho, mu=mu, f_ss=f_ss, x_ss=x_ss, upsilon=upsilon, x_c=x_c)
 
     tips = rng.integers(params.min_tips, params.max_tips + 1)
     print(f'n_tips={tips}')
     epidemic = generate([model], min_tips=tips, max_tips=tips, max_notified_contacts=kappa,
                         notify_at_removal=True,
-                        return_stats=True)
-    if upsilon > 0 and x_c > 1:
-        print('base model ', model.model.get_avg_R(), model.model.get_avg_d(), 'vs hoped for ', R, d)
-        Rs = [generate([model], min_tips=250, max_tips=250, max_notified_contacts=kappa,
-                       notify_at_removal=True,
-                       return_stats=True, return_sampled_forest=False).R_e
-              for _ in range(100)]
-        R = np.median(Rs)
-        d = d_E + R / la / (1 + f_ss * (x_ss - 1))
+                        return_stats=False)
 
-        print('\tvs observed ', R, d)
+    R_o = np.median([generate([model], min_tips=250, max_tips=250, max_notified_contacts=kappa,
+                              notify_at_removal=True,
+                              return_stats=True, return_sampled_forest=False).R_e
+                     for _ in range(100)])
+    d_o = d_inc + R_o / la / (1 + f_ss * (x_ss - 1))
+    base_model = model if 'CT' not in model_name else model.model
+    print('Base model\'s R and d:', base_model.get_avg_R(), base_model.get_avg_d(), 'vs hoped for:', R, d, 'vs observed:', R_o, d_o)
+    if upsilon > 0 and x_c > 1:
+        d = d_o
+        R = R_o
+
     if params.min_R > R or params.max_R < R or params.min_d > d or params.max_d < d:
         print('Regenerating due to R or d out of bounds...')
         return
 
-    results[pid] = epidemic.sampled_forest[0], (R, d, rho, f_e, f_ss, x_ss, upsilon, x_c, kappa)
+    results[pid] = epidemic.sampled_forest[0], (R, d, rho, d_inc, f_ss, x_ss, upsilon, x_c, kappa, R_o, d_o)
+
 
 def get_model(la: float, psi: float, rho: float, mu: float, f_ss: float, x_ss: float, upsilon: float,
               x_c: float) -> Model:
@@ -124,8 +121,9 @@ if __name__ == "__main__":
 
     parser.add_argument('--min_R', default=1, type=float, help="min R0 (included)")
     parser.add_argument('--max_R', default=10., type=float, help="max R0 (excluded)")
-    parser.add_argument('--min_d', default=0.5, type=float, help="min infection time (included)")
-    parser.add_argument('--max_d', default=12., type=float, help="max infection time (excluded)")
+    parser.add_argument('--min_d', default=1, type=float, help="min infection time (included)")
+    parser.add_argument('--min_d_inc', default=0., type=float, help="min infection time (included)")
+    parser.add_argument('--max_d', default=31., type=float, help="max infection time (excluded)")
     parser.add_argument('--min_rho', default=0.01, type=float, help="min rho (included)")
     parser.add_argument('--max_rho', default=0.75, type=float, help="max rho (excluded)")
     parser.add_argument('--min_kappa', default=1000, type=int, help="min kappa (included)")
@@ -134,8 +132,6 @@ if __name__ == "__main__":
     parser.add_argument('--max_ups', default=0.75, type=float, help="max upsilon (excluded)")
     parser.add_argument('--min_xc', default=10., type=float, help="min X_C (included)")
     parser.add_argument('--max_xc', default=500., type=float, help="max X_C (excluded)")
-    parser.add_argument('--min_fe', default=0., type=float, help="min incubation fraction (included)")
-    parser.add_argument('--max_fe', default=1., type=float, help="max incubation fraction (excluded)")
     parser.add_argument('--min_fss', default=0., type=float, help="min superspreading fraction (included)")
     parser.add_argument('--max_fss', default=0.5, type=float, help="max superspreading fraction (excluded)")
     parser.add_argument('--min_xss', default=2., type=float, help="min superspreading rate ratio (included)")
@@ -180,12 +176,10 @@ if __name__ == "__main__":
 
     forest = []
     with open(params.log, 'w+') as f:
-        f.write(f'{REPRODUCTIVE_NUMBER},{INFECTION_DURATION},{RHO},{F_E},{F_S},{X_S},{UPSILON},{X_C},{KAPPA},tips\n')
+        f.write(
+            f'{REPRODUCTIVE_NUMBER},{INFECTION_DURATION},{RHO},{INCUBATION_PERIOD},{F_S},{X_S},{UPSILON},{X_C},{KAPPA},tips,R_observed,d_observed\n')
 
-        for tree, (R, d, p, f_e, f_ss, x_ss, upsilon, x_c, kappa) in return_dict.values():
-            f.write(f'{R},{d},{p},{f_e},{f_ss},{x_ss},{upsilon},{x_c},{kappa},{len(tree)}\n')
+        for tree, (R, d, p, d_inc, f_ss, x_ss, upsilon, x_c, kappa, R_o, d_o) in return_dict.values():
+            f.write(f'{R},{d},{p},{d_inc},{f_ss},{x_ss},{upsilon},{x_c},{kappa},{len(tree)},{R_o},{d_o}\n')
             forest.append(tree)
     save_forest(forest, params.nwk)
-
-
-

@@ -18,14 +18,14 @@ can be described with the following 8 parameters:
 
 * average reproduction number R;
 * average total infection duration d;
-* fraction of incubation in the total infection duration f<sub>E</sub>;
-* (untraced) sampling probability ρ;
-* super-spreading transmission ratio X<sub>S</sub>;
+* incubation period d<sub>inc</sub>;
+* sampling probability ρ;
 * fraction of superspreaders f<sub>S</sub>;
+* super-spreading transmission increase X<sub>S</sub>;
 * contact tracing probability υ;
 * contact-traced removal speed up X<sub>C</sub>.
 
-Setting f<sub>E</sub>=0 removes incubation (EI), setting f<sub>S</sub>=0 removes superspreading (SS), while setting υ=0 removes contact-tracing (CT).
+Setting d<sub>inc</sub>=0 removes incubation (EI), setting f<sub>S</sub>=0 removes superspreading (SS), while setting υ=0 removes contact-tracing (CT).
 
 For identifiability, we require the sampling probability ρ to be given by the user. 
 The other parameters are estimated from a time-scaled phylogenetic tree.

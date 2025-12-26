@@ -1,28 +1,19 @@
+import re
 from collections import defaultdict
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from fontTools.misc.cython import returns
-from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox, VPacker
-import itertools
-
-import re
 
 MODELS = ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
 
-# PARAMETERS = ['lambda', 'avg la', 'psi', 'avg psi', 'avg psi 2', 'R', 'R2'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
-PARAMETERS = ['R', 'd', 'f_E', 'f_S', 'upsilon', 'X_S', 'X_C'] #, 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
-p2latex = {'avg la': '$\\bar{\\lambda}$', 'avg R': '$\\bar{R}$', 'R': '$R$', 'd': '$d$', 'f_E': '$f_E$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
-           'upsilon': '$\\upsilon$', 'X_C': '$X_C$', 'pi_E': '$\\pi_E$', 'pi_I': '$\\pi_I$', 'pi_S': '$\\pi_S$', \
-           'pi_E-C': '$\\pi_{E_C}$', 'pi_I-C': '$\\pi_{I_C}$', 'pi_S-C': '$\\pi_{S_C}$'}
-p2name = {'avg la': 'average transmission rate', 'R': 'average reproduction number', 'd': 'average infection time', \
-          'f_E': 'incubation fraction', 'f_S': 'superspreader fraction', 'X_S': 'superspreading ratio',  \
-           'upsilon': 'contact-tracing probability', 'X_C': 'contact-traced detection speed up'}
+PARAMETERS = ['R', 'd', 'd_E', 'f_S', 'upsilon', 'X_S', 'X_C']
+p2latex = {'R': '$R$', 'd': '$d$', 'd_E': '$d_{inc}$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
+           'upsilon': '$\\upsilon$', 'X_C': '$X_C$'}
+p2name = {'R': 'average reproduction number', 'd': 'average infection time', \
+          'd_E': 'incubation period', 'f_S': 'superspreader fraction', 'X_S': 'superspreading transmission increase',  \
+          'upsilon': 'contact-tracing probability', 'X_C': 'contact-traced removal speed up'}
 
-EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdct', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
-EST_ORDER = ['bd', 'bddl', None, 'bdeidl', None, 'bdssdl', None, 'bdeissdl', None, 'bdctdl', None, 'bdeictdl', None, 'bdssctdl', None, 'bdeissctdl']
+EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', None, 'bdssdl', None, 'bdeissdl', None, 'bdctdl', None, 'bdeictdl', None, 'bdssctdl', None, 'bdeissctdl']
 
 
 HEADER = """
@@ -70,11 +61,11 @@ def need_to_skip(par, estimator_type):
 
     if estimator_type.lower() in ['bd', 'bddl'] and par.startswith('pi'):
         return True
-    if ('X_C' in par or 'upsilon' in par or par.startswith('pi') and par.endswith('C')) and ('ct' not in estimator_type.lower()): #or 'ct' not in model.lower()):
+    if ('X_C' in par or 'upsilon' in par) and ('ct' not in estimator_type.lower()): #or 'ct' not in model.lower()):
         return True
-    if ('f_E' in par or par.startswith('pi_E') or 'inc' in par) and ('ei' not in estimator_type.lower()): # or 'ei' not in model.lower()):
+    if ('d_E' in par or 'inc' in par) and ('ei' not in estimator_type.lower()): # or 'ei' not in model.lower()):
         return True
-    if ('f_S' in par or 'X_S' in par or par.startswith('pi_S')) and ('ss' not in estimator_type.lower()): # or 'ss' not in model.lower()):
+    if ('f_S' in par or 'X_S' in par) and ('ss' not in estimator_type.lower()): # or 'ss' not in model.lower()):
         return True
     return False
 
@@ -122,7 +113,8 @@ if __name__ == "__main__":
                 df.loc[mask, f'{par}_error'] = df.loc[mask, par] - real_df.loc[idx, par]
                 # df.loc[mask, f'{par}_error'] /= np.where(real_df.loc[idx, par] > 0, real_df.loc[idx, par], 1)
 
-                if par != 'upsilon' and par != 'f_E' and par != 'f_S' and not par.startswith('pi'):
+                if par != 'upsilon' and par != 'f_S' and par != 'd_E':
+                # if np.all(real_df.loc[idx, par] > 0):
                     df.loc[mask, f'{par}_error'] /= real_df.loc[idx, par]
 
         data = []
@@ -163,7 +155,7 @@ if __name__ == "__main__":
         return f'{b:3.0f}'.replace(' ', '~')
 
     def format_value(m_i, p_i, e_i):
-        if p in {'R', 'd', 'avg la'} and not is_estimator_pertunent(model, EST_ORDER[e_i]):
+        if p in {'R', 'd'} and not is_estimator_pertunent(model, EST_ORDER[e_i]):
             return ' & '
         return f'{errors[m_i, p_i, e_i]:.0f} & ({format_bias(biases[m_i, p_i, e_i])})' \
             if (e_i // 2) != m_i \
@@ -214,5 +206,5 @@ if __name__ == "__main__":
                 f.write('{{{}}} & {}\\\\\n'.format(model.replace('CT', '-CT'), ' & '.join(
                     format_value(m_i, p_i, e_i)
                     for e_i in range(len(EST_ORDER)) if EST_ORDER[e_i] is not None and not need_to_skip(p, EST_ORDER[e_i]))))
-            f.write((FOOTER1 if p in {'R', 'd', 'avg la', 'X_C', 'X_S'} else FOOTER2).format(param_latex=p2latex[p].replace('$', '')))
+            f.write((FOOTER1 if p in {'R', 'd', 'd_E', 'X_C', 'X_S'} else FOOTER2).format(param_latex=p2latex[p].replace('$', '')))
             f.write('\n\n')

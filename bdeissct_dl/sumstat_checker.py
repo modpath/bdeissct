@@ -1,5 +1,5 @@
 from bdeissct_dl import MODEL_PATH
-from bdeissct_dl.training import get_test_data, get_X_columns
+from bdeissct_dl.training import get_test_data, FEATURE_COLUMNS
 from bdeissct_dl.tree_encoder import forest2sumstat_df
 from bdeissct_dl.tree_manager import read_forest
 from bdeissct_dl.model_serializer import load_scaler_numpy
@@ -9,7 +9,7 @@ def check_sumstats(forest_sumstats, model_path=MODEL_PATH):
     scaler_x = load_scaler_numpy(model_path, suffix='x')
     X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
 
-    feature_columns = get_X_columns(forest_sumstats.columns)
+    feature_columns = FEATURE_COLUMNS
 
     for i in range(len(feature_columns)):
         value = X[0, i]

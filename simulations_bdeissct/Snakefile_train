@@ -13,13 +13,15 @@ import os
 localrules: all
 
 
-folder = os.path.abspath(config.get("folder", '.'))
+folder = os.path.abspath(config.sf("folder", '.'))
 
 os.makedirs('logs', exist_ok=True)
 
 SIZE = '200_500'
-sim_folder = os.path.join(folder, config.get("sf", 'train'), SIZE)
-model_folder = os.path.join(folder, 'models', SIZE)
+sf = config.sf("sf", 'train')
+sf_test = sf.replace('train', 'test')
+sim_folder = os.path.join(folder,sf, SIZE)
+model_folder = os.path.join(folder, 'models' if not 'covid' in sf else 'covid_models', SIZE)
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
 
@@ -32,8 +34,8 @@ rule all:
         expand(os.path.join(model_folder, '{model}.R.keras'), model=MODELS),
     shell:
         """
-        snakemake --snakefile Snakefile_simulate_test {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_simulate_test {snakemake_settings}
+        snakemake --snakefile Snakefile_estimate --config sf={sf_test} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_estimate --config sf={sf_test} {snakemake_settings}
         """
 
 rule fit_scaler:
@@ -50,7 +52,7 @@ rule fit_scaler:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_fit_scaler --train_data {input.train_trees} --model_path {params.path}
@@ -73,7 +75,7 @@ rule train_model_BD:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_train --model_name BD --train_data {input.train_trees} --val_data {input.val_trees} \
@@ -97,7 +99,7 @@ rule train_model_BDCT:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_train --model_name BDCT --train_data {input.train_trees} \
@@ -122,7 +124,7 @@ rule train_model_BDEI:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_train --model_name BDEI --train_data {input.train_trees} \
@@ -148,7 +150,7 @@ rule train_model_BDEICT:
         qos='normal',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_train --model_name BDEICT --train_data {input.train_trees} \
@@ -174,7 +176,7 @@ rule train_model_BDSS:
         qos='fast',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_train --model_name BDSS --train_data {input.train_trees} \
@@ -200,7 +202,7 @@ rule train_model_BDSSCT:
         qos='normal',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_train --model_name BDSSCT  --train_data {input.train_trees} \
@@ -226,7 +228,7 @@ rule train_model_BDEISS:
         qos='normal',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_train --model_name BDEISS --train_data {input.train_trees} \
@@ -252,7 +254,7 @@ rule train_model_BDEISSCT:
         qos='normal',
         path = model_folder
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.65"
+    singularity: "docker://evolbioinfo/bdext:v0.1.68"
     shell:
         """        
         bdeissct_train --model_name BDEISSCT --train_data {input.train_trees} \

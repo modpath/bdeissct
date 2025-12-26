@@ -13,12 +13,12 @@ import os
 localrules: all
 
 
-folder = os.path.abspath(config.sf("folder", '.'))
+folder = os.path.abspath(config.get("folder", '.'))
 
 os.makedirs('logs', exist_ok=True)
 
 SIZE = '200_500'
-sf = config.sf("sf", 'train')
+sf = config.get("sf", 'train')
 sf_test = sf.replace('train', 'test')
 sim_folder = os.path.join(folder,sf, SIZE)
 model_folder = os.path.join(folder, 'models' if not 'covid' in sf else 'covid_models', SIZE)

@@ -2,6 +2,7 @@ from datetime import datetime
 
 from Bio import Phylo
 import re
+DATE_REGEX = r'[+-]*[\d]+[.\d]*(?:[e][+-][\d]+){0,1}'
 
 def read_nexus(tree_path):
     with open(tree_path, 'r') as f:

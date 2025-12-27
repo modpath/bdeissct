@@ -87,7 +87,6 @@ rule date_lsd2:
         lsd2 -i {input.nwk} -d {input.dates} -s 29903 -o {params.wd} -R 24 -l 0
 
         mv "{params.wd}.date.nexus" "{output.nexus}"
-        mv "{params.wd}" "{output.log}"
         rm -rf "{params.wd}*"
         """
 

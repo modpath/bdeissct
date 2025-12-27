@@ -15,7 +15,8 @@ num = int(config.get("num", 1000))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
 
-sim_folder = os.path.join(folder, config.get("sf", 'test'))
+sf = config.get("sf", 'test')
+sim_folder = os.path.join(folder, sf)
 model_folder = os.path.join(folder, 'models' if not 'covid' in sf else 'covid_models')
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 SIZES=['200_500']

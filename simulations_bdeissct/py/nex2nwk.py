@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from Bio import Phylo
-
+import re
 
 def read_nexus(tree_path):
     with open(tree_path, 'r') as f:

@@ -116,7 +116,7 @@ rule encode_test:
         name='enc.{model}.test',
         qos='fast'
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.67"
+    singularity: "docker://evolbioinfo/bdext:v0.1.69"
     shell:
         """
         bdeissct_encode --nwks {input.nwk} --logs {input.log} --out {output.stats}

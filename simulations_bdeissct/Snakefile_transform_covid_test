@@ -32,8 +32,8 @@ rule all:
             i=REPETITIONS, model=MODELS)
     shell:
         """
-        snakemake --snakefile Snakefile_transform_covid {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_transform_covid --config sf={cf} {snakemake_settings}
+        snakemake --snakefile Snakefile_transform_covid_train {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_transform_covid_train {snakemake_settings}
         """
 
 

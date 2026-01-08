@@ -1,0 +1,68 @@
+import os
+
+
+# To run locally:
+# snakemake --snakefile Snakefile_encode --keep-going --cores 1 --rerun-triggers mtime
+# snakemake --snakefile Snakefile_encode --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+
+# To run on maestro:
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
+# snakemake --snakefile Snakefile_encode --keep-going --cores 1 --rerun-triggers mtime --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 1000
+
+
+localrules: all
+
+folder = os.path.abspath(config.get("folder",'.'))
+num = int(config.get("num",128))
+REPETITIONS = list(range(num))
+os.makedirs('logs',exist_ok=True)
+
+cf = config.get("cf",'covid_train')
+sim_folder = os.path.join(folder,config.get("sf",'train'),'200_500')
+covid_folder = os.path.join(folder,cf,'200_500')
+MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
+
+TREES_PER_FILE = 8
+
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common --qos={params.qos}  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+
+rule all:
+    input:
+        expand(os.path.join(covid_folder,'{model}','{k}','trees.{i}.nwk'), \
+            k=REPETITIONS,i=REPETITIONS,model=MODELS)
+    shell:
+        """
+        snakemake --snakefile Snakefile_encode --config sf={cf} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_encode --config sf={cf} {snakemake_settings}
+        """
+
+
+rule tt2covid:
+    '''
+    Transforms a transmission tree into a LSD2-dated COVID phylogeny.
+    '''
+    input:
+        nwk=os.path.join(sim_folder,'{model}','{k}','trees.{i}.nwk'),
+        log=os.path.join(sim_folder,'{model}','{k}','trees.{i}.log'),
+    output:
+        nwk=os.path.join(covid_folder,'{model}','{k}','trees.{i}.nwk'),
+        log=os.path.join(covid_folder,'{model}','{k}','trees.{i}.log'),
+    params:
+        mem=1000,
+        name='tt2ctt',
+        qos='fast',
+        tt=os.path.join(sim_folder,'{model}','{k}'),
+        ct=os.path.join(covid_folder,'{model}','{k}'),
+    threads: 1
+    shell:
+        """
+        mkdir -p {params.tt}/{wildcards.i}
+        source ~/.bashrc && conda activate snakemake && module load apptainer && cd {params.tt}/{wildcards.i}
+        
+        snakemake --snakefile {folder}/Snakefile_transform_covid --config tt={params.tt} covid={params.ct} folder={folder} i={wildcards.i} {snakemake_settings} --unlock
+        snakemake --snakefile {folder}/Snakefile_transform_covid --config tt={params.tt} covid={params.ct} folder={folder} i={wildcards.i} {snakemake_settings}
+        
+        cd {folder}
+        rm -rf {params.tt}/{wildcards.i}
+        """

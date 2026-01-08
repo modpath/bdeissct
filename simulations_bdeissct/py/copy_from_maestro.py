@@ -53,6 +53,7 @@ source_directory = "/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/test/200
 destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/"
 filepath_to_copy = "*/0/trees.0.*"
 filename_to_copy = "estimates.tab"
+filename_to_copy = "trees.csv.xz"
 
 # copy_files_with_path(source_directory, destination_directory, filepath_to_copy)
 copy_files_with_name(source_directory, destination_directory, filename_to_copy)

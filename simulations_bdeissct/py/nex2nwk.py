@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from Bio import Phylo
+from ete3 import TreeNode
+import os
 import re
 DATE_REGEX = r'[+-]*[\d]+[.\d]*(?:[e][+-][\d]+){0,1}'
 
@@ -13,8 +15,32 @@ def read_nexus(tree_path):
     temp = tree_path + '.{}.temp'.format(datetime.timestamp(datetime.now()))
     with open(temp, 'w') as f:
         f.write(nexus)
-    trees = list(Phylo.parse(temp, 'nexus'))
+    nex_trees = list(Phylo.parse(temp, 'nexus'))
     os.remove(temp)
+
+    trees = []
+    for nex_tree in nex_trees:
+        todo = [(nex_tree.root, None)]
+        tree = None
+        while todo:
+            clade, parent = todo.pop()
+            dist = 0
+            try:
+                dist = float(clade.branch_length)
+            except:
+                pass
+            name = getattr(clade, 'name', None)
+            if not name:
+                name = getattr(clade, 'confidence', None)
+                if not isinstance(name, str):
+                    name = None
+            node = TreeNode(dist=dist, name=name)
+            if parent is None:
+                tree = node
+            else:
+                parent.add_child(node)
+            todo.extend((c, node) for c in clade.clades)
+        trees.append(tree)
     return trees
 
 if __name__ == "__main__":

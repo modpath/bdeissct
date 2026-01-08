@@ -12,32 +12,18 @@ import os
 
 localrules: all
 
+os.makedirs('logs',exist_ok=True)
 
-folder = os.path.abspath(config.get("folder", '.'))
-num = int(config.get("num", 128))
-REPETITIONS = list(range(num))
-os.makedirs('logs', exist_ok=True)
-
-cf = config.get("cf", 'covid_train')
-sim_folder = os.path.join(folder, config.get("sf", 'train'), '200_500')
-covid_folder = os.path.join(folder, cf, '200_500')
-MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-
+folder = os.path.abspath(config.get("folder",'.'))
+tt_folder = config.get("tt",'.')
+covid_folder = config.get("covid",'.')
+i = int(config.get("i",0))
 
 TREES_PER_FILE = 8
 
-snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common --qos={params.qos}  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
-    if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
-
 rule all:
     input:
-        expand(os.path.join(covid_folder, '{model}', '{k}', 'trees.{i}.nwk'), \
-            k=REPETITIONS, i=REPETITIONS, model=MODELS)
-    shell:
-        """
-        snakemake --snakefile Snakefile_encode --config sf={cf} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_encode --config sf={cf} {snakemake_settings}
-        """
+        expand(os.path.join(covid_folder, 'trees.{i}.nwk'), i=[i])
 
 
 rule tt2phylogeny:
@@ -45,12 +31,12 @@ rule tt2phylogeny:
     Transforms a transmission tree into a phylogeny.
     '''
     input:
-        nwk = os.path.join(sim_folder, '{model}', '{k}', 'trees.{i}.nwk'),
-        log = os.path.join(sim_folder, '{model}', '{k}', 'trees.{i}.log'),
+        nwk=os.path.join(tt_folder,'trees.{i}.nwk'),
+        log=os.path.join(tt_folder,'trees.{i}.log'),
     output:
-        nwk = expand(os.path.join(covid_folder, '{{model}}', '{{k}}', 'phylogeny.{{i}}.{j}.nwk'), j=range(TREES_PER_FILE)),
-        dates = expand(os.path.join(covid_folder, '{{model}}', '{{k}}', 'dates.{{i}}.{j}.tab'), j=range(TREES_PER_FILE)),
-        log = os.path.join(covid_folder, '{model}', '{k}', 'trees.{i}.log'),
+        nwk=expand(os.path.join(covid_folder,'phylogeny.{{i}}.{j}.nwk'),j=range(TREES_PER_FILE)),
+        dates=expand(os.path.join(covid_folder,'dates.{{i}}.{j}.tab'),j=range(TREES_PER_FILE)),
+        log=os.path.join(covid_folder,'trees.{i}.log'),
     params:
         mem=2000,
         name='tt2p',
@@ -59,10 +45,10 @@ rule tt2phylogeny:
     singularity: "docker://evolbioinfo/python-evol:v3.8.2b"
     shell:
         """
-        python3 py/transmission2phylogeny.py --in_nwk {input.nwk} --out_nwk {output.nwk} --out_dates {output.dates} \
+        python3 {folder}/py/transmission2phylogeny.py --in_nwk {input.nwk} --out_nwk {output.nwk} --out_dates {output.dates} \
         --mean_R 0.0008 --std_R 0.0004 --time_scale day --min_date 20 --max_date 30 \
         --s 29903
-        
+
         cp {input.log} {output.log}
         """
 
@@ -71,17 +57,17 @@ rule date_lsd2:
     Dates a phylogeny with LSD2.
     '''
     input:
-        nwk = os.path.join(covid_folder, '{model}', '{k}', 'phylogeny.{i}.nwk'),
-        dates = os.path.join(covid_folder, '{model}', '{k}', 'dates.{i}.tab'),
+        nwk=os.path.join(covid_folder,'phylogeny.{ij}.nwk'),
+        dates=os.path.join(covid_folder,'dates.{ij}.tab'),
     output:
-        nexus = os.path.join(covid_folder, '{model}', '{k}', 'tree.{i}.nexus'),
+        nexus=os.path.join(covid_folder,'tree.{ij}.nexus'),
     threads: 1
     singularity: "docker://evolbioinfo/lsd2:v2.4.1"
     params:
-        mem = 4000,
-        name = 'lsd2',
-        wd = os.path.join(covid_folder, '{model}', '{k}', 'tree.{i}.wd'),
-        qos = 'fast'
+        mem=4000,
+        name='lsd2',
+        wd=os.path.join(covid_folder,'tree.{ij}.wd'),
+        qos='fast'
     shell:
         """
         lsd2 -i {input.nwk} -d {input.dates} -s 29903 -o {params.wd} -R 24 -l 0
@@ -96,9 +82,9 @@ rule nex2nwk:
     Transforms a bunch of nexus trees into a newick file.
     '''
     input:
-        nexus = expand(os.path.join(covid_folder, '{{model}}', '{{k}}', 'tree.{{i}}.{j}.nexus'), j=range(TREES_PER_FILE)),
+        nexus=expand(os.path.join(covid_folder,'tree.{{i}}.{j}.nexus'),j=range(TREES_PER_FILE)),
     output:
-        nwk = os.path.join(covid_folder, '{model}', '{k}', 'trees.{i}.nwk'),
+        nwk=os.path.join(covid_folder,'trees.{i}.nwk'),
     params:
         mem=2000,
         name='nex2nwk',
@@ -107,6 +93,6 @@ rule nex2nwk:
     singularity: "docker://evolbioinfo/python-evol:v3.8.2b"
     shell:
         """
-        python3 py/nex2nwk.py --in_nexus {input.nexus} --out_nwk {output.nwk}
+        python3 {folder}/py/nex2nwk.py --in_nexus {input.nexus} --out_nwk {output.nwk}
         """
 

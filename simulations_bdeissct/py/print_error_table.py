@@ -6,11 +6,11 @@ import pandas as pd
 
 MODELS = ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
 
-PARAMETERS = ['R', 'd', 'd_E', 'f_S', 'upsilon', 'X_S', 'X_C']
-p2latex = {'R': '$R$', 'd': '$d$', 'd_E': '$d_{inc}$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
+PARAMETERS = ['R', 'd', 'd_E', 'f_E', 'f_S', 'upsilon', 'X_S', 'X_C']
+p2latex = {'R': '$R$', 'd': '$d$', 'd_E': '$d_{inc}$', 'f_E': '$f_E$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
            'upsilon': '$\\upsilon$', 'X_C': '$X_C$'}
 p2name = {'R': 'average reproduction number', 'd': 'average infection time', \
-          'd_E': 'incubation period', 'f_S': 'superspreader fraction', 'X_S': 'superspreading transmission increase',  \
+          'd_E': 'incubation period', 'f_E': 'incubation fraction', 'f_S': 'superspreader fraction', 'X_S': 'superspreading transmission increase',  \
           'upsilon': 'contact-tracing probability', 'X_C': 'contact-traced removal speed up'}
 
 EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', None, 'bdssdl', None, 'bdeissdl', None, 'bdctdl', None, 'bdeictdl', None, 'bdssctdl', None, 'bdeissctdl']
@@ -63,7 +63,7 @@ def need_to_skip(par, estimator_type):
         return True
     if ('X_C' in par or 'upsilon' in par) and ('ct' not in estimator_type.lower()): #or 'ct' not in model.lower()):
         return True
-    if ('d_E' in par or 'inc' in par) and ('ei' not in estimator_type.lower()): # or 'ei' not in model.lower()):
+    if ('d_E' in par or 'inc' in par or 'f_E' in par) and ('ei' not in estimator_type.lower()): # or 'ei' not in model.lower()):
         return True
     if ('f_S' in par or 'X_S' in par) and ('ss' not in estimator_type.lower()): # or 'ss' not in model.lower()):
         return True
@@ -97,6 +97,7 @@ if __name__ == "__main__":
 
 
         df = pd.read_csv(estimate, sep='\t', index_col=0)
+        df['f_E'] = df['d_E'] / df['d']
         real_df = df.loc[df['type'] == 'real', :]
         df = df.loc[df['type'] != 'real', :]
         estimator_types = EST_ORDER
@@ -113,7 +114,8 @@ if __name__ == "__main__":
                 df.loc[mask, f'{par}_error'] = df.loc[mask, par] - real_df.loc[idx, par]
                 # df.loc[mask, f'{par}_error'] /= np.where(real_df.loc[idx, par] > 0, real_df.loc[idx, par], 1)
 
-                if par != 'upsilon' and par != 'f_S' and par != 'd_E':
+                # if par != 'upsilon' and par != 'f_S' and par != 'd_E':
+                if par != 'upsilon' and par != 'f_S' and par != 'f_E' and np.all(real_df.loc[idx, par] > 1e-6):
                 # if np.all(real_df.loc[idx, par] > 0):
                     df.loc[mask, f'{par}_error'] /= real_df.loc[idx, par]
 

@@ -4,17 +4,9 @@ from tensorflow.python.keras.utils.generic_utils import register_keras_serializa
 from bdeissct_dl.bdeissct_model import F_S, UPSILON, REPRODUCTIVE_NUMBER, \
     INFECTION_DURATION, X_S, X_C, RHO, INCUBATION_PERIOD
 
-LEARNING_RATE = 0.001
+from collections import defaultdict
 
-LOSS_WEIGHTS = {
-    REPRODUCTIVE_NUMBER: 1,
-    INFECTION_DURATION: 1,
-    INCUBATION_PERIOD: 1,
-    F_S: 200, # as it is a value between 0 and 0.5, we multiply by 200 to scale it to [0, 100]
-    UPSILON: 100,
-    X_C: 1,
-    X_S: 1
-}
+LEARNING_RATE = 0.001
 
 @register_keras_serializable(package="bdeissct_dl", name="half_sigmoid")
 def half_sigmoid(x):
@@ -26,16 +18,17 @@ def relu_plus_one(x):
 
 
 
-LOSS_FUNCTIONS = {
-    REPRODUCTIVE_NUMBER: "mean_absolute_percentage_error",
-    INFECTION_DURATION: "mean_absolute_percentage_error",
-    INCUBATION_PERIOD: "mae",
-    UPSILON: 'mae',
-    RHO: 'mean_absolute_percentage_error',
-    X_C: "mean_absolute_percentage_error",
-    F_S: 'mae',
-    X_S: "mean_absolute_percentage_error",
-}
+LOSS_FUNCTIONS = defaultdict(lambda: "mean_squared_error")
+LOSS_FUNCTIONS.update({
+    REPRODUCTIVE_NUMBER: "mean_squared_error",
+    INFECTION_DURATION: "mean_squared_error",
+    INCUBATION_PERIOD: "mean_squared_error",
+    UPSILON: 'mean_squared_error',
+    RHO: 'mean_squared_error',
+    X_C: "mean_squared_error",
+    F_S: 'mean_squared_error',
+    X_S: "mean_squared_error",
+})
 
 
 def build_model(target_columns, n_x, optimizer=None, metrics=None):
@@ -63,11 +56,11 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
     outputs = {}
 
     if REPRODUCTIVE_NUMBER in target_columns:
-        outputs[REPRODUCTIVE_NUMBER] = tf.keras.layers.Dense(1, activation="softplus", name=REPRODUCTIVE_NUMBER)(x) # positive values only
+        outputs[REPRODUCTIVE_NUMBER] = tf.keras.layers.Dense(1, activation="relu", name=REPRODUCTIVE_NUMBER)(x) # positive values only
     if INFECTION_DURATION in target_columns:
-        outputs[INFECTION_DURATION] = tf.keras.layers.Dense(1, activation="softplus", name=INFECTION_DURATION)(x) # positive values only
+        outputs[INFECTION_DURATION] = tf.keras.layers.Dense(1, activation="relu", name=INFECTION_DURATION)(x) # positive values only
     if INCUBATION_PERIOD in target_columns:
-        outputs[INCUBATION_PERIOD] = tf.keras.layers.Dense(1, activation="softplus", name=INCUBATION_PERIOD)(x) # positive values only
+        outputs[INCUBATION_PERIOD] = tf.keras.layers.Dense(1, activation="relu", name=INCUBATION_PERIOD)(x) # positive values only
     if F_S in target_columns:
         outputs[F_S] = tf.keras.layers.Dense(1, activation=half_sigmoid, name="FS_logits")(x)
     if X_S in target_columns:
@@ -84,6 +77,5 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
 
     model.compile(optimizer=optimizer,
                   loss={col: LOSS_FUNCTIONS[col] for col in outputs.keys()},
-                  loss_weights={col: LOSS_WEIGHTS[col] for col in outputs.keys()},
                   metrics=metrics)
     return model

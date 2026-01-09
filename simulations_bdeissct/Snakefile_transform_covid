@@ -32,11 +32,9 @@ rule tt2phylogeny:
     '''
     input:
         nwk=os.path.join(tt_folder,'trees.{i}.nwk'),
-        log=os.path.join(tt_folder,'trees.{i}.log'),
     output:
         nwk=expand(os.path.join(covid_folder,'phylogeny.{{i}}.{j}.nwk'),j=range(TREES_PER_FILE)),
         dates=expand(os.path.join(covid_folder,'dates.{{i}}.{j}.tab'),j=range(TREES_PER_FILE)),
-        log=os.path.join(covid_folder,'trees.{i}.log'),
     params:
         mem=2000,
         name='tt2p',
@@ -48,8 +46,6 @@ rule tt2phylogeny:
         python3 {folder}/py/transmission2phylogeny.py --in_nwk {input.nwk} --out_nwk {output.nwk} --out_dates {output.dates} \
         --mean_R 0.0008 --std_R 0.0004 --time_scale day --min_date 20 --max_date 30 \
         --s 29903
-
-        cp {input.log} {output.log}
         """
 
 rule date_lsd2:

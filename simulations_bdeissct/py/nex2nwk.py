@@ -43,12 +43,15 @@ def read_nexus(tree_path):
         trees.append(tree)
     return trees
 
+nex = [f'/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/covid_train/200_500/BD/12/tree.79.{i}.nexus' for i in range(8)]
+nwk = '/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/covid_train/200_500/BD/12/trees.79.nwk'
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Converts a collection of nexus trees into newick.")
-    parser.add_argument('--out_nwk', required=True, type=str, help="output nwk tree")
-    parser.add_argument('--in_nexus', required=True, nargs='+', type=str, help="input nexus trees")
+    parser.add_argument('--out_nwk', default=nwk, type=str, help="output nwk tree")
+    parser.add_argument('--in_nexus', default=nex, nargs='+', type=str, help="input nexus trees")
 
     params = parser.parse_args()
     output = [read_nexus(in_nexus)[0].write(format=5) for in_nexus in params.in_nexus]

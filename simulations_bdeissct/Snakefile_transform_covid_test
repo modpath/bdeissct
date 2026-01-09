@@ -28,7 +28,7 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 800
 
 rule all:
     input:
-        expand(os.path.join(covid_folder, '{model}', 'trees.{i}.nwk'), \
+        expand(os.path.join(covid_folder, '{model}', 'tree.{i}.nwk'), \
             i=REPETITIONS, model=MODELS)
     shell:
         """
@@ -95,7 +95,7 @@ rule nex2nwk:
     input:
         nexus = os.path.join(covid_folder, '{model}', 'tree.{i}.nexus'),
     output:
-        nwk = os.path.join(covid_folder, '{model}', 'trees.{i}.nwk'),
+        nwk = os.path.join(covid_folder, '{model}', 'tree.{i}.nwk'),
     params:
         mem=2000,
         name='nex2nwk',

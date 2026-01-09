@@ -2,8 +2,8 @@ import os
 
 
 # To run locally:
-# snakemake --snakefile Snakefile_encode --keep-going --cores 1 --rerun-triggers mtime
-# snakemake --snakefile Snakefile_encode --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+# snakemake --snakefile Snakefile_transform_covid_train --keep-going --cores 1 --rerun-triggers mtime
+# snakemake --snakefile Snakefile_transform_covid_train --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 
 # To run on maestro:
 # source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
@@ -12,7 +12,7 @@ import os
 
 localrules: all
 
-folder = os.path.abspath(config.get("folder",'.'))
+folder = os.path.abspath(config.get("folder", '.'))
 num = int(config.get("num",128))
 REPETITIONS = list(range(num))
 os.makedirs('logs',exist_ok=True)
@@ -30,11 +30,13 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 rule all:
     input:
         expand(os.path.join(covid_folder,'{model}','{k}','trees.{i}.nwk'), \
+            k=REPETITIONS,i=REPETITIONS,model=MODELS),
+        expand(os.path.join(covid_folder,'{model}','{k}','trees.{i}.log'), \
             k=REPETITIONS,i=REPETITIONS,model=MODELS)
     shell:
         """
         snakemake --snakefile Snakefile_encode --config sf={cf} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_encode --config sf={cf} {snakemake_settings}
+        snakemake --snakefile Snakefile_encode --config sf={cf} {snakemake_settings} --rerun-incomplete
         """
 
 
@@ -43,11 +45,9 @@ rule tt2covid:
     Transforms a transmission tree into a LSD2-dated COVID phylogeny.
     '''
     input:
-        nwk=os.path.join(sim_folder,'{model}','{k}','trees.{i}.nwk'),
-        log=os.path.join(sim_folder,'{model}','{k}','trees.{i}.log'),
+        nwk=os.path.join(sim_folder,'{model}','{k}','trees.{i}.nwk')
     output:
-        nwk=os.path.join(covid_folder,'{model}','{k}','trees.{i}.nwk'),
-        log=os.path.join(covid_folder,'{model}','{k}','trees.{i}.log'),
+        nwk=os.path.join(covid_folder,'{model}','{k}','trees.{i}.nwk')
     params:
         mem=1000,
         name='tt2ctt',
@@ -65,4 +65,24 @@ rule tt2covid:
         
         cd {folder}
         rm -rf {params.tt}/{wildcards.i}
+        """
+
+rule copy_logs:
+    '''
+    Copies log files to the covid folder.
+    '''
+    input:
+        log = expand(os.path.join(sim_folder, '{{model}}', '{{k}}', 'trees.{i}.log'), i=REPETITIONS)
+    output:
+        log = expand(os.path.join(covid_folder, '{{model}}', '{{k}}', 'trees.{i}.log'), i=REPETITIONS)
+    params:
+        mem=1000,
+        name='cp_logs',
+        qos='fast',
+        pattern=os.path.join(sim_folder,'{model}', '{k}', 'trees.*.log'),
+        ct=os.path.join(covid_folder,'{model}', '{k}'),
+    threads: 1
+    shell:
+        """
+        cp {params.pattern} {params.ct}
         """

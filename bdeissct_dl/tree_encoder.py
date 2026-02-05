@@ -3,17 +3,19 @@ import os
 from glob import iglob
 
 import pandas as pd
+from treesimulator.mtbd_models import INCUBATION_FRACTION
 from treesumstats import FeatureCalculator, FeatureRegistry, FeatureManager
 from treesumstats.balance_sumstats import BalanceFeatureCalculator
 from treesumstats.basic_sumstats import BasicFeatureCalculator
 from treesumstats.branch_sumstats import BranchFeatureCalculator
 from treesumstats.event_time_sumstats import EventTimeFeatureCalculator
 from treesumstats.ltt_sumstats import LTTFeatureCalculator
+from treesumstats.resolution_sumstats import ResolutionFeatureCalculator
 from treesumstats.subtree_sumstats import SubtreeFeatureCalculator
 from treesumstats.transmission_chain_sumstats import TransmissionChainFeatureCalculator
 
 from bdeissct_dl.bdeissct_model import RHO, UPSILON, X_C, KAPPA, F_S, X_S, RATE_PARAMETERS, \
-    TIME_PARAMETERS, INFECTION_DURATION, REPRODUCTIVE_NUMBER, INCUBATION_PERIOD
+    TIME_PARAMETERS, INFECTION_DURATION, REPRODUCTIVE_NUMBER, INCUBATION_FRACTION, INCUBATION_PERIOD
 from bdeissct_dl.tree_manager import read_forest, rescale_forest_to_avg_brlen
 
 TARGET_AVG_BL = 1
@@ -88,7 +90,7 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
         pass
 
     def feature_names(self):
-        return [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO, INCUBATION_PERIOD, F_S, X_S, UPSILON, X_C, KAPPA, \
+        return [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO, INCUBATION_FRACTION, F_S, X_S, UPSILON, X_C, KAPPA, \
                 SCALING_FACTOR]
 
     def set_forest(self, forest, **kwargs):
@@ -116,8 +118,8 @@ class BDEISSCTFeatureCalculator(FeatureCalculator):
             return 'reproduction number.'
         if INFECTION_DURATION == feature_name:
             return 'infection duration.'
-        if INCUBATION_PERIOD == feature_name:
-            return 'incubation period.'
+        if INCUBATION_FRACTION == feature_name:
+            return 'incubation fraction.'
         return None
 
 
@@ -128,6 +130,7 @@ FeatureRegistry.register(TransmissionChainFeatureCalculator(CHAIN_LEN, percentil
 FeatureRegistry.register(LTTFeatureCalculator(N_LTT_COORDINATES))
 FeatureRegistry.register(BalanceFeatureCalculator())
 FeatureRegistry.register(SubtreeFeatureCalculator())
+FeatureRegistry.register(ResolutionFeatureCalculator())
 FeatureRegistry.register(BDEISSCTFeatureCalculator())
 
 BRLEN_STATS = ['brlen_inode_mean', 'brlen_inode_median', 'brlen_inode_var',
@@ -198,24 +201,29 @@ BALANCE_STATS = ['colless_normalized',
                  'frac_inodes_imbalanced', 'imbalance_avg']
 
 TOPOLOGY_STATS = ['frac_tips_in_2', 'frac_tips_in_3L', 'frac_tips_in_4L', 'frac_tips_in_4B', 'frac_tips_in_O',
+                  'frac_tips_in_3U', 'frac_tips_in_4U', 'frac_tips_in_4U3U1', 'frac_tips_in_4U211',
                   'frac_inodes_with_sibling_inodes']
 
-TIME_DIFF_STATS = ['time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'time_diff_in_I_real_mean',
-                   'time_diff_in_2_real_min', 'time_diff_in_3L_real_min', 'time_diff_in_I_real_min',
-                   'time_diff_in_2_real_max', 'time_diff_in_3L_real_max', 'time_diff_in_I_real_max',
-                   'time_diff_in_2_real_var', 'time_diff_in_3L_real_var', 'time_diff_in_I_real_var',
-                   'time_diff_in_2_real_median', 'time_diff_in_3L_real_median', 'time_diff_in_I_real_median',
+TIME_DIFF_STATS = ['time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'time_diff_in_3U_real_mean', 'time_diff_in_4U_real_mean', 'time_diff_in_I_real_mean',
+                   'time_diff_in_2_real_min', 'time_diff_in_3L_real_min', 'time_diff_in_3U_real_min', 'time_diff_in_4U_real_min', 'time_diff_in_I_real_min',
+                   'time_diff_in_2_real_max', 'time_diff_in_3L_real_max', 'time_diff_in_3U_real_max', 'time_diff_in_4U_real_max', 'time_diff_in_I_real_max',
+                   'time_diff_in_2_real_var', 'time_diff_in_3L_real_var', 'time_diff_in_3U_real_var', 'time_diff_in_4U_real_var', 'time_diff_in_I_real_var',
+                   'time_diff_in_2_real_median', 'time_diff_in_3L_real_median', 'time_diff_in_3U_real_median', 'time_diff_in_4U_real_median', 'time_diff_in_I_real_median',
                    #
-                   'time_diff_in_2_random_mean', 'time_diff_in_3L_random_mean', 'time_diff_in_I_random_mean',
-                   'time_diff_in_2_random_min', 'time_diff_in_3L_random_min', 'time_diff_in_I_random_min',
-                   'time_diff_in_2_random_max', 'time_diff_in_3L_random_max', 'time_diff_in_I_random_max',
-                   'time_diff_in_2_random_var', 'time_diff_in_3L_random_var', 'time_diff_in_I_random_var',
-                   'time_diff_in_2_random_median', 'time_diff_in_3L_random_median', 'time_diff_in_I_random_median',
+                   'time_diff_in_2_random_mean', 'time_diff_in_3L_random_mean', 'time_diff_in_3U_random_mean', 'time_diff_in_4U_random_mean', 'time_diff_in_I_random_mean',
+                   'time_diff_in_2_random_min', 'time_diff_in_3L_random_min', 'time_diff_in_3U_random_min', 'time_diff_in_4U_random_min', 'time_diff_in_I_random_min',
+                   'time_diff_in_2_random_max', 'time_diff_in_3L_random_max', 'time_diff_in_3U_random_max', 'time_diff_in_4U_random_max', 'time_diff_in_I_random_max',
+                   'time_diff_in_2_random_var', 'time_diff_in_3L_random_var', 'time_diff_in_3U_random_var', 'time_diff_in_4U_random_var', 'time_diff_in_I_random_var',
+                   'time_diff_in_2_random_median', 'time_diff_in_3L_random_median', 'time_diff_in_3U_random_median', 'time_diff_in_4U_random_median', 'time_diff_in_I_random_median',
                    #
                    'time_diff_in_2_real_perc1', 'time_diff_in_2_real_perc5', 'time_diff_in_2_real_perc10',
                    'time_diff_in_2_real_perc25',
                    'time_diff_in_3L_real_perc1', 'time_diff_in_3L_real_perc5', 'time_diff_in_3L_real_perc10',
                    'time_diff_in_3L_real_perc25',
+                   'time_diff_in_3U_real_perc1', 'time_diff_in_3U_real_perc5', 'time_diff_in_3U_real_perc10',
+                   'time_diff_in_3U_real_perc25',
+                   'time_diff_in_4U_real_perc1', 'time_diff_in_4U_real_perc5', 'time_diff_in_4U_real_perc10',
+                   'time_diff_in_4U_real_perc25',
                    'time_diff_in_I_real_perc75', 'time_diff_in_I_real_perc90', 'time_diff_in_I_real_perc95',
                    'time_diff_in_I_real_perc99',
                    #
@@ -223,22 +231,33 @@ TIME_DIFF_STATS = ['time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'tim
                    'time_diff_in_2_random_perc25',
                    'time_diff_in_3L_random_perc1', 'time_diff_in_3L_random_perc5', 'time_diff_in_3L_random_perc10',
                    'time_diff_in_3L_random_perc25',
+                   'time_diff_in_3U_random_perc1', 'time_diff_in_3U_random_perc5', 'time_diff_in_3U_random_perc10',
+                   'time_diff_in_3U_random_perc25',
+                   'time_diff_in_4U_random_perc1', 'time_diff_in_4U_random_perc5', 'time_diff_in_4U_random_perc10',
+                   'time_diff_in_4U_random_perc25',
                    'time_diff_in_I_random_perc75', 'time_diff_in_I_random_perc90', 'time_diff_in_I_random_perc95',
                    'time_diff_in_I_random_perc99',
                    #
                    'time_diff_in_2_random_vs_real_frac_less', 'time_diff_in_3L_random_vs_real_frac_less',
+                   'time_diff_in_3U_random_vs_real_frac_less', 'time_diff_in_4U_random_vs_real_frac_less',
                    'time_diff_in_I_random_vs_real_frac_more',
                    'time_diff_in_2_random_vs_real_pval_less', 'time_diff_in_3L_random_vs_real_pval_less',
+                   'time_diff_in_3U_random_vs_real_pval_less', 'time_diff_in_4U_random_vs_real_pval_less',
                    'time_diff_in_I_random_vs_real_pval_more']
+
+RESOLUTION_STATS = ['n_children_mean',
+                    'n_children_var',
+                    'frac_inodes_resolved',
+                    'frac_inodes_resolved_non_zero']
 
 EPI_STATS = [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO,
              UPSILON, X_C, KAPPA,
-             INCUBATION_PERIOD,
+             INCUBATION_FRACTION,
              F_S, X_S]
 
-STATS = ['n_tips'] \
-        + BRLEN_STATS + TIME_STATS + CHAIN_STATS + LTT_STATS + BALANCE_STATS + TOPOLOGY_STATS + TIME_DIFF_STATS \
-        + EPI_STATS + [SCALING_FACTOR]
+STATS = ['n_tips', 'n_inodes'] \
+        + BRLEN_STATS + TIME_STATS + CHAIN_STATS + LTT_STATS + BALANCE_STATS + TOPOLOGY_STATS \
+        + TIME_DIFF_STATS + RESOLUTION_STATS + EPI_STATS + [SCALING_FACTOR]
 
 def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, d_inc=0, f_ss=0, x_ss=1,
                       target_avg_brlen=TARGET_AVG_BL):
@@ -267,7 +286,7 @@ def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, d_inc=0,
 
     kwargs = {SCALING_FACTOR: scaling_factor,
               REPRODUCTIVE_NUMBER: R, INFECTION_DURATION: d, RHO: rho,
-              INCUBATION_PERIOD: d_inc,
+              INCUBATION_FRACTION: d_inc / d,
               F_S: f_ss, X_S: x_ss,
               X_C: x_c, UPSILON: upsilon, KAPPA: kappa}
     scale(kwargs, scaling_factor)
@@ -322,7 +341,7 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
                 kwargs = {SCALING_FACTOR: scaling_factor}
                 kwargs[REPRODUCTIVE_NUMBER], kwargs[INFECTION_DURATION], kwargs[RHO] = R, d, rho
                 kwargs[UPSILON], kwargs[KAPPA], kwargs[X_C] = upsilon, kappa, x_c
-                kwargs[INCUBATION_PERIOD] = d_inc
+                kwargs[INCUBATION_FRACTION] = d_inc / d
                 kwargs[F_S], kwargs[X_S] = f_ss, x_ss
 
                 scale(kwargs, scaling_factor)

@@ -6,17 +6,17 @@ import pandas as pd
 import tensorflow as tf
 
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
-from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, INCUBATION_PERIOD, F_S, \
+from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, INCUBATION_FRACTION, F_S, \
     X_S, TARGET_COLUMNS_BDCT, REPRODUCTIVE_NUMBER, INFECTION_DURATION
 from bdeissct_dl.dl_model import build_model
 from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, \
     load_model_keras
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
 
-FEATURE_COLUMNS = [_ for _ in STATS if _ not in {'n_trees', 'n_tips', 'n_inodes', 'len_forest',
+FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes', 'len_forest',
                                                  REPRODUCTIVE_NUMBER, INFECTION_DURATION,
                                                  UPSILON, X_C, KAPPA,
-                                                 INCUBATION_PERIOD,
+                                                 INCUBATION_FRACTION,
                                                  F_S, X_S,
                                                  SCALING_FACTOR}]
 
@@ -110,8 +110,8 @@ def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, file
     if X_C in target_columns:
         train_labels[X_C] = Y[:, col_i]
         col_i += 1
-    if INCUBATION_PERIOD in target_columns:
-        train_labels[INCUBATION_PERIOD] = Y[:, col_i]
+    if INCUBATION_FRACTION in target_columns:
+        train_labels[INCUBATION_FRACTION] = Y[:, col_i]
         col_i += 1
     if F_S in target_columns:
         train_labels[F_S] = Y[:, col_i]
@@ -141,14 +141,8 @@ def main():
     parser = \
         argparse.ArgumentParser(description="Train a BD(EI)(SS)(CT) model.")
     parser.add_argument('--train_data', type=str, nargs='+',
-                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train/2000_5000/BDEI/{i}/trees.csv.xz' for i in range(100)] \
-                        #         + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/2000_5000/BD/{i}/trees.csv.xz' for i in range(10)]
-                        # ,
                         help="path to the files where the encoded training data are stored")
     parser.add_argument('--val_data', type=str, nargs='+',
-                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train/2000_5000/BDEI/{i}/trees.csv.xz' for i in range(100, 120)] \
-                        #     + [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train/2000_5000/BD/{i}/trees.csv.xz' for i in range(10, 12)]
-                        # ,
                         help="path to the files where the encoded validation data are stored")
 
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='number of epochs to train the model')
@@ -178,6 +172,13 @@ def main():
 
 
     for col, y_idx in y_col2index.items():
+        try:
+            if load_model_keras(path=params.model_path, model_name=f'{params.model_name}.{col}'):
+                print(f'Model {params.model_name}.{col} already exists at {params.model_path}. Skipping training for this target.')
+                continue
+        except:
+            pass
+
         print(f'Training to predict {col} with {params.model_name}...')
 
         if params.base_model_name is not None:
@@ -194,7 +195,7 @@ def main():
                                 scaler_x=scaler_x, batch_size=BATCH_SIZE, shuffle=True)
 
         #early stopping to avoid overfitting
-        early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=25)
+        early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
         #Training of the Network, with an independent validation set
         model.fit(ds_train, verbose=1, epochs=params.epochs, validation_data=ds_val, callbacks=[early_stop])

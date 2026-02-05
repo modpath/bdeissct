@@ -27,7 +27,6 @@ def main():
     parser = \
         argparse.ArgumentParser(description="Fit a BD(EI)(SS)(CT) data scaler.")
     parser.add_argument('--train_data', type=str, nargs='+',
-                        # default=[f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/training/500_1000/{model}/{i}/trees.csv.xz' for i in range(120) for model in [BD, BDCT, BDEI, BDEICT, BDSS, BDSSCT, BDEISS, BDEISSCT]],
                         help="path to the files where the encoded training data are stored")
     parser.add_argument('--model_path', default=MODEL_PATH, type=str,
                         help="path to the folder where the scaler should be stored.")

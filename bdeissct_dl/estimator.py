@@ -1,7 +1,7 @@
 import pandas as pd
 
 from bdeissct_dl import MODEL_PATH
-from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, BD, MODELS
+from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, BD
 from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
 from bdeissct_dl.training import get_test_data
 from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
@@ -38,7 +38,7 @@ def main():
 
     parser = \
         argparse.ArgumentParser(description="Estimate BD(EI)(SS)(CT) model parameters.")
-    parser.add_argument('--model_name', choices=MODELS, default=BD, type=str,
+    parser.add_argument('--model_name', default=BD, type=str,
                         help=f'BDEISSCT model flavour')
     parser.add_argument('--model_path', default=MODEL_PATH,
                         help='By default our pretrained BD(EI)(SS)(CT) models are used, '

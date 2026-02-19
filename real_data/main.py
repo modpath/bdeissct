@@ -9,11 +9,11 @@ from pybdei import infer as bdei_infer
 from bdct.bd_model import infer as bd_infer
 from bdct.tree_manager import annotate_forest_with_time, get_T
 
-MP = '/home/azhukova/projects/bdeissct_dl/bdeissct_dl/models/200_500'
+MP = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/models/200_500'
 
-NWKS = ['/home/azhukova/projects/bdeissct_dl/covid/wave3.days.nwk',
-        '/home/azhukova/projects/bdeissct_dl/covid/wave4.days.nwk',
-        '/home/azhukova/projects/bdeissct_dl/covid/HIV_Zurich.nwk']
+NWKS = ['/home/azhukova/projects/bdeissct_dl/real_data/wave3.days.nwk',
+        '/home/azhukova/projects/bdeissct_dl/real_data/wave4.days.nwk',
+        '/home/azhukova/projects/bdeissct_dl/real_data/HIV_Zurich.nwk']
 RHOS = [0.238, 0.154, 0.25]
 
 

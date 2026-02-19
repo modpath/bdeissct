@@ -220,10 +220,10 @@ TIME_DIFF_STATS = ['time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'tim
                    'time_diff_in_2_real_perc25',
                    'time_diff_in_3L_real_perc1', 'time_diff_in_3L_real_perc5', 'time_diff_in_3L_real_perc10',
                    'time_diff_in_3L_real_perc25',
-                   'time_diff_in_3U_real_perc1', 'time_diff_in_3U_real_perc5', 'time_diff_in_3U_real_perc10',
-                   'time_diff_in_3U_real_perc25',
-                   'time_diff_in_4U_real_perc1', 'time_diff_in_4U_real_perc5', 'time_diff_in_4U_real_perc10',
-                   'time_diff_in_4U_real_perc25',
+                   # 'time_diff_in_3U_real_perc1', 'time_diff_in_3U_real_perc5', 'time_diff_in_3U_real_perc10',
+                   # 'time_diff_in_3U_real_perc25',
+                   # 'time_diff_in_4U_real_perc1', 'time_diff_in_4U_real_perc5', 'time_diff_in_4U_real_perc10',
+                   # 'time_diff_in_4U_real_perc25',
                    'time_diff_in_I_real_perc75', 'time_diff_in_I_real_perc90', 'time_diff_in_I_real_perc95',
                    'time_diff_in_I_real_perc99',
                    #
@@ -231,18 +231,18 @@ TIME_DIFF_STATS = ['time_diff_in_2_real_mean', 'time_diff_in_3L_real_mean', 'tim
                    'time_diff_in_2_random_perc25',
                    'time_diff_in_3L_random_perc1', 'time_diff_in_3L_random_perc5', 'time_diff_in_3L_random_perc10',
                    'time_diff_in_3L_random_perc25',
-                   'time_diff_in_3U_random_perc1', 'time_diff_in_3U_random_perc5', 'time_diff_in_3U_random_perc10',
-                   'time_diff_in_3U_random_perc25',
-                   'time_diff_in_4U_random_perc1', 'time_diff_in_4U_random_perc5', 'time_diff_in_4U_random_perc10',
-                   'time_diff_in_4U_random_perc25',
+                   # 'time_diff_in_3U_random_perc1', 'time_diff_in_3U_random_perc5', 'time_diff_in_3U_random_perc10',
+                   # 'time_diff_in_3U_random_perc25',
+                   # 'time_diff_in_4U_random_perc1', 'time_diff_in_4U_random_perc5', 'time_diff_in_4U_random_perc10',
+                   # 'time_diff_in_4U_random_perc25',
                    'time_diff_in_I_random_perc75', 'time_diff_in_I_random_perc90', 'time_diff_in_I_random_perc95',
                    'time_diff_in_I_random_perc99',
                    #
                    'time_diff_in_2_random_vs_real_frac_less', 'time_diff_in_3L_random_vs_real_frac_less',
-                   'time_diff_in_3U_random_vs_real_frac_less', 'time_diff_in_4U_random_vs_real_frac_less',
+                   # 'time_diff_in_3U_random_vs_real_frac_less', 'time_diff_in_4U_random_vs_real_frac_less',
                    'time_diff_in_I_random_vs_real_frac_more',
                    'time_diff_in_2_random_vs_real_pval_less', 'time_diff_in_3L_random_vs_real_pval_less',
-                   'time_diff_in_3U_random_vs_real_pval_less', 'time_diff_in_4U_random_vs_real_pval_less',
+                   # 'time_diff_in_3U_random_vs_real_pval_less', 'time_diff_in_4U_random_vs_real_pval_less',
                    'time_diff_in_I_random_vs_real_pval_more']
 
 RESOLUTION_STATS = ['n_children_mean',
@@ -255,9 +255,11 @@ EPI_STATS = [REPRODUCTIVE_NUMBER, INFECTION_DURATION, RHO,
              INCUBATION_FRACTION,
              F_S, X_S]
 
-STATS = ['n_tips', 'n_inodes'] \
-        + BRLEN_STATS + TIME_STATS + CHAIN_STATS + LTT_STATS + BALANCE_STATS + TOPOLOGY_STATS \
-        + TIME_DIFF_STATS + RESOLUTION_STATS + EPI_STATS + [SCALING_FACTOR]
+STATS = (['n_tips'] #, 'n_inodes'] \
+        + BRLEN_STATS + TIME_STATS + CHAIN_STATS + LTT_STATS + BALANCE_STATS + TOPOLOGY_STATS
+        + TIME_DIFF_STATS
+        # + RESOLUTION_STATS
+        + EPI_STATS + [SCALING_FACTOR])
 
 def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, d_inc=0, f_ss=0, x_ss=1,
                       target_avg_brlen=TARGET_AVG_BL):
@@ -286,7 +288,7 @@ def forest2sumstat_df(forest, rho, R=0, d=0, x_c=0, upsilon=0, kappa=1, d_inc=0,
 
     kwargs = {SCALING_FACTOR: scaling_factor,
               REPRODUCTIVE_NUMBER: R, INFECTION_DURATION: d, RHO: rho,
-              INCUBATION_FRACTION: d_inc / d,
+              INCUBATION_FRACTION: d_inc / d if d > 0 else 0,
               F_S: f_ss, X_S: x_ss,
               X_C: x_c, UPSILON: upsilon, KAPPA: kappa}
     scale(kwargs, scaling_factor)

@@ -1,0 +1,65 @@
+import os
+
+# To run locally:
+# snakemake --snakefile Snakefile_simulate_train --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+# To run on maestro:
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
+# snakemake --snakefile Snakefile_chop_train --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --time=00:10:00 --qos=fast -J {params.name}" --jobs 1000 --config bmint=2000 bmaxt=5000 mint=1000 maxt=2000 sf=train1
+
+
+localrules: all
+
+
+
+folder = os.path.abspath(config.get("folder", '.'))
+num = int(config.get("num", 128))
+REPETITIONS = list(range(num))
+os.makedirs('logs', exist_ok=True)
+
+sf = config.get("sf", 'train1')
+sim_folder = os.path.join(folder, sf)
+mdl = config.get("model", '')
+MODELS = [mdl] if mdl else [f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]
+bmint = int(config.get("bmint", 2000))
+bmaxt = int(config.get("bmaxt", 5000))
+mint = int(config.get("mint", 1000))
+maxt = int(config.get("maxt", 2000))
+src_folder = os.path.join(sim_folder, f'{bmint}_{bmaxt}')
+tgt_folder = os.path.join(sim_folder, f'{mint}_{maxt}')
+
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+model_arg = f" model={mdl} " if mdl else ""
+
+rule all:
+    input:
+        expand(os.path.join(tgt_folder, '{model}', 'trees.{i}.nwk'), i=REPETITIONS, model=MODELS)
+    shell:
+        """
+        snakemake --snakefile Snakefile_encode --config mint={mint} maxt={maxt} num={num} {model_arg} sf={sf} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_encode --config mint={mint} maxt={maxt} num={num} {model_arg} sf={sf}  {snakemake_settings}
+        """
+
+rule chop_trees:
+    '''
+    Chop larger trees into smaller ones.
+    '''
+    input:
+        log=os.path.join(src_folder, '{model}', 'trees.{i}.log'),
+        nwk=os.path.join(src_folder, '{model}', 'trees.{i}.nwk'),
+    output:
+        log=os.path.join(tgt_folder, '{model}', 'trees.{i}.log'),
+        nwk=os.path.join(tgt_folder, '{model,[BDEISCT]+}', 'trees.{i}.nwk'),
+    params:
+        mem=8000,
+        name='chop.{model}',
+        qos='fast',
+    threads: 1
+    singularity: "docker://evolbioinfo/bdext:v0.1.73"
+    shell:
+        """         
+        python3 py/cut_tree.py --out_nwk {output.nwk} --in_nwk {input.nwk} \
+        --min_tips {mint} --max_tips {maxt} 
+        
+        cp {input.log} {output.log}
+        """

@@ -3,10 +3,11 @@ from bdeissct_dl.training import get_test_data, FEATURE_COLUMNS
 from bdeissct_dl.tree_encoder import forest2sumstat_df
 from bdeissct_dl.tree_manager import read_forest
 from bdeissct_dl.model_serializer import load_scaler_numpy
+from bdeissct_dl.bdeissct_model import BD
 
 
-def check_sumstats(forest_sumstats, model_path=MODEL_PATH):
-    scaler_x = load_scaler_numpy(model_path, suffix='x')
+def check_sumstats(forest_sumstats, model_path=MODEL_PATH, model_name=BD):
+    scaler_x = load_scaler_numpy(model_path, suffix=f'{model_name}.x')
     X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
 
     feature_columns = FEATURE_COLUMNS

@@ -1,20 +1,48 @@
+import re
 from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox, VPacker
-import itertools
+from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox
 
-import re
+# BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.2', 'pure.BDEISSCT.4', 'pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
+# BDEISSCT_ESTS = ['pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
+BDEISSCT_ESTS = ['pure.BDEISSCT.8']
 
+# BDEISS_ESTS = ['pure.BDEISS.1', 'pure.BDEISS.2', 'pure.BDEISS.4', 'mixed.BDEISS.4', 'pure.BDEISS.8', 'mixed.BDEISS.8']
+# BDEISS_ESTS = ['pure.BDEISS.8', 'mixed.BDEISS.8']
+BDEISS_ESTS = ['pure.BDEISS.8']
+
+# BDSSCT_ESTS = ['pure.BDSSCT.1', 'pure.BDSSCT.2', 'pure.BDSSCT.4', 'mixed.BDSSCT.4', 'pure.BDSSCT.8', 'mixed.BDSSCT.8']
+# BDSSCT_ESTS = ['pure.BDSSCT.8', 'mixed.BDSSCT.8']
+BDSSCT_ESTS = ['pure.BDSSCT.8']
+
+# BDEICT_ESTS = ['pure.BDEICT.1', 'pure.BDEICT.2', 'pure.BDEICT.4', 'mixed.BDEICT.4', 'pure.BDEICT.8', 'mixed.BDEICT.8']
+# BDEICT_ESTS = ['pure.BDEICT.8', 'mixed.BDEICT.8']
+BDEICT_ESTS = ['pure.BDEICT.8']
+
+# BDCT_ESTS = ['pure.BDCT.1', 'pure.BDCT.2', 'mixed.BDCT.2', 'pure.BDCT.4', 'mixed.BDCT.4', 'pure.BDCT.8', 'mixed.BDCT.8']
+# BDCT_ESTS = ['pure.BDCT.8', 'mixed.BDCT.8']
+BDCT_ESTS = ['pure.BDCT.8']
+
+# BDSS_ESTS = ['pure.BDSS.1', 'pure.BDSS.2', 'mixed.BDSS.2', 'pure.BDSS.4', 'mixed.BDSS.4', 'pure.BDSS.8', 'mixed.BDSS.8']
+# BDSS_ESTS = ['pure.BDSS.8', 'mixed.BDSS.8']
+BDSS_ESTS = ['pure.BDSS.8']
+
+# BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.2', 'pure.BD.4', 'pure.BD.8']
+BD_ESTS = ['bd', 'pure.BD.8']
+
+# BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.2', 'mixed.BDEI.2', 'pure.BDEI.4', 'mixed.BDEI.4', 'pure.BDEI.8', 'mixed.BDEI.8']
+# BDEI_ESTS = ['bdei', 'pure.BDEI.8', 'mixed.BDEI.8']
+BDEI_ESTS = ['bdei', 'pure.BDEI.8']
 
 # PARAMETERS = ['lambda', 'avg la', 'psi', 'avg psi', 'avg psi 2', 'R', 'R2'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
 PARAMETERS = ['R', 'd'] #, 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C'] #, 'f_E', 'f_S', 'X_S', 'X_C', 'upsilon']
 # PARAMETERS = ['f_E', 'f_S', 'upsilon', 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C'] #, 'f_E', 'f_S', 'X_S', 'X_C', 'upsilon']
 # PARAMETERS = ['avg la', 'R', 'd', 'd1'] #, 'f_E', 'f_S', 'X_S', 'X_C', 'upsilon']
-par2greek = {'lambda': u'\u03bb', 'psi': u'\u03c8', 'R': 'R', 'd': 'd', 'phi': u'\u03c6',
+par2greek = {'lambda': u'\u03bb', 'psi': u'\u03c8', 'R': 'R', 'd': 'd', 'd_E': 'd_E', 'phi': u'\u03c6',
              'p': '\u03c1', 'upsilon': '\u03c5',
              'R_naught': u'\u0052\u2080' + '=' + u'\u03bb\u002F\u03c8',
              'infectious_time': '1' + u'\u002F\u03c8', 'partner_removal_time': '1' + u'\u002F\u03c6'}
@@ -25,6 +53,13 @@ for p in PARAMETERS:
 greek2par = {v: k for k, v in par2greek.items()}
 
 EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
+EST_ORDER = BD_ESTS \
+            + BDEI_ESTS + BDSS_ESTS \
+            + BDEISS_ESTS \
+            + BDCT_ESTS \
+            + BDEICT_ESTS + BDSSCT_ESTS \
+            + BDEISSCT_ESTS
+             # 'bdeidl', 'bdssdl', 'bdeissdl', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
 # EST_ORDER = ['bd', 'bddl', 'bdeidl', 'bdssdl', 'bdeissdl', 'bdctdl', 'bdeictdl', 'bdssctdl', 'bdeissctdl']
 
 BIAS_COL = 'bias'
@@ -36,8 +71,11 @@ palette2 = sns.color_palette()
 # total_palette = [palette1[0]] + [palette2[0]] + [palette1[1]] + palette2[1:4] \
 #                 + [palette1[0]] + palette2[0:]
 palette = sns.color_palette("colorblind")
-total_palette = [palette[0]] + [palette[0]] + [palette[1]] + palette[1:4] \
-                + palette[0:4]
+total_palette = [palette[0]] * len(BD_ESTS) \
+                + [palette[1]] * len(BDEI_ESTS) \
+                + [palette[2]] * len(BDSS_ESTS) + [palette[3]] * len(BDEISS_ESTS) \
+                + [palette[0]] * len(BDCT_ESTS) + [palette[1]] * len(BDEICT_ESTS)  + [palette[2]] * len(BDSSCT_ESTS) \
+                + [palette[3]] * len(BDEISSCT_ESTS)
 # total_palette = [palette[0]] + palette[0:2] + palette[1:]
 # total_palette = [palette[0]] + palette[0:4] + palette[0:4]
 
@@ -78,13 +116,13 @@ def need_to_skip(par, estimator_type, model):
         return True
     if ('X_C' in par or 'upsilon' in par or par.startswith('pi') and par.endswith('C')) and ('ct' not in estimator_type.lower() or 'ct' not in model.lower()):
         return True
-    if ('f_E' in par or par.startswith('pi_E')) and ('ei' not in estimator_type.lower() or 'ei' not in model.lower()):
+    if ('d_E' in par or 'f_E' in par or par.startswith('pi_E')) and ('ei' not in estimator_type.lower() or 'ei' not in model.lower()):
         return True
     if ('f_S' in par or 'X_S' in par or par.startswith('pi_S')) and ('ss' not in estimator_type.lower() or 'ss' not in model.lower()):
         return True
     return False
 
-folder = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500'
+folder = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000'
 estimate_files = [f'{folder}/{model}/estimates.tab' for model in ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
 
 
@@ -198,19 +236,21 @@ if __name__ == "__main__":
                         hatch = ''
                         if 'ct' in plot_est.lower():
                             hatch += '----'
-                        if 'dl' not in plot_est.lower():
+                        if 'pure' not in plot_est.lower() and 'mixed' not in plot_est.lower():
                             hatch += '////'
+                        if 'mixed' in plot_est.lower():
+                            hatch += '||||'
                         # if 'ss' in plot_est.lower():
                         #     hatch += '\\\\\\\\'
-                        # if hatch:
-                        #     par_bars[bar_idx].set_hatch(hatch)
+                        if hatch:
+                            par_bars[bar_idx].set_hatch(hatch)
                         bar_idx += 1
 
             if BIAS_COL == col:
                 ax.axhline(y=0, xmin=0, xmax=1)
-            ticks = list(np.arange(-0.75 if BIAS_COL == col else 0, 0.76, 0.25 if BIAS_COL == col else 0.1).astype(float))
+            ticks = list(np.arange(-0.6 if BIAS_COL == col else 0, 0.61 if BIAS_COL == col else 0.7, 0.2 if BIAS_COL == col else 0.1).astype(float))
             ax.set_yticks(ticks)
-            ax.set_ylim(-0.76 if BIAS_COL == col else 0, 0.76)
+            ax.set_ylim(-0.61 if BIAS_COL == col else 0, 0.61 if BIAS_COL == col else 0.71)
             ax.set_yticklabels([f'{100 * _:.0f}%' for _ in ticks])
 
             def get_xbox(par):

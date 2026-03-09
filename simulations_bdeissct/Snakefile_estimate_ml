@@ -1,0 +1,91 @@
+import os
+
+
+# To run locally:
+# snakemake --snakefile Snakefile_estimate_ml --rerun-triggers mtime --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
+
+# To run on maestro:
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
+# snakemake --snakefile Snakefile_estimate_ml --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o logs/{params.name}.log -e logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast -J {params.name}" --jobs 600
+
+localrules: all
+
+folder = os.path.abspath(config.get("folder", '.'))
+num = int(config.get("num", 1000))
+REPETITIONS = list(range(num))
+os.makedirs('logs', exist_ok=True)
+
+sf = config.get("sf", 'test')
+MODELS = [f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]
+
+mint = int(config.get("mint", 2000))
+maxt = int(config.get("maxt", 5000))
+test_folder = os.path.join(folder, sf, f'{mint}_{maxt}')
+
+# ci = "--ci"
+ci = ""
+# bdei_ci = "-c 100"
+bdei_ci = ""
+
+
+EST_ML = ['bd', 'bdei'] if not 'covid' in sf else ['bd']
+
+
+snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
+    if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12"
+
+
+rule all:
+    input:
+        expand(os.path.join(test_folder, '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
+            model=MODELS, estimator=EST_ML)
+
+
+rule estimate_params_bd:
+    '''
+    Estimate parameters.
+    '''
+    input:
+        nwk = os.path.join(test_folder, '{model}', 'tree.{i}.nwk'),
+        log = os.path.join(test_folder, '{model}', 'tree.{i}.log'),
+    output:
+        est = os.path.join(test_folder, '{model,[BDEISCT0-9]+}', 'tree.{i}.est_bd'),
+    params:
+        mem = 2000,
+        name = 'bd{i}',
+        qos = 'fast'
+    threads: 1
+    singularity: "docker://evolbioinfo/bdct:v0.1.25"
+    shell:
+        """
+        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "rho") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
+
+        bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}
+        """
+
+
+rule estimate_params_bdei:
+    '''
+    Estimate parameters.
+    '''
+    input:
+        nwk = os.path.join(test_folder, '{model}', 'tree.{i}.nwk'),
+        log = os.path.join(test_folder, '{model}', 'tree.{i}.log'),
+        bd_est = os.path.join(test_folder, '{model}', 'tree.{i}.est_bd'),
+    output:
+        est = os.path.join(test_folder, '{model,[BDEISCT0-9]+}', 'tree.{i}.est_bdei'),
+    params:
+        mem = 2000,
+        name = 'bdei{i}',
+        qos = 'fast'
+    threads: 2
+    singularity: "docker://evolbioinfo/bdei:v0.13"
+    shell:
+        """
+        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "rho") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
+        la=`awk -F, 'NR==2 {{ print $5 }}' {input.bd_est}`
+        psi=`awk -F, 'NR==2 {{ print $6 }}' {input.bd_est}`
+
+        bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads} 
+        """
+

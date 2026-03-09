@@ -9,7 +9,7 @@ from pybdei import infer as bdei_infer
 from bdct.bd_model import infer as bd_infer
 from bdct.tree_manager import annotate_forest_with_time, get_T
 
-MP = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/models/200_500'
+MP = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/pure_models_8/2000_5000'
 
 NWKS = ['/home/azhukova/projects/bdeissct_dl/real_data/wave3.days.nwk',
         '/home/azhukova/projects/bdeissct_dl/real_data/wave4.days.nwk',
@@ -28,7 +28,8 @@ for nwk, rho in zip(NWKS, RHOS):
         # print(predictions)
         predictions.index = [model]
         result_df = pd.concat((result_df, predictions))
-    result_df['d_I'] = result_df['d'] - (result_df['d_E'] if 'd_E' in result_df.columns else 0)
+    result_df['d_E'] = result_df['d'] * (result_df['f_E'] if 'f_E' in result_df.columns else 0)
+    result_df['d_I'] = result_df['d'] - result_df['d_E']
 
     forest = read_forest(nwk)
     # resolve_forest(forest)

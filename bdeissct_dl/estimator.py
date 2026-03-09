@@ -9,7 +9,7 @@ from bdeissct_dl.tree_manager import read_forest
 
 
 def predict_parameters(forest_sumstats, model_name=BD, model_path=MODEL_PATH):
-    scaler_x = load_scaler_numpy(model_path, suffix='x')
+    scaler_x = load_scaler_numpy(model_path, suffix=f'{model_name}.x')
     X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
 
     target_columns = MODEL2TARGET_COLUMNS[model_name]

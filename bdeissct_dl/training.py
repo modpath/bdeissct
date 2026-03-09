@@ -4,13 +4,14 @@ import os
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, INCUBATION_FRACTION, F_S, \
     X_S, TARGET_COLUMNS_BDCT, REPRODUCTIVE_NUMBER, INFECTION_DURATION
 from bdeissct_dl.dl_model import build_model
 from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, \
-    load_model_keras
+    load_model_keras, save_scaler_numpy
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
 
 FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes', 'len_forest',
@@ -168,7 +169,14 @@ def main():
 
     x_indices, y_col2index = get_data_characteristics(paths=params.train_data, target_columns=target_columns)
 
-    scaler_x = load_scaler_numpy(params.model_path, suffix='x')
+    scaler_x = load_scaler_numpy(params.model_path, suffix=f'{params.model_name}.x')
+    if scaler_x is None:
+        from bdeissct_dl.scaler_fitting import fit_scalers
+        scaler_x = StandardScaler()
+        fit_scalers(paths=params.train_data, x_indices=x_indices, scaler_x=scaler_x)
+
+        if scaler_x is not None:
+            save_scaler_numpy(scaler_x, params.model_path, suffix=f'{params.model_name}.x')
 
 
     for col, y_idx in y_col2index.items():

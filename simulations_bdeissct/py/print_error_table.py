@@ -6,7 +6,7 @@ import pandas as pd
 
 MODELS = ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
 
-PARAMETERS = ['R', 'd', 'd_E', 'f_E', 'f_S', 'upsilon', 'X_S', 'X_C']
+PARAMETERS = ['R', 'd', 'f_E', 'f_S', 'upsilon', 'X_S', 'X_C']
 p2latex = {'R': '$R$', 'd': '$d$', 'd_E': '$d_{inc}$', 'f_E': '$f_E$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
            'upsilon': '$\\upsilon$', 'X_C': '$X_C$'}
 p2name = {'R': 'average reproduction number', 'd': 'average infection time', \
@@ -14,23 +14,44 @@ p2name = {'R': 'average reproduction number', 'd': 'average infection time', \
           'upsilon': 'contact-tracing probability', 'X_C': 'contact-traced removal speed up'}
 
 EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', None, 'bdssdl', None, 'bdeissdl', None, 'bdctdl', None, 'bdeictdl', None, 'bdssctdl', None, 'bdeissctdl']
+EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl_pure', None, 'bdssdl_pure', None, 'bdeissdl_pure', None, 'bdctdl_pure',
+                  None, 'bdeictdl_pure', None, 'bdssctdl_pure', None, 'bdeissctdl_pure']
 
 
-HEADER = """
+HEADER0 = """
 \\begin{{table}}[!t]
 \\begin{{center}}
-\\scriptsize
+\\tiny
 \\caption{{Estimation errors for the {param_name} {param_latex} for transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-errors}}}}
-\\tabcolsep=4pt
-\\begin{{tabular*}}{{\\columnwidth}}{{@{{\\extracolsep{{\\fill}}}}|l|{rl}|@{{\\extracolsep{{\\fill}}}}}}
+\\tabcolsep=2pt
+\\begin{{tabular*}}{{\\textwidth}}{{@{{\\extracolsep{{\\fill}}}}|c|{rl}|@{{\\extracolsep{{\\fill}}}}}}
 \\toprule"""
+
+HEADER1 = """
+\\begin{{table}}[!t]
+\\begin{{center}}
+\\tiny
+\\caption{{Estimation errors for the {param_name} {param_latex} for transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-errors}}}}
+\\tabcolsep=2pt
+\\begin{{tabular*}}{{\\columnwidth}}{{@{{\\extracolsep{{\\fill}}}}|c|{rl}|@{{\\extracolsep{{\\fill}}}}}}
+\\toprule"""
+
+FOOTER0 = """\\botrule
+\\end{{tabular*}}
+\\begin{{tablenotes}}%
+\\item Mean absolute percentage errors, $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|/{{{param_latex}}}_{{true}}$, 
+and in parenthesis the corresponding biases, $100({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})/{{{param_latex}}}_{{true}}$, are reported for 1000 trees generated under each dataset for each estimator.
+\\item The errors and biases of the estimators corresponding to the model that generated the data are shown in bold.
+\\end{{tablenotes}}
+\\end{{center}}
+\\end{{table}}
+"""
 
 FOOTER1 = """\\botrule
 \\end{{tabular*}}
 \\begin{{tablenotes}}%
-\\item Mean absolute percentage errors, $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|/{param_latex}$, 
-and in parenthesis the corresponding biases, $100({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})/{param_latex}$, are reported for 1000 trees generated under each dataset for each estimator.
-\\item We consider only estimators for the models that are either nested in or generalize the model that generated the data. 
+\\item Mean absolute percentage errors, $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|/{{{param_latex}}}_{{true}}$, 
+and in parenthesis the corresponding biases, $100({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})/{{{param_latex}}}_{{true}}$, are reported for 1000 trees generated under each dataset for each estimator.
 \\item The errors and biases of the estimators corresponding to the model that generated the data are shown in bold.
 \\end{{tablenotes}}
 \\end{{center}}
@@ -70,7 +91,7 @@ def need_to_skip(par, estimator_type):
     return False
 
 
-estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/{model}/estimates.tab' for model in
+estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000/{model}/estimates.tab' for model in
                   MODELS]
 
 
@@ -79,7 +100,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Plots errors.")
     parser.add_argument('--estimates', default=estimate_files, type=str, nargs='+', help="estimated parameters")
-    parser.add_argument('--latex', default='/home/azhukova/articles/bdeissct_article/tables_small.tex', type=str, help="latex tables with results")
+    parser.add_argument('--latex', default='/home/azhukova/articles/bdeissct_article/tables_pure.tex', type=str, help="latex tables with results")
     params = parser.parse_args()
 
     errors = np.zeros(shape=(8, 14, 16), dtype=float)
@@ -157,47 +178,72 @@ if __name__ == "__main__":
         return f'{b:3.0f}'.replace(' ', '~')
 
     def format_value(m_i, p_i, e_i):
-        if p in {'R', 'd'} and not is_estimator_pertunent(model, EST_ORDER[e_i]):
-            return ' & '
-        return f'{errors[m_i, p_i, e_i]:.0f} & ({format_bias(biases[m_i, p_i, e_i])})' \
+        # if p in {'R', 'd'} and not is_estimator_pertunent(model, EST_ORDER[e_i]):
+        #     return ' & '
+        return f'\\multirow{{2}}{{*}}{{{errors[m_i, p_i, e_i]:.0f}}}&\\multirow{{2}}{{*}}{{({format_bias(biases[m_i, p_i, e_i])})}}' \
             if (e_i // 2) != m_i \
-            else f'\\textbf{{{errors[m_i, p_i, e_i]:.0f}}} & \\textbf{{({format_bias(biases[m_i, p_i, e_i])})}}'
+            else f'\\multirow{{2}}{{*}}{{\\textbf{{{errors[m_i, p_i, e_i]:.0f}}}}}&\\multirow{{2}}{{*}}{{\\textbf{{({format_bias(biases[m_i, p_i, e_i])})}}}}'
 
         return f'{errors[m_i, p_i, e_i]:.0f} [{errors_min[m_i, p_i, e_i]:.0f}-{errors_max[m_i, p_i, e_i]:.0f}] & ({format_bias(biases[m_i, p_i, e_i])})' \
             if (e_i // 2) != m_i \
             else f'\\textbf{{{errors[m_i, p_i, e_i]:.0f} [{errors_min[m_i, p_i, e_i]:.0f}-{errors_max[m_i, p_i, e_i]:.0f}]}} & \\textbf{{({format_bias(biases[m_i, p_i, e_i])})}}'
 
-    def latex_estimator(estimator):
+    def latex_estimator_first_row(estimator, two_bd=False, two_bdei=False):
+        estimator = estimator.replace('_pure', '')
         estimator = estimator.upper().replace('DL', '')
-        if estimator != 'BDCT':
-            estimator = estimator.replace('CT', '')
-        else:
-            estimator = 'BD-CT'
-        return "\\multicolumn{{2}}{{c|}}{{{}}}".format(estimator)
+        estimator = estimator.replace('CT', '-CT')
+        estimator1 = estimator[:(4 if '-' != estimator[4] else 5)] if len(estimator) > 5 \
+            else (f'\\multirow{{2}}{{*}}{{ {estimator} }}' if (estimator != 'BD' or not two_bd) and (estimator != 'BDEI' or not two_bdei) else estimator)
+        estimator2 = estimator[(4 if '-' != estimator[4] else 5):] if len(estimator) > 5 else ''
+        if estimator2 and '-' != estimator1[-1]:
+            estimator1 += '-'
+
+        return "\\multicolumn{{2}}{{c|}}{{{}}}".format(estimator1)
 
     def is_dl(estimator):
         return "\\multicolumn{{2}}{{c|}}{{({})}}".format('DL' if 'dl' in estimator else 'ML')
 
-    def is_ct(estimator):
-        return "\\multicolumn{{2}}{{c|}}{{{}}}".format(('-CT' if 'ct' in estimator and estimator.upper().strip('DL') != 'BDCT' else '') \
-                                                       # + (' (ML)' if 'dl' not in estimator else ' (DL)')
-        )
+    def latex_estimator_second_row(estimator):
+        estimator = estimator.replace('_pure', '')
+        estimator = estimator.upper().replace('DL', '')
+        estimator = estimator.replace('CT', '-CT')
+        estimator1 = estimator[:(4 if '-' != estimator[4] else 5)] if len(
+            estimator) > 5 else f'\\multirow{{2}}{{*}}{{ {estimator} }}'
+        estimator2 = estimator[(4 if '-' != estimator[4] else 5):] if len(estimator) > 5 else ''
+        if estimator2 and '-' != estimator1[-1]:
+            estimator1 += '-'
+
+
+        return "\\multicolumn{{2}}{{c|}}{{{}}}".format(estimator2)
 
     with open(params.latex, 'w') as f:
         for p_i, p in enumerate(PARAMETERS):
-            if p in ['R', 'd']:
-                continue
+            # if p in ['R', 'd']:
+            #     continue
             pertinent_ests = [_ for _ in EST_ORDER if _ is not None and not need_to_skip(p, _)]
-            f.write(HEADER.format(param_name=p2name[p], param_latex=p2latex[p], param=p, rl='|'.join(['rl'] * len(pertinent_ests)), width_fraction=0.09 * (len(pertinent_ests) + 1),
+            f.write((HEADER0 if p in {'R', 'd'} else HEADER1).format(param_name=p2name[p], param_latex=p2latex[p], param=p, rl='|'.join(['rl'] * len(pertinent_ests)), width_fraction=0.08 * (len(pertinent_ests) + 1),
                                   # ml_expl=' The estimator type, maximum-likelihood (ML) or deep-learning-based (DL), is specified in parenthesis.')
                                   ml_expl='')
                     )
             f.write('\n')
-            f.write(' & {}\\\\\n'.format(' & '.join([latex_estimator(_) for _ in pertinent_ests]))\
+
+            two_bd = 'bd' in pertinent_ests and 'bddl' in pertinent_ests
+            two_bdei = 'bdei' in pertinent_ests and ('bdeidl' in pertinent_ests or 'bdeidl_pure' in pertinent_ests)
+
+            f.write(' & {}\\\\\n'.format(' & '.join([latex_estimator_first_row(_, two_bd, two_bdei) for _ in pertinent_ests]))\
                     .replace('\\multicolumn{2}{c|}{BD} & \\multicolumn{2}{c|}{BD}', '\\multicolumn{4}{c|}{BD}')\
                     .replace('\\multicolumn{2}{c|}{BD-CT} & \\multicolumn{2}{c|}{BD-CT}', '\\multicolumn{4}{c|}{BD-CT}')\
                     .replace('\\multicolumn{2}{c|}{BDEI} & \\multicolumn{2}{c|}{BDEI}', '\\multicolumn{4}{c|}{BDEI}'))
-            f.write(' & {}\\\\\n'.format(' & '.join([is_ct(_) for _ in pertinent_ests])))
+            if two_bd:
+                f.write('& \\multicolumn{2}{c|}{ML} & \\multicolumn{2}{c|}{DL}')
+            elif 'bd' in pertinent_ests or 'bddl' in pertinent_ests:
+                f.write('&&')
+            if two_bdei:
+                f.write('& \\multicolumn{2}{c|}{ML} & \\multicolumn{2}{c|}{DL}')
+            elif 'bdei' in pertinent_ests or 'bdeidl' in pertinent_ests or 'bdeidl_pure' in pertinent_ests:
+                f.write('&&')
+            i = next(i for i, est in enumerate(pertinent_ests) if est not in ['bd', 'bddl', 'bdei', 'bdeidl', 'bdeidl_pure'])
+            f.write(' & {}\\\\\n'.format(' & '.join([latex_estimator_second_row(_) for _ in pertinent_ests[i:]])))
             # f.write(' & {}\\\\\n'.format(' & '.join([is_dl(_) for _ in pertinent_ests])))
             f.write('\\midrule\n')
             for m_i, model in enumerate(MODELS):
@@ -205,8 +251,15 @@ if __name__ == "__main__":
                     continue
                 if p == 'X_S' and 'SS' not in model:
                     continue
-                f.write('{{{}}} & {}\\\\\n'.format(model.replace('CT', '-CT'), ' & '.join(
+                model = model.replace('CT', '-CT')
+                model1 = model[:(4 if '-' != model[4] else 5)] if len(model) > 5 else f'\\multirow{{2}}{{*}}{{ {model} }}'
+                model2 = model[(4 if '-' != model[4] else 5):] if len(model) > 5 else ''
+                if model2 and '-' != model1[-1]:
+                    model1 += '-'
+                f.write('{{{}}} & {}\\\\\n'.format(model1, ' & '.join(
                     format_value(m_i, p_i, e_i)
                     for e_i in range(len(EST_ORDER)) if EST_ORDER[e_i] is not None and not need_to_skip(p, EST_ORDER[e_i]))))
-            f.write((FOOTER1 if p in {'R', 'd', 'd_E', 'X_C', 'X_S'} else FOOTER2).format(param_latex=p2latex[p].replace('$', '')))
+                f.write('{{{}}} & {}\\\\\n'.format(model2, ' & '.join(
+                    '&' for e_i in range(len(EST_ORDER)) if EST_ORDER[e_i] is not None and not need_to_skip(p, EST_ORDER[e_i]))))
+            f.write((FOOTER0 if p in {'R', 'd'} else FOOTER1  if p in {'d_E', 'X_C', 'X_S'} else FOOTER2).format(param_latex=p2latex[p].replace('$', '')))
             f.write('\n\n')

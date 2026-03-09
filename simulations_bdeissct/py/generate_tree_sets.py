@@ -122,7 +122,7 @@ if __name__ == "__main__":
     parser.add_argument('--min_R', default=1, type=float, help="min R0 (included)")
     parser.add_argument('--max_R', default=10., type=float, help="max R0 (excluded)")
     parser.add_argument('--min_d', default=1, type=float, help="min infection time (included)")
-    parser.add_argument('--min_d_inc', default=0., type=float, help="min infection time (included)")
+    parser.add_argument('--min_d_inc', default=0., type=float, help="min incubation time (included)")
     parser.add_argument('--max_d', default=31., type=float, help="max infection time (excluded)")
     parser.add_argument('--min_rho', default=0.01, type=float, help="min rho (included)")
     parser.add_argument('--max_rho', default=0.75, type=float, help="max rho (excluded)")

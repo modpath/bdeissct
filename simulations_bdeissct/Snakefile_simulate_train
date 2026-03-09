@@ -4,7 +4,7 @@ import os
 # snakemake --snakefile Snakefile_simulate_train --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 # To run on maestro:
 # source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
-# snakemake --snakefile Snakefile_simulate_train --config model=BDSS --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 8000
+# snakemake --snakefile Snakefile_simulate_train --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 8000
 
 
 localrules: all
@@ -16,24 +16,27 @@ num = int(config.get("num", 128))
 REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
 
-sim_folder = os.path.join(folder, config.get("sf", 'train'))
-MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['200_500']
+sf = config.get("sf", 'train0')
+mdl = config.get("model", '')
+MODELS = [mdl] if mdl else [f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]
+mint = int(config.get("mint", 2000))
+maxt = int(config.get("maxt", 5000))
+sim_folder = os.path.join(folder, sf, f'{mint}_{maxt}')
 
 TREES_PER_FILE = 8
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
     if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 12 --use-singularity --singularity-prefix ~/.singularity --singularity-args \"--home ~\""
+model_arg = f" model={mdl} " if mdl else ""
 
 
 rule all:
     input:
-        expand(os.path.join(sim_folder, '{size}', '{model}', '{k}', 'trees.{i}.nwk'), \
-            k=REPETITIONS, i=REPETITIONS, model=MODELS, size=SIZES)
+        expand(os.path.join(sim_folder, '{model}', '{k}', 'trees.{i}.nwk'), k=REPETITIONS, i=REPETITIONS, model=MODELS)
     shell:
         """
-        snakemake --snakefile Snakefile_encode --config num={num} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_encode --config num={num}  {snakemake_settings}
+        snakemake --snakefile Snakefile_merge_train --config mint={mint} maxt={maxt} num={num} {model_arg} sf={sf} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_merge_train --config mint={mint} maxt={maxt} num={num} {model_arg} sf={sf}  {snakemake_settings}
         """
 
 rule simulate_trees:
@@ -41,8 +44,8 @@ rule simulate_trees:
     Simulate TREES_PER_FILE trees under the given model.
     '''
     output:
-        log=os.path.join(sim_folder, '{mint}_{maxt}', '{model}', '{k}','trees.{i}.log'),
-        nwk=os.path.join(sim_folder, '{mint}_{maxt}', '{model,[BDEISCT]+}', '{k}','trees.{i}.nwk'),
+        log=os.path.join(sim_folder, '{model}', '{k}','trees.{i}.log'),
+        nwk=os.path.join(sim_folder, '{model,[BDEISCT]+}', '{k}','trees.{i}.nwk'),
     params:
         mem=2000,
         name='sim.{model}',
@@ -52,7 +55,7 @@ rule simulate_trees:
     shell:
         """         
         python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
-        --min_tips {wildcards.mint} --max_tips {wildcards.maxt} \
+        --min_tips {mint} --max_tips {maxt} \
         --n {TREES_PER_FILE} \
         --min_R 1 \
         --max_R 10  \

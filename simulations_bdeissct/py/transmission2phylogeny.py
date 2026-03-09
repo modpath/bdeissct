@@ -133,15 +133,17 @@ def collapse_zero_branches(tree):
         print('Collapsed {} zero branches out of {} branches.'.format(num_collapsed, num_total))
 
 
-def resolve_polytomies(tree, epsilon=1e-6):
+def resolve_polytomies(tree, s=29903):
     """
-    Resolves polytomies in the input tree by adding zero-length branches.
+    Resolves polytomies in the input tree by adding branches
+    whose length is 0.5 mutations.
 
-    :param epsilon: float, minimum branch length to add
+    :param s: int, alignment length (number of sites)
     :param tree: ete3.Tree, tree to be modified
     :return: void, the original tree is modified
     """
 
+    zero_dist = 0.5 / s
     todo = [tree]
     while todo:
         n = todo.pop()
@@ -150,21 +152,19 @@ def resolve_polytomies(tree, epsilon=1e-6):
             np.random.shuffle(children)
             threshold = np.random.randint(1, len(children) - 1)
             if threshold > 1:
-                left_child = TreeNode(dist=epsilon)
+                left_child = TreeNode(dist=zero_dist)
                 for child in children[:threshold]:
                     n.remove_child(child)
                     left_child.add_child(child)
                 n.add_child(left_child)
-            else:
-                children[0].dist = max(children[0].dist, epsilon)
             if threshold < len(children) - 1:
-                right_child = TreeNode(dist=epsilon)
+                right_child = TreeNode(dist=zero_dist)
                 for child in children[threshold:]:
                     n.remove_child(child)
                     right_child.add_child(child)
                 n.add_child(right_child)
-            else:
-                children[-1].dist = max(children[-1].dist, epsilon)
+        if n.is_leaf() and n.dist == 0:
+            n.dist = zero_dist
         todo.extend(n.children)
 
 
@@ -220,9 +220,18 @@ if __name__ == "__main__":
         scale = 365 if params.time_scale == DAY else 12 if timeunit == MONTH else 1
 
         name2date = extract_dates(tree, root_date_min=params.min_date, root_date_max=params.max_date)
-        discretize_branch_lengths(tree, R_mean=params.mean_R / scale, R_std=params.std_R / scale)
+        discretize_branch_lengths(tree, R_mean=params.mean_R / scale, R_std=params.std_R / scale, s=params.s)
         collapse_zero_branches(tree)
-        resolve_polytomies(tree)
+        resolve_polytomies(tree, s=params.s)
+
+        # resolve root
+        if len(tree.children) > 2:
+            children = list(tree.children)
+            right_child = TreeNode(dist=0)
+            for child in children[1:]:
+                tree.remove_child(child)
+                right_child.add_child(child)
+            tree.add_child(right_child)
 
         tree.write(format=3, outfile=out_nwk, format_root_node=True)
         with open(out_dates, 'w+') as f:

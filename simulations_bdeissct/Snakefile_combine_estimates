@@ -13,7 +13,10 @@ os.makedirs('logs', exist_ok=True)
 
 sim_folder = os.path.join(folder, config.get("sf", 'test'))
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
-SIZES=['200_500']
+
+mint = int(config.get("mint", 2000))
+maxt = int(config.get("maxt", 5000))
+SIZE = '{}_{}'.format(mint, maxt)
 
 
 
@@ -23,7 +26,7 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        expand(os.path.join(sim_folder, '{size}', '{model}', 'estimates.tab'), model=MODELS, size=SIZES),
+        expand(os.path.join(sim_folder, '{size}', '{model}', 'estimates.tab'), model=MODELS, size=[SIZE]),
 
 
 
@@ -33,14 +36,10 @@ rule combine_estimates:
     '''
     input:
         tree_stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
-        est_bddl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BD.csv.xz'),
-        est_bdctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDCT.csv.xz'),
-        est_bdeidl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEI.csv.xz'),
-        est_bdeictdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEICT.csv.xz'),
-        est_bdssdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDSS.csv.xz'),
-        est_bdssctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDSSCT.csv.xz'),
-        est_bdeissdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEISS.csv.xz'),
-        est_bdeissctdl = os.path.join(sim_folder, '{size}', '{model}', 'trees.estimates_BDEISSCT.csv.xz'),
+        est_dl_pure = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_pure.{model}.{x}.csv.xz'), x=[1, 2, 4, 8], model=MODELS),
+        est_dl_mixed2 = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{x}.csv.xz'), model=['BDEI', 'BDSS', 'BDCT'], x=[2, 4, 8]),
+        est_dl_mixed4 = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{x}.csv.xz'), model=['BDEISS', 'BDSSCT', 'BDEICT'], x=[4, 8]),
+        est_dl_mixed8 = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{x}.csv.xz'), model=['BDEISSCT'], x=[8]),
     output:
         tab = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'estimates.tab'),
     params:
@@ -55,12 +54,5 @@ rule combine_estimates:
         --estimates_bd {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bd \
         --estimates_bdei {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bdei \
         --tab {output.tab} \
-        --estimates_bddl {input.est_bddl}  \
-        --estimates_bdctdl {input.est_bdctdl} \
-        --estimates_bdeidl {input.est_bdeidl} \
-        --estimates_bdeictdl {input.est_bdeictdl} \
-        --estimates_bdssdl {input.est_bdssdl} \
-        --estimates_bdssctdl {input.est_bdssctdl} \
-        --estimates_bdeissdl {input.est_bdeissdl} \
-        --estimates_bdeissctdl {input.est_bdeissctdl}
+        --estimates_dl {input.est_dl_pure} {input.est_dl_mixed2} {input.est_dl_mixed4} {input.est_dl_mixed8}
         """

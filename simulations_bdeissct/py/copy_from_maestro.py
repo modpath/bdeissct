@@ -48,12 +48,23 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
                 print(f"Copied: {src_file} -> {dst_file}")
 
 
+for i in range(0, 1):
+    source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/train{i}/1000_2000/"
+    destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train{i}/1000_2000/"
 
-source_directory = "/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/test/200_500/"
-destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/"
-filepath_to_copy = "*/0/trees.0.*"
-filename_to_copy = "estimates.tab"
-filename_to_copy = "trees.csv.xz"
+    for ext in ('train', 'val'):
+        filename_to_copy = f"trees.{ext}.csv.xz"
+        copy_files_with_name(source_directory, destination_directory, filename_to_copy)
+
+    # copy_files_with_name(source_directory, destination_directory, 'trees.nwk')
+    # copy_files_with_name(source_directory, destination_directory, 'trees.log')
+
+
+# source_directory = "/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/test/2000_5000/"
+# destination_directory = "/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000/"
+# # filepath_to_copy = "*/0/trees.0.*"
+# # filename_to_copy = "estimates.tab"
+# filename_to_copy = "trees.csv.xz"
 
 # copy_files_with_path(source_directory, destination_directory, filepath_to_copy)
-copy_files_with_name(source_directory, destination_directory, filename_to_copy)
+# copy_files_with_name(source_directory, destination_directory, filename_to_copy)

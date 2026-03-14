@@ -3,7 +3,6 @@ import os
 from glob import iglob
 
 import pandas as pd
-from treesimulator.mtbd_models import INCUBATION_FRACTION
 from treesumstats import FeatureCalculator, FeatureRegistry, FeatureManager
 from treesumstats.balance_sumstats import BalanceFeatureCalculator
 from treesumstats.basic_sumstats import BasicFeatureCalculator

@@ -17,8 +17,9 @@ folder = os.path.abspath(config.get("folder", '.'))
 os.makedirs('logs', exist_ok=True)
 mint = int(config.get("mint", 1000))
 maxt = int(config.get("maxt", 2000))
+sf = config.get("sf", 'test')
 
-test_folder = os.path.join(folder, 'test', f'{mint}_{maxt}')
+test_folder = os.path.join(folder, sf, f'{mint}_{maxt}')
 MODELS = [f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common --qos={params.qos}  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \

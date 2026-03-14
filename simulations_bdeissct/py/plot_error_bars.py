@@ -8,35 +8,36 @@ import seaborn as sns
 from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox
 
 # BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.2', 'pure.BDEISSCT.4', 'pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
-# BDEISSCT_ESTS = ['pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
-BDEISSCT_ESTS = ['pure.BDEISSCT.8']
+BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.pt1', 'pure.BDEISSCT.8', 'pure.BDEISSCT.pt8', 'mixed.BDEISSCT.8', 'mixed.BDEISSCT.pt8']
+# BDEISSCT_ESTS = ['pure.BDEISSCT.8']
 
 # BDEISS_ESTS = ['pure.BDEISS.1', 'pure.BDEISS.2', 'pure.BDEISS.4', 'mixed.BDEISS.4', 'pure.BDEISS.8', 'mixed.BDEISS.8']
 # BDEISS_ESTS = ['pure.BDEISS.8', 'mixed.BDEISS.8']
-BDEISS_ESTS = ['pure.BDEISS.8']
+BDEISS_ESTS = ['pure.BDEISS.1', 'pure.BDEISS.pt1', 'pure.BDEISS.8', 'pure.BDEISS.pt8', 'mixed.BDEISS.8', 'mixed.BDEISS.pt8']
 
 # BDSSCT_ESTS = ['pure.BDSSCT.1', 'pure.BDSSCT.2', 'pure.BDSSCT.4', 'mixed.BDSSCT.4', 'pure.BDSSCT.8', 'mixed.BDSSCT.8']
 # BDSSCT_ESTS = ['pure.BDSSCT.8', 'mixed.BDSSCT.8']
-BDSSCT_ESTS = ['pure.BDSSCT.8']
+BDSSCT_ESTS = ['pure.BDSSCT.1', 'pure.BDSSCT.pt1', 'pure.BDSSCT.8', 'pure.BDSSCT.pt8', 'mixed.BDSSCT.8', 'mixed.BDSSCT.pt8']
 
 # BDEICT_ESTS = ['pure.BDEICT.1', 'pure.BDEICT.2', 'pure.BDEICT.4', 'mixed.BDEICT.4', 'pure.BDEICT.8', 'mixed.BDEICT.8']
 # BDEICT_ESTS = ['pure.BDEICT.8', 'mixed.BDEICT.8']
-BDEICT_ESTS = ['pure.BDEICT.8']
+BDEICT_ESTS = ['pure.BDEICT.1', 'pure.BDEICT.pt1', 'pure.BDEICT.8', 'pure.BDEICT.pt8', 'mixed.BDEICT.8', 'mixed.BDEICT.pt8']
 
 # BDCT_ESTS = ['pure.BDCT.1', 'pure.BDCT.2', 'mixed.BDCT.2', 'pure.BDCT.4', 'mixed.BDCT.4', 'pure.BDCT.8', 'mixed.BDCT.8']
 # BDCT_ESTS = ['pure.BDCT.8', 'mixed.BDCT.8']
-BDCT_ESTS = ['pure.BDCT.8']
+BDCT_ESTS = ['pure.BDCT.1', 'pure.BDCT.pt1', 'pure.BDCT.8', 'pure.BDCT.pt8', 'mixed.BDCT.8', 'mixed.BDCT.pt8']
 
 # BDSS_ESTS = ['pure.BDSS.1', 'pure.BDSS.2', 'mixed.BDSS.2', 'pure.BDSS.4', 'mixed.BDSS.4', 'pure.BDSS.8', 'mixed.BDSS.8']
 # BDSS_ESTS = ['pure.BDSS.8', 'mixed.BDSS.8']
-BDSS_ESTS = ['pure.BDSS.8']
+BDSS_ESTS = ['pure.BDSS.1', 'pure.BDSS.pt1', 'pure.BDSS.8', 'pure.BDSS.pt8', 'mixed.BDSS.8', 'mixed.BDSS.pt8']
 
 # BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.2', 'pure.BD.4', 'pure.BD.8']
-BD_ESTS = ['bd', 'pure.BD.8']
+BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.pt1', 'pure.BD.8', 'pure.BD.pt8']
 
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.2', 'mixed.BDEI.2', 'pure.BDEI.4', 'mixed.BDEI.4', 'pure.BDEI.8', 'mixed.BDEI.8']
 # BDEI_ESTS = ['bdei', 'pure.BDEI.8', 'mixed.BDEI.8']
-BDEI_ESTS = ['bdei', 'pure.BDEI.8']
+BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.8', 'mixed.BDEI.8']
+BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.pt1', 'pure.BDEI.8', 'pure.BDEI.pt8', 'mixed.BDEI.8', 'mixed.BDEI.pt8']
 
 # PARAMETERS = ['lambda', 'avg la', 'psi', 'avg psi', 'avg psi 2', 'R', 'R2'] #['f_E', 'f_S', 'X_S', 'upsilon', 'X_C', 'pi_E', 'pi_I', 'pi_S', 'pi_E-C', 'pi_I-C', 'pi_S-C']
 PARAMETERS = ['R', 'd'] #, 'f_E', 'f_S', 'X_S', 'upsilon', 'X_C'] #, 'f_E', 'f_S', 'X_S', 'X_C', 'upsilon']
@@ -139,14 +140,14 @@ if __name__ == "__main__":
           'ytick.labelsize': 12}
     # sns.set(style="whitegrid")
     sns.axes_style(style="whitegrid", rc=rc)
-    fig, axs = plt.subplots(len(params.estimates), 2, figsize=(20, 2 * len(params.estimates)))
+    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(45, 2 * len(params.estimates)))
 
 
-    order = ['', ' ']
-    for i, _ in enumerate(PARAMETERS, start=1):
-        order.append(par2greek[_])
-        order.append(' ' * (2 * i))
-        order.append(' ' * (2 * i + 1))
+    # order = ['', ' ']
+    # for i, _ in enumerate(PARAMETERS, start=1):
+    #     order.append(par2greek[_])
+    #     order.append(' ' * (2 * i))
+    #     order.append(' ' * (2 * i + 1))
 
 
     for num_est, estimate in enumerate(params.estimates):
@@ -210,17 +211,18 @@ if __name__ == "__main__":
                             par2type2bias[par][estimator_type_label] = '___'
                         else:
                             par2type2avg_error[par][estimator_type_label] = \
-                                f'{100 * np.mean(np.abs(df.loc[cur_mask, f"{par}_error"])):3.0f}'
+                                (f'{100 * np.mean(np.abs(df.loc[cur_mask, f"{par}_error"])):3.0f}').replace(' ', '_')
                             par2type2bias[par][estimator_type_label] = \
-                                f'{100 * np.mean(df.loc[cur_mask, f"{par}_error"]):3.0f}'
+                                (f'{100 * np.mean(df.loc[cur_mask, f"{par}_error"]):+3.0f}').replace(' ', '_')
 
         plot_df = pd.DataFrame(data=data, columns=['parameter', BIAS_COL, 'config'])
         plot_df[ERROR_COL] = np.abs(plot_df[BIAS_COL])
 
 
-        for ax, col in zip(axs[num_est] if len(params.estimates) > 1 else axs, (ERROR_COL, BIAS_COL)):
-            ax = sns.barplot(data=plot_df, x="parameter", y=col, hue="config", estimator='mean', palette=total_palette,
-                             ax=ax, order=order, errorbar='ci', gap=0.1, width=2.4, hue_order=EST_ORDER)
+        for ax, (col, par) in zip(axs[num_est] if len(params.estimates) > 1 else axs, (*[(ERROR_COL, _) for _ in PARAMETERS], *[(BIAS_COL, _) for _ in PARAMETERS])):
+            data = plot_df.loc[plot_df['parameter'] == par, :]
+            ax = sns.barplot(data=data, x="parameter", y=col, hue="config", estimator='mean', palette=total_palette,
+                             ax=ax, errorbar='ci', gap=0.2, width=1, hue_order=EST_ORDER)
             ax.spines['right'].set_visible(False)
             ax.spines['top'].set_visible(False)
 
@@ -265,14 +267,15 @@ if __name__ == "__main__":
                                          in zip((par2type2avg_error[par][_] for _ in est_labels),
                                                 (par2type2bias[par][_] for _ in est_labels),
                                                 palette + palette)],
-                               align="center", pad=0, sep=0)
+                               align="center", pad=0.1, sep=0.2)
 
 
 
 
-            xbox = HPacker(children=[get_xbox(par) for par in PARAMETERS], align="center", pad=0, sep=30)
+            # xbox = HPacker(children=[get_xbox(par) for par in PARAMETERS], align="center", pad=0, sep=30)
+            xbox = get_xbox(par)
             anchored_xbox = AnchoredOffsetbox(loc=3, child=xbox, pad=0, frameon=False,
-                                              bbox_to_anchor=(0.15, -0.15),
+                                              bbox_to_anchor=(0, -0.15),
                                               bbox_transform=ax.transAxes, borderpad=0.)
             ax.set_xlabel('')
             ax.set_ylabel('')
@@ -280,10 +283,10 @@ if __name__ == "__main__":
             ax.set_xticks([])
 
             leg = ax.legend()
-            if num_est > 0 or col == BIAS_COL:
+            if num_est > 0 or col == BIAS_COL or par != PARAMETERS[0]:
                 leg.remove()
 
-            ax.set_title(fig_title, loc='center', y=0.75)
+            ax.set_title(f'{fig_title}: {par}', loc='center', y=0.75)
 
     # plt.tight_layout()
     # fig.set_size_inches(9, 9)

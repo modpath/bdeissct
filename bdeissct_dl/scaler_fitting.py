@@ -9,12 +9,15 @@ from bdeissct_dl.model_serializer import save_scaler_numpy
 from bdeissct_dl.training import get_data_characteristics
 
 
-def fit_scalers(paths, x_indices, scaler_x=None):
+def fit_scalers(paths, x_indices, scaler_x=None, y_indices=None, scaler_y=None):
    for path in paths:
         df = pd.read_csv(path)
         if scaler_x:
             X = df.iloc[:, x_indices].to_numpy(dtype=float, na_value=0)
-            scaler_x.fit(X)
+            scaler_x.partial_fit(X)
+        if scaler_y:
+            Y = df.iloc[:, y_indices].to_numpy(dtype=float, na_value=0)
+            scaler_y.partial_fit(Y)
 
 
 def main():

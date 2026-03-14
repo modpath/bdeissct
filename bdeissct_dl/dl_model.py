@@ -3,9 +3,6 @@ from collections import defaultdict
 import tensorflow as tf
 from tensorflow.python.keras.utils.generic_utils import register_keras_serializable
 
-from bdeissct_dl.bdeissct_model import F_S, UPSILON, REPRODUCTIVE_NUMBER, \
-    INFECTION_DURATION, X_S, X_C, INCUBATION_FRACTION
-
 LEARNING_RATE = 0.01
 
 @register_keras_serializable(package="bdeissct_dl", name="half_sigmoid")
@@ -36,31 +33,37 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
     inputs = tf.keras.Input(shape=(n_x,))
 
     # (Your hidden layers go here)
-    x = tf.keras.layers.Dense(128, activation='elu', name=f'layer1_dense128_elu')(inputs)
+    # x = tf.keras.layers.Dense(128, activation='elu', name=f'layer1_dense128_elu')(inputs)
     # x = tf.keras.layers.Dropout(0.5, name='dropout1_50')(x)
-    x = tf.keras.layers.Dense(64, activation='elu', name=f'layer2_dense64_elu')(x)
-    # x = tf.keras.layers.Dropout(0.5, name='dropout2_50')(x)
+    x = tf.keras.layers.Dense(64, activation='elu', name=f'layer2_dense64_elu')(inputs)
+    x = tf.keras.layers.BatchNormalization()(x)
+    # x = tf.keras.layers.Dropout(0.1)(x)
     x = tf.keras.layers.Dense(32, activation='elu', name=f'layer3_dense32elu')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    # x = tf.keras.layers.Dropout(0.2)(x)
     x = tf.keras.layers.Dense(16, activation='elu', name=f'layer4_dense16_elu')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    # x = tf.keras.layers.Dropout(0.1)(x)
     x = tf.keras.layers.Dense(8, activation='elu', name=f'layer5_dense8_elu')(x)
-    x = tf.keras.layers.Dense(4, activation='elu', name=f'layer5_dense4_elu')(x)
+    # x = tf.keras.layers.Dense(4, activation='elu', name=f'layer5_dense4_elu')(x)
 
-    outputs = {}
+    outputs = {col: tf.keras.layers.Dense(1, name=col)(x) for col in target_columns}
 
-    if REPRODUCTIVE_NUMBER in target_columns:
-        outputs[REPRODUCTIVE_NUMBER] = tf.keras.layers.Dense(1, activation="relu", name=REPRODUCTIVE_NUMBER)(x) # positive values only
-    if INFECTION_DURATION in target_columns:
-        outputs[INFECTION_DURATION] = tf.keras.layers.Dense(1, activation="relu", name=INFECTION_DURATION)(x) # positive values only
-    if INCUBATION_FRACTION in target_columns:
-        outputs[INCUBATION_FRACTION] = tf.keras.layers.Dense(1, activation="sigmoid", name=INCUBATION_FRACTION)(x) # positive values only
-    if F_S in target_columns:
-        outputs[F_S] = tf.keras.layers.Dense(1, activation=half_sigmoid, name=F_S)(x)
-    if X_S in target_columns:
-        outputs[X_S] = tf.keras.layers.Dense(1, activation=relu_plus_one, name=X_S)(x)
-    if UPSILON in target_columns:
-        outputs[UPSILON] = tf.keras.layers.Dense(1, activation="sigmoid", name=UPSILON)(x)
-    if X_C in target_columns:
-        outputs[X_C] = tf.keras.layers.Dense(1, activation=relu_plus_one, name=X_C)(x)
+    # outputs = {}
+    # if REPRODUCTIVE_NUMBER in target_columns:
+    #     outputs[REPRODUCTIVE_NUMBER] = tf.keras.layers.Dense(1, activation="relu", name=REPRODUCTIVE_NUMBER)(x) # positive values only
+    # if INFECTION_DURATION in target_columns:
+    #     outputs[INFECTION_DURATION] = tf.keras.layers.Dense(1, activation="relu", name=INFECTION_DURATION)(x) # positive values only
+    # if INCUBATION_FRACTION in target_columns:
+    #     outputs[INCUBATION_FRACTION] = tf.keras.layers.Dense(1, activation="sigmoid", name=INCUBATION_FRACTION)(x) # positive values only
+    # if F_S in target_columns:
+    #     outputs[F_S] = tf.keras.layers.Dense(1, activation=half_sigmoid, name=F_S)(x)
+    # if X_S in target_columns:
+    #     outputs[X_S] = tf.keras.layers.Dense(1, activation=relu_plus_one, name=X_S)(x)
+    # if UPSILON in target_columns:
+    #     outputs[UPSILON] = tf.keras.layers.Dense(1, activation="sigmoid", name=UPSILON)(x)
+    # if X_C in target_columns:
+    #     outputs[X_C] = tf.keras.layers.Dense(1, activation=relu_plus_one, name=X_C)(x)
 
     model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 

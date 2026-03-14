@@ -326,6 +326,7 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
         i = 0
         for nwk, log in get_nwk_log_iterator():
             forest = read_forest(nwk)
+            print(nwk)
 
             parameters = list(parse_parameters(log))
 

@@ -48,9 +48,9 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
                 print(f"Copied: {src_file} -> {dst_file}")
 
 
-for i in range(0, 1):
-    source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/train{i}/1000_2000/"
-    destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train{i}/1000_2000/"
+for i in range(0, 9):
+    source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/train{i}/200_500/"
+    destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train{i}/200_500/"
 
     for ext in ('train', 'val'):
         filename_to_copy = f"trees.{ext}.csv.xz"

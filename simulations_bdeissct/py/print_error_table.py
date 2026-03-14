@@ -91,7 +91,7 @@ def need_to_skip(par, estimator_type):
     return False
 
 
-estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000/{model}/estimates.tab' for model in
+estimate_files = [f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/{model}/estimates.tab' for model in
                   MODELS]
 
 

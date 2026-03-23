@@ -18,6 +18,42 @@ EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl_pure', None, 'bdssdl_pure', None, 'bd
                   None, 'bdeictdl_pure', None, 'bdssctdl_pure', None, 'bdeissctdl_pure']
 
 
+# BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.2', 'pure.BDEISSCT.4', 'pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
+BDEISSCT_ESTS = [None, 'pure.BDEISSCT.1', 'pure.BDEISSCT.pt1', 'pure.BDEISSCT.8', 'pure.BDEISSCT.pt8', 'mixed.BDEISSCT.8', 'mixed.BDEISSCT.pt8']
+# BDEISSCT_ESTS = ['pure.BDEISSCT.8']
+
+# BDEISS_ESTS = ['pure.BDEISS.1', 'pure.BDEISS.2', 'pure.BDEISS.4', 'mixed.BDEISS.4', 'pure.BDEISS.8', 'mixed.BDEISS.8']
+# BDEISS_ESTS = ['pure.BDEISS.8', 'mixed.BDEISS.8']
+BDEISS_ESTS = [None, 'pure.BDEISS.1', 'pure.BDEISS.pt1', 'pure.BDEISS.8', 'pure.BDEISS.pt8', 'mixed.BDEISS.8', 'mixed.BDEISS.pt8']
+
+# BDSSCT_ESTS = ['pure.BDSSCT.1', 'pure.BDSSCT.2', 'pure.BDSSCT.4', 'mixed.BDSSCT.4', 'pure.BDSSCT.8', 'mixed.BDSSCT.8']
+# BDSSCT_ESTS = ['pure.BDSSCT.8', 'mixed.BDSSCT.8']
+BDSSCT_ESTS = [None, 'pure.BDSSCT.1', 'pure.BDSSCT.pt1', 'pure.BDSSCT.8', 'pure.BDSSCT.pt8', 'mixed.BDSSCT.8', 'mixed.BDSSCT.pt8']
+
+# BDEICT_ESTS = ['pure.BDEICT.1', 'pure.BDEICT.2', 'pure.BDEICT.4', 'mixed.BDEICT.4', 'pure.BDEICT.8', 'mixed.BDEICT.8']
+# BDEICT_ESTS = ['pure.BDEICT.8', 'mixed.BDEICT.8']
+BDEICT_ESTS = [None, 'pure.BDEICT.1', 'pure.BDEICT.pt1', 'pure.BDEICT.8', 'pure.BDEICT.pt8', 'mixed.BDEICT.8', 'mixed.BDEICT.pt8']
+
+# BDCT_ESTS = ['pure.BDCT.1', 'pure.BDCT.2', 'mixed.BDCT.2', 'pure.BDCT.4', 'mixed.BDCT.4', 'pure.BDCT.8', 'mixed.BDCT.8']
+# BDCT_ESTS = ['pure.BDCT.8', 'mixed.BDCT.8']
+BDCT_ESTS = [None, 'pure.BDCT.1', 'pure.BDCT.pt1', 'pure.BDCT.8', 'pure.BDCT.pt8', 'mixed.BDCT.8', 'mixed.BDCT.pt8']
+
+# BDSS_ESTS = ['pure.BDSS.1', 'pure.BDSS.2', 'mixed.BDSS.2', 'pure.BDSS.4', 'mixed.BDSS.4', 'pure.BDSS.8', 'mixed.BDSS.8']
+# BDSS_ESTS = ['pure.BDSS.8', 'mixed.BDSS.8']
+BDSS_ESTS = [None, 'pure.BDSS.1', 'pure.BDSS.pt1', 'pure.BDSS.8', 'pure.BDSS.pt8', 'mixed.BDSS.8', 'mixed.BDSS.pt8']
+
+# BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.2', 'pure.BD.4', 'pure.BD.8']
+BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.pt1', 'pure.BD.8', 'pure.BD.pt8', None, None]
+
+# BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.2', 'mixed.BDEI.2', 'pure.BDEI.4', 'mixed.BDEI.4', 'pure.BDEI.8', 'mixed.BDEI.8']
+# BDEI_ESTS = ['bdei', 'pure.BDEI.8', 'mixed.BDEI.8']
+# BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.8', 'mixed.BDEI.8']
+BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.pt1', 'pure.BDEI.8', 'pure.BDEI.pt8', 'mixed.BDEI.8', 'mixed.BDEI.pt8']
+
+EST_ORDER = []
+
+
+
 HEADER0 = """
 \\begin{{table}}[!t]
 \\begin{{center}}
@@ -73,15 +109,19 @@ and in parenthesis the corresponding biases, $100 ({{{param_latex}}}_{{estimated
 
 def is_estimator_pertunent(model, estimator):
     model_parts = {model.upper()[i:i + 2] for i in range(0, len(model), 2)}
-    estimator = estimator.upper().replace('DL', '')
+    estimator = get_model_from_estimator(estimator)
     est_parts = {estimator[i:i+2] for i in range(0, len(estimator), 2)}
     return not (model_parts - est_parts) or not (est_parts - model_parts)
 
 
-def need_to_skip(par, estimator_type):
+def get_model_from_estimator(estimator) -> Any:
+    estimator = estimator.upper()
+    if '.' in estimator:
+        estimator = estimator.split('.')[1]
+    return estimator
 
-    if estimator_type.lower() in ['bd', 'bddl'] and par.startswith('pi'):
-        return True
+
+def need_to_skip(par, estimator_type):
     if ('X_C' in par or 'upsilon' in par) and ('ct' not in estimator_type.lower()): #or 'ct' not in model.lower()):
         return True
     if ('d_E' in par or 'inc' in par or 'f_E' in par) and ('ei' not in estimator_type.lower()): # or 'ei' not in model.lower()):
@@ -189,9 +229,7 @@ if __name__ == "__main__":
             else f'\\textbf{{{errors[m_i, p_i, e_i]:.0f} [{errors_min[m_i, p_i, e_i]:.0f}-{errors_max[m_i, p_i, e_i]:.0f}]}} & \\textbf{{({format_bias(biases[m_i, p_i, e_i])})}}'
 
     def latex_estimator_first_row(estimator, two_bd=False, two_bdei=False):
-        estimator = estimator.replace('_pure', '')
-        estimator = estimator.upper().replace('DL', '')
-        estimator = estimator.replace('CT', '-CT')
+        estimator = get_model_from_estimator(estimator).replace('CT', '-CT')
         estimator1 = estimator[:(4 if '-' != estimator[4] else 5)] if len(estimator) > 5 \
             else (f'\\multirow{{2}}{{*}}{{ {estimator} }}' if (estimator != 'BD' or not two_bd) and (estimator != 'BDEI' or not two_bdei) else estimator)
         estimator2 = estimator[(4 if '-' != estimator[4] else 5):] if len(estimator) > 5 else ''
@@ -201,12 +239,10 @@ if __name__ == "__main__":
         return "\\multicolumn{{2}}{{c|}}{{{}}}".format(estimator1)
 
     def is_dl(estimator):
-        return "\\multicolumn{{2}}{{c|}}{{({})}}".format('DL' if 'dl' in estimator else 'ML')
+        return "\\multicolumn{{2}}{{c|}}{{({})}}".format('DL' if ('pure' in estimator or 'mixed' in estimator) else 'ML')
 
     def latex_estimator_second_row(estimator):
-        estimator = estimator.replace('_pure', '')
-        estimator = estimator.upper().replace('DL', '')
-        estimator = estimator.replace('CT', '-CT')
+        estimator = get_model_from_estimator(estimator).replace('CT', '-CT')
         estimator1 = estimator[:(4 if '-' != estimator[4] else 5)] if len(
             estimator) > 5 else f'\\multirow{{2}}{{*}}{{ {estimator} }}'
         estimator2 = estimator[(4 if '-' != estimator[4] else 5):] if len(estimator) > 5 else ''

@@ -2,6 +2,7 @@ import os
 
 
 # To run locally:
+# snakemake --snakefile Snakefile_estimate --rerun-triggers mtime --keep-going --cores 8 --config mint=2000 maxt=5000
 # snakemake --snakefile Snakefile_estimate --rerun-triggers mtime --keep-going --cores 7 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 
 # To run on maestro:

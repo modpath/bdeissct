@@ -57,7 +57,7 @@ rule encode_tree:
         name='enc.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.73"
+    singularity: "docker://evolbioinfo/bdext:v0.1.80"
     shell:
         """  
         bdeissct_encode --nwks {input.nwk} --logs {input.log} --out {output.stats}
@@ -77,7 +77,7 @@ rule merge_batches:
         name='enc.ct.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.73"
+    singularity: "docker://evolbioinfo/bdext:v0.1.80"
     shell:
         """
         python py/merge_xz.py --output {output.stats} --input {input.stats}
@@ -96,7 +96,7 @@ rule merge_val_batches:
         name='enc.ct.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.73"
+    singularity: "docker://evolbioinfo/bdext:v0.1.80"
     shell:
         """
         python py/merge_xz.py --output {output.stats} --input {input.stats}

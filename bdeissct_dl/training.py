@@ -24,8 +24,7 @@ FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes
 
 
 def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, filenames=None,
-                   scaler_x=None, scaler_y=None,
-                   batch_size=BATCH_SIZE, shuffle=False):
+                   scaler_x=None, scaler_y=None, shuffle=False):
 
     if file_pattern is not None:
         filenames = glob.glob(filenames)
@@ -80,16 +79,7 @@ def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, file
     if X_S in target_columns:
         train_labels[X_S] = Y[:, col_i]
         col_i += 1
-
-    dataset = tf.data.Dataset.from_tensor_slices((X, train_labels))
-
-    dataset = (
-        dataset
-        # .shuffle(buffer_size=batch_size >> 1)  # Adjust buffer_size as appropriate
-        .batch(batch_size)
-        .prefetch(tf.data.AUTOTUNE)
-    )
-    return dataset
+    return X, train_labels
 
 
 def calc_validation_fraction(m):
@@ -136,8 +126,13 @@ def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT, feature_
     return [col2index_x[_] for _ in feature_columns], col2index_y
 
 
-def train_column_models(params, scaler_x, scaler_y, x_indices, y_col2index):
-    for col, y_idx in y_col2index.items():
+def train_column_models(params, scaler_x, scaler_y, x_indices, y_indices, target_columns):
+    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.train_data,
+                                            scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
+    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.val_data,
+                                        scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
+
+    for col in target_columns:
         try:
             if load_model_keras(path=params.model_path, model_name=f'{params.model_name}.{col}'):
                 print(
@@ -157,15 +152,12 @@ def train_column_models(params, scaler_x, scaler_y, x_indices, y_col2index):
             print(f'Building a model from scratch with {len(x_indices)} input features and {col} as output.')
         print(model.summary())
 
-        ds_train = get_train_data([col], x_indices, [y_idx], filenames=params.train_data,
-                                  scaler_x=scaler_x, scaler_y=scaler_y, batch_size=BATCH_SIZE, shuffle=True)
-        ds_val = get_train_data([col], x_indices, [y_idx], filenames=params.val_data,
-                                scaler_x=scaler_x, scaler_y=scaler_y, batch_size=BATCH_SIZE, shuffle=True)
+        ds_train = tf.data.Dataset.from_tensor_slices((ds_train_X, {col: ds_train_Y[col]})).batch(BATCH_SIZE).prefetch(
+            tf.data.AUTOTUNE)
+        ds_val = tf.data.Dataset.from_tensor_slices((ds_val_X, {col: ds_val_Y[col]})).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
         # early stopping to avoid overfitting
-
-        # early stopping to avoid overfitting
-        early_stop = get_esrly_stopping()
+        early_stop = get_early_stopping()
         reduce_lr = get_learning_rate_scaler()
 
         # Training of the Network, with an independent validation set
@@ -231,13 +223,16 @@ def train_model(params, scaler_x, scaler_y, x_indices, y_indices, target_columns
         print(f'Building a model from scratch with {len(x_indices)} input features and {len(target_columns)} as output.')
     print(model.summary())
 
-    ds_train = get_train_data(target_columns, x_indices, y_indices, file_pattern=None, filenames=params.train_data, \
-                              scaler_x=scaler_x, scaler_y=scaler_y, batch_size=BATCH_SIZE, shuffle=True)
-    ds_val = get_train_data(target_columns, x_indices, y_indices, file_pattern=None, filenames=params.val_data, \
-                            scaler_x=scaler_x, scaler_y=scaler_y, batch_size=BATCH_SIZE, shuffle=True)
+    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.train_data,
+                                            scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
+    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.val_data,
+                                        scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
+
+    ds_train = tf.data.Dataset.from_tensor_slices((ds_train_X, ds_train_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    ds_val = tf.data.Dataset.from_tensor_slices((ds_val_X, ds_val_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
     # early stopping to avoid overfitting
-    early_stop = get_esrly_stopping()
+    early_stop = get_early_stopping()
     reduce_lr = get_learning_rate_scaler()
 
     # Training of the Network, with an independent validation set
@@ -251,7 +246,7 @@ def train_model(params, scaler_x, scaler_y, x_indices, y_indices, target_columns
     save_model_keras(model, path=params.model_path, model_name=f'{params.model_name}')
 
 
-def get_esrly_stopping() -> tf.keras.callbacks.EarlyStopping:
+def get_early_stopping() -> tf.keras.callbacks.EarlyStopping:
     return tf.keras.callbacks.EarlyStopping(
         monitor='val_loss',
         patience=15,  # Number of epochs with no improvement after which training will be stopped
@@ -324,7 +319,8 @@ def main():
             save_scaler_numpy(scaler_y, params.model_path, suffix=f'{params.model_name}.y')
 
     if params.per_target:
-        train_column_models(params, scaler_x, scaler_y=scaler_y, x_indices=x_indices, y_col2index=y_col2index)
+        train_column_models(params, scaler_x, scaler_y=scaler_y, x_indices=x_indices,
+                            y_indices=y_indices, target_columns=target_columns)
     else:
         train_model(params, scaler_x=scaler_x, scaler_y=scaler_y, x_indices=x_indices,
                     y_indices=y_indices, target_columns=target_columns)

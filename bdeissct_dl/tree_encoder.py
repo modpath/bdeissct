@@ -24,7 +24,6 @@ N_LTT_COORDINATES = 20
 
 SCALING_FACTOR = 'sf'
 
-
 def get_write_handle(path, temp_suffix=''):
     mode = 'wb' if path.endswith('.gz') or path.endswith('.xz') else 'w'
     if path.endswith('.gz'):
@@ -324,8 +323,10 @@ def save_forests_as_sumstats(output, nwks=None, logs=None, patterns=None, target
         keys = None
         i = 0
         for nwk, log in get_nwk_log_iterator():
-            forest = read_forest(nwk)
-            print(nwk)
+            try:
+                forest = read_forest(nwk)
+            except:
+                continue
 
             parameters = list(parse_parameters(log))
 

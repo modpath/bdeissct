@@ -4,7 +4,7 @@ import os
 # snakemake --snakefile Snakefile_simulate_train --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 # To run on maestro:
 # source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
-# snakemake --snakefile Snakefile_chop_train --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --time=00:10:00 --qos=fast -J {params.name}" --jobs 1000 --config bmint=2000 bmaxt=5000 mint=1000 maxt=2000 sf=train1
+# snakemake --snakefile Snakefile_chop_train --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --time=00:10:00 --qos=fast -J {params.name}" --jobs 1000 --config bmint=500 bmaxt=1000 mint=200 maxt=500 sf=train3
 
 
 localrules: all

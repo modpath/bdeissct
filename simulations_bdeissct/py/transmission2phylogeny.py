@@ -13,7 +13,8 @@ YEAR = 'year'
 def read_forest(tree_path):
     with open(tree_path, 'r') as f:
         nwks = f.read().replace('\n', '').split(';')
-    return [Tree(nwk + ';') for nwk in nwks[:-1]]
+    for nwk in nwks[:-1]:
+        yield Tree(nwk + ';')
 
 
 def datetime2numeric(d):
@@ -133,40 +134,6 @@ def collapse_zero_branches(tree):
         print('Collapsed {} zero branches out of {} branches.'.format(num_collapsed, num_total))
 
 
-def resolve_polytomies(tree, s=29903):
-    """
-    Resolves polytomies in the input tree by adding branches
-    whose length is 0.5 mutations.
-
-    :param s: int, alignment length (number of sites)
-    :param tree: ete3.Tree, tree to be modified
-    :return: void, the original tree is modified
-    """
-
-    zero_dist = 0.5 / s
-    todo = [tree]
-    while todo:
-        n = todo.pop()
-        children = list(n.children)
-        if len(children) > 2:
-            np.random.shuffle(children)
-            threshold = np.random.randint(1, len(children) - 1)
-            if threshold > 1:
-                left_child = TreeNode(dist=zero_dist)
-                for child in children[:threshold]:
-                    n.remove_child(child)
-                    left_child.add_child(child)
-                n.add_child(left_child)
-            if threshold < len(children) - 1:
-                right_child = TreeNode(dist=zero_dist)
-                for child in children[threshold:]:
-                    n.remove_child(child)
-                    right_child.add_child(child)
-                n.add_child(right_child)
-        if n.is_leaf() and n.dist == 0:
-            n.dist = zero_dist
-        todo.extend(n.children)
-
 
 def name_tree(tree):
     """
@@ -203,9 +170,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Converts a transmission tree into a date file + a phylogeny.")
-    parser.add_argument('--out_dates', default=['/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/BD/tree.0.dates'], nargs='+', type=str, help="output date file")
-    parser.add_argument('--in_nwk', default='/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/BD/tree.0.nwk', type=str, help="input transmission tree")
-    parser.add_argument('--out_nwk', default=['/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/BD/tree.0.phylo.nwk'], nargs='+', type=str, help="output phylogenetic tree")
+    parser.add_argument('--out_dates', type=str, help="pattern for output date files")
+    parser.add_argument('--in_nwk', type=str, help="input transmission trees")
+    parser.add_argument('--out_nwk', type=str, help="pattern for output phylogenetic trees")
 
     parser.add_argument('--mean_R', default=0.0008, type=float, help="mean substitution rate [substitutions/site/year]")
     parser.add_argument('--std_R', default=0.0004, type=float, help="std of the substitution rate")
@@ -215,14 +182,13 @@ if __name__ == "__main__":
     parser.add_argument('--s', default=29903, type=int, help="alignment length (number of sites)")
 
     params = parser.parse_args()
-    for tree, out_nwk, out_dates in zip(read_forest(params.in_nwk), params.out_nwk, params.out_dates):
+    for i, tree in enumerate(read_forest(params.in_nwk)):
         name_tree(tree)
         scale = 365 if params.time_scale == DAY else 12 if timeunit == MONTH else 1
 
         name2date = extract_dates(tree, root_date_min=params.min_date, root_date_max=params.max_date)
         discretize_branch_lengths(tree, R_mean=params.mean_R / scale, R_std=params.std_R / scale, s=params.s)
         collapse_zero_branches(tree)
-        resolve_polytomies(tree, s=params.s)
 
         # resolve root
         if len(tree.children) > 2:
@@ -233,8 +199,13 @@ if __name__ == "__main__":
                 right_child.add_child(child)
             tree.add_child(right_child)
 
-        tree.write(format=3, outfile=out_nwk, format_root_node=True)
-        with open(out_dates, 'w+') as f:
+        # add minimal distances to tips
+        for tip in tree:
+            if tip.dist <= 0:
+                tip.dist = 0.5  / params.s
+
+        tree.write(format=3, outfile=params.out_nwk.replace('*', f'{i}'), format_root_node=True)
+        with open(params.out_dates.replace('*', f'{i}'), 'w+') as f:
             f.write(f'{len(name2date) + 1}\n')
             left_tip = next(_.name for _ in tree.children[0])
             right_tip = next(_.name for _ in tree.children[1])

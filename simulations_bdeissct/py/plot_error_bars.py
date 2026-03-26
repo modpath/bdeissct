@@ -10,33 +10,41 @@ from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox
 # BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.2', 'pure.BDEISSCT.4', 'pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
 # BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.pt1', 'pure.BDEISSCT.8', 'pure.BDEISSCT.pt8', 'mixed.BDEISSCT.8', 'mixed.BDEISSCT.pt8']
 BDEISSCT_ESTS = ['pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
+BDEISSCT_ESTS = ['mixed.BDEISSCT.8', 'mixed.BDEISSCT.pt8']
 
 # BDEISS_ESTS = ['pure.BDEISS.1', 'pure.BDEISS.2', 'pure.BDEISS.4', 'mixed.BDEISS.4', 'pure.BDEISS.8', 'mixed.BDEISS.8']
 # BDEISS_ESTS = ['pure.BDEISS.1', 'pure.BDEISS.pt1', 'pure.BDEISS.8', 'pure.BDEISS.pt8', 'mixed.BDEISS.8', 'mixed.BDEISS.pt8']
 BDEISS_ESTS = ['pure.BDEISS.8', 'mixed.BDEISS.8']
+BDEISS_ESTS = ['mixed.BDEISS.8', 'mixed.BDEISS.pt8']
 
 # BDSSCT_ESTS = ['pure.BDSSCT.1', 'pure.BDSSCT.2', 'pure.BDSSCT.4', 'mixed.BDSSCT.4', 'pure.BDSSCT.8', 'mixed.BDSSCT.8']
 # BDSSCT_ESTS = ['pure.BDSSCT.1', 'pure.BDSSCT.pt1', 'pure.BDSSCT.8', 'pure.BDSSCT.pt8', 'mixed.BDSSCT.8', 'mixed.BDSSCT.pt8']
 BDSSCT_ESTS = ['pure.BDSSCT.8', 'mixed.BDSSCT.8']
+BDSSCT_ESTS = ['mixed.BDSSCT.8', 'mixed.BDSSCT.pt8']
 
 # BDEICT_ESTS = ['pure.BDEICT.1', 'pure.BDEICT.2', 'pure.BDEICT.4', 'mixed.BDEICT.4', 'pure.BDEICT.8', 'mixed.BDEICT.8']
 BDEICT_ESTS = ['pure.BDEICT.8', 'mixed.BDEICT.8']
+BDEICT_ESTS = ['mixed.BDEICT.8', 'mixed.BDEICT.pt8']
 # BDEICT_ESTS = ['pure.BDEICT.1', 'pure.BDEICT.pt1', 'pure.BDEICT.8', 'pure.BDEICT.pt8', 'mixed.BDEICT.8', 'mixed.BDEICT.pt8']
 
 # BDCT_ESTS = ['pure.BDCT.1', 'pure.BDCT.2', 'mixed.BDCT.2', 'pure.BDCT.4', 'mixed.BDCT.4', 'pure.BDCT.8', 'mixed.BDCT.8']
 BDCT_ESTS = ['pure.BDCT.8', 'mixed.BDCT.8']
+BDCT_ESTS = ['mixed.BDCT.8', 'mixed.BDCT.pt8']
 # BDCT_ESTS = ['pure.BDCT.1', 'pure.BDCT.pt1', 'pure.BDCT.8', 'pure.BDCT.pt8', 'mixed.BDCT.8', 'mixed.BDCT.pt8']
 
 # BDSS_ESTS = ['pure.BDSS.1', 'pure.BDSS.2', 'mixed.BDSS.2', 'pure.BDSS.4', 'mixed.BDSS.4', 'pure.BDSS.8', 'mixed.BDSS.8']
 BDSS_ESTS = ['pure.BDSS.8', 'mixed.BDSS.8']
+BDSS_ESTS = ['mixed.BDSS.8', 'mixed.BDSS.pt8']
 # BDSS_ESTS = ['pure.BDSS.1', 'pure.BDSS.pt1', 'pure.BDSS.8', 'pure.BDSS.pt8', 'mixed.BDSS.8', 'mixed.BDSS.pt8']
 
 # BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.2', 'pure.BD.4', 'pure.BD.8']
-BD_ESTS = ['bd', 'pure.BD.8']
+BD_ESTS = ['bd', 'pure.BD.8', 'pure.BD.pt8']
 # BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.pt1', 'pure.BD.8', 'pure.BD.pt8']
 
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.2', 'mixed.BDEI.2', 'pure.BDEI.4', 'mixed.BDEI.4', 'pure.BDEI.8', 'mixed.BDEI.8']
 BDEI_ESTS = ['bdei', 'pure.BDEI.8', 'mixed.BDEI.8']
+BDEI_ESTS = ['bdei', 'mixed.BDEI.8', 'mixed.BDEI.pt8']
+# BDEI_ESTS = ['pure.BDEI.8', 'mixed.BDEI.8']
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.8', 'mixed.BDEI.8']
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.pt1', 'pure.BDEI.8', 'pure.BDEI.pt8', 'mixed.BDEI.8', 'mixed.BDEI.pt8']
 
@@ -124,7 +132,7 @@ def need_to_skip(par, estimator_type, model):
         return True
     return False
 
-folder = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000'
+folder = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/1000_2000'
 estimate_files = [f'{folder}/{model}/estimates.tab' for model in ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
 
 
@@ -141,7 +149,7 @@ if __name__ == "__main__":
           'ytick.labelsize': 12}
     # sns.set(style="whitegrid")
     sns.axes_style(style="whitegrid", rc=rc)
-    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(45, 2 * len(params.estimates)))
+    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(30, 2 * len(params.estimates)))
 
 
     # order = ['', ' ']
@@ -241,8 +249,8 @@ if __name__ == "__main__":
                             hatch += '----'
                         if 'pure' not in plot_est.lower() and 'mixed' not in plot_est.lower():
                             hatch += '////'
-                        if 'mixed' in plot_est.lower():
-                            hatch += '||||'
+                        # if 'mixed' in plot_est.lower():
+                        #     hatch += '||||'
                         # if 'ss' in plot_est.lower():
                         #     hatch += '\\\\\\\\'
                         if hatch:
@@ -260,7 +268,7 @@ if __name__ == "__main__":
 
                 def get_ta(color, text):
                     return TextArea(text,
-                                    textprops=dict(color=color, ha='center', va='center', fontsize=11,
+                                    textprops=dict(color=color, ha='center', va='center', fontsize=14,
                                                    fontweight='bold'))
 
                 return HPacker(children=[get_ta(color, text_err) if col == ERROR_COL else get_ta(color, text_bias)
@@ -268,7 +276,7 @@ if __name__ == "__main__":
                                          in zip((par2type2avg_error[par][_] for _ in est_labels),
                                                 (par2type2bias[par][_] for _ in est_labels),
                                                 palette + palette)],
-                               align="center", pad=0.1, sep=0.2)
+                               align="center", pad=2, sep=10)
 
 
 
@@ -276,7 +284,7 @@ if __name__ == "__main__":
             # xbox = HPacker(children=[get_xbox(par) for par in PARAMETERS], align="center", pad=0, sep=30)
             xbox = get_xbox(par)
             anchored_xbox = AnchoredOffsetbox(loc=3, child=xbox, pad=0, frameon=False,
-                                              bbox_to_anchor=(0, -0.15),
+                                              bbox_to_anchor=(0.01, -0.15),
                                               bbox_transform=ax.transAxes, borderpad=0.)
             ax.set_xlabel('')
             ax.set_ylabel('')

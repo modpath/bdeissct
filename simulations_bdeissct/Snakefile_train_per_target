@@ -31,15 +31,15 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 rule all:
     input:
         # expand(os.path.join(model_folder, '{model}.R.keras'), model=MODELS),
-        expand(os.path.join(folder, 'per_target', 'pure_models_{x}', SIZE, '{model}.R.keras'), model=MODELS, x=[1, 2, 4, 8]),
-        expand(os.path.join(folder, 'per_target', 'mixed_models_2', SIZE, '{model}.R.keras'), model=['BDCT', 'BDEI', 'BDSS']),
-        expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, '{model}.R.keras'), model=[m for m in MODELS if m not in {'BD', 'BDEISSCT'}]),
+        expand(os.path.join(folder, 'per_target', 'pure_models_{x}', SIZE, '{model}.R.keras'), model=MODELS, x=[1, 8]),
+        # expand(os.path.join(folder, 'per_target', 'mixed_models_2', SIZE, '{model}.R.keras'), model=['BDCT', 'BDEI', 'BDSS']),
+        # expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, '{model}.R.keras'), model=[m for m in MODELS if m not in {'BD', 'BDEISSCT'}]),
         expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, '{model}.R.keras'), model=[m for m in MODELS if 'BD' != m]),
-    # shell:
-    #     """
-    #     snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} {snakemake_settings} --unlock
-    #     snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} {snakemake_settings}
-    #     """
+    shell:
+        """
+        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} {snakemake_settings}
+        """
 
 # rule fit_scaler:
 #     '''

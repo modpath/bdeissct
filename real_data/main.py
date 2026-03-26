@@ -12,11 +12,11 @@ from pybdei import infer as bdei_infer
 from bdct.bd_model import infer as bd_infer
 from bdct.tree_manager import annotate_forest_with_time, get_T
 
-MP = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/{type}/200_500'
+MP = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/models/{type}/200_500'
 
 NWKS = ['/home/azhukova/projects/bdeissct_dl/real_data/wave3.days.nwk',
         '/home/azhukova/projects/bdeissct_dl/real_data/wave4.days.nwk',
-        #'/home/azhukova/projects/bdeissct_dl/real_data/HIV_Zurich.nwk'
+        '/home/azhukova/projects/bdeissct_dl/real_data/HIV_Zurich.nwk'
         ]
 RHOS = [0.238, 0.154, 0.25]
 
@@ -41,8 +41,8 @@ for nwk, rho in zip(NWKS, RHOS):
     forest = read_forest(nwk)
     sumstat_df = forest2sumstat_df(forest, rho)
 
-    for model in ['BDEISSCT']:
-        for prefix in ('mixed_models_2', 'mixed_models_4', 'mixed_models_8', 'pure_models_1', 'pure_models_2', 'pure_models_4', 'pure_models_8'):
+    for model in MODELS:
+        for prefix in ('mixed_models_8', 'pure_models_1', 'pure_models_8'):
             mp_format = MP.format(type=prefix)
             if os.path.exists(os.path.join(mp_format, f'{model}.keras')):
                 check_sumstats(forest2sumstat_df(forest, rho), model_path=mp_format, model_name=model, limit=5)

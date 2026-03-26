@@ -48,17 +48,42 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
                 print(f"Copied: {src_file} -> {dst_file}")
 
 
+# for size in ('200_500', '500_1000', '1000_2000', '2000_5000'):
+#     for i in range(0, 9):
+#         source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/train{i}/{size}/"
+#         destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train{i}/{size}/"
+#
+#         for ext in ('train', 'val'):
+#             filename_to_copy = f"trees.{ext}.csv.xz"
+#             copy_files_with_name(source_directory, destination_directory, filename_to_copy)
+#
+# for size in ('200_500', ):
+#     for i in range(0, 9):
+#         source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/covid_train{i}/{size}/"
+#         destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/covid_train{i}/{size}/"
+#
+#         for ext in ('train', 'val'):
+#             filename_to_copy = f"trees.{ext}.csv.xz"
+#             copy_files_with_name(source_directory, destination_directory, filename_to_copy)
+
+
+
 for size in ('200_500', '500_1000', '1000_2000', '2000_5000'):
     for i in range(0, 9):
-        source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/train{i}/200_500/"
-        destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/train{i}/200_500/"
+        source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/test/{size}/"
+        destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/{size}/"
 
-        for ext in ('train', 'val'):
-            filename_to_copy = f"trees.{ext}.csv.xz"
-            copy_files_with_name(source_directory, destination_directory, filename_to_copy)
+        filename_to_copy = "estimates.tab"
+        copy_files_with_name(source_directory, destination_directory, filename_to_copy)
 
-        # copy_files_with_name(source_directory, destination_directory, 'trees.nwk')
-        # copy_files_with_name(source_directory, destination_directory, 'trees.log')
+# for size in ('200_500', ):
+#     for i in range(0, 9):
+#         source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/covid_test/{size}/"
+#         destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/covid_test/{size}/"
+#
+#         filename_to_copy = "estimates.tab"
+#         copy_files_with_name(source_directory, destination_directory, filename_to_copy)
+
 
 
 # source_directory = "/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/test/2000_5000/"

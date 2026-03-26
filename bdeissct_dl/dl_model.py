@@ -31,23 +31,26 @@ def build_model(target_columns, n_x, optimizer=None, metrics=None):
     """
 
     inputs = tf.keras.Input(shape=(n_x,))
+    x = inputs
+
+    l2_reg = None #tf.keras.regularizers.l2(1e-5)  # you can adjust the coefficient
 
     # (Your hidden layers go here)
-    # x = tf.keras.layers.Dense(128, activation='elu', name=f'layer1_dense128_elu')(inputs)
-    # x = tf.keras.layers.Dropout(0.5, name='dropout1_50')(x)
-    x = tf.keras.layers.Dense(64, activation='elu', name=f'layer2_dense64_elu')(inputs)
-    x = tf.keras.layers.BatchNormalization()(x)
+    # x = tf.keras.layers.Dense(128, activation='elu', name=f'layer1_dense128_elu', kernel_regularizer=l2_reg)(x)
+    # # x = tf.keras.layers.Dropout(0.5, name='dropout1_50')(x)
     # x = tf.keras.layers.Dropout(0.1)(x)
-    x = tf.keras.layers.Dense(32, activation='elu', name=f'layer3_dense32elu')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    # x = tf.keras.layers.Dropout(0.2)(x)
-    x = tf.keras.layers.Dense(16, activation='elu', name=f'layer4_dense16_elu')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    # x = tf.keras.layers.Dropout(0.1)(x)
-    x = tf.keras.layers.Dense(8, activation='elu', name=f'layer5_dense8_elu')(x)
+    x = tf.keras.layers.Dense(64, activation='elu', name=f'layer2_dense64_elu', kernel_regularizer=l2_reg)(x)
+    # x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    x = tf.keras.layers.Dense(64, activation='elu', name=f'layer3_dense64_elu', kernel_regularizer=l2_reg)(x)
+    # x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dropout(0.05)(x)
+    x = tf.keras.layers.Dense(8, activation='elu', name=f'layer4_dense8_elu', kernel_regularizer=l2_reg)(x)
+    # x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dense(8, activation='elu', name=f'layer5_dense8_elu', kernel_regularizer=l2_reg)(x)
     # x = tf.keras.layers.Dense(4, activation='elu', name=f'layer5_dense4_elu')(x)
 
-    outputs = {col: tf.keras.layers.Dense(1, name=col)(x) for col in target_columns}
+    outputs = {col: tf.keras.layers.Dense(1, name=col, kernel_regularizer=l2_reg)(x) for col in target_columns}
 
     # outputs = {}
     # if REPRODUCTIVE_NUMBER in target_columns:

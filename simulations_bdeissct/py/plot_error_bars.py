@@ -10,40 +10,41 @@ from matplotlib.offsetbox import TextArea, HPacker, AnchoredOffsetbox
 # BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.2', 'pure.BDEISSCT.4', 'pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
 # BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.pt1', 'pure.BDEISSCT.8', 'pure.BDEISSCT.pt8', 'mixed.BDEISSCT.8', 'mixed.BDEISSCT.pt8']
 BDEISSCT_ESTS = ['pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
-BDEISSCT_ESTS = ['mixed.BDEISSCT.8', 'mixed.BDEISSCT.pt8']
+BDEISSCT_ESTS = ['mixed.BDEISSCT.8']
 
 # BDEISS_ESTS = ['pure.BDEISS.1', 'pure.BDEISS.2', 'pure.BDEISS.4', 'mixed.BDEISS.4', 'pure.BDEISS.8', 'mixed.BDEISS.8']
 # BDEISS_ESTS = ['pure.BDEISS.1', 'pure.BDEISS.pt1', 'pure.BDEISS.8', 'pure.BDEISS.pt8', 'mixed.BDEISS.8', 'mixed.BDEISS.pt8']
 BDEISS_ESTS = ['pure.BDEISS.8', 'mixed.BDEISS.8']
-BDEISS_ESTS = ['mixed.BDEISS.8', 'mixed.BDEISS.pt8']
+BDEISS_ESTS = ['mixed.BDEISS.8']
 
 # BDSSCT_ESTS = ['pure.BDSSCT.1', 'pure.BDSSCT.2', 'pure.BDSSCT.4', 'mixed.BDSSCT.4', 'pure.BDSSCT.8', 'mixed.BDSSCT.8']
 # BDSSCT_ESTS = ['pure.BDSSCT.1', 'pure.BDSSCT.pt1', 'pure.BDSSCT.8', 'pure.BDSSCT.pt8', 'mixed.BDSSCT.8', 'mixed.BDSSCT.pt8']
 BDSSCT_ESTS = ['pure.BDSSCT.8', 'mixed.BDSSCT.8']
-BDSSCT_ESTS = ['mixed.BDSSCT.8', 'mixed.BDSSCT.pt8']
+BDSSCT_ESTS = ['mixed.BDSSCT.8']
 
 # BDEICT_ESTS = ['pure.BDEICT.1', 'pure.BDEICT.2', 'pure.BDEICT.4', 'mixed.BDEICT.4', 'pure.BDEICT.8', 'mixed.BDEICT.8']
 BDEICT_ESTS = ['pure.BDEICT.8', 'mixed.BDEICT.8']
-BDEICT_ESTS = ['mixed.BDEICT.8', 'mixed.BDEICT.pt8']
+BDEICT_ESTS = ['mixed.BDEICT.8']
 # BDEICT_ESTS = ['pure.BDEICT.1', 'pure.BDEICT.pt1', 'pure.BDEICT.8', 'pure.BDEICT.pt8', 'mixed.BDEICT.8', 'mixed.BDEICT.pt8']
 
 # BDCT_ESTS = ['pure.BDCT.1', 'pure.BDCT.2', 'mixed.BDCT.2', 'pure.BDCT.4', 'mixed.BDCT.4', 'pure.BDCT.8', 'mixed.BDCT.8']
 BDCT_ESTS = ['pure.BDCT.8', 'mixed.BDCT.8']
-BDCT_ESTS = ['mixed.BDCT.8', 'mixed.BDCT.pt8']
+BDCT_ESTS = ['mixed.BDCT.8']
 # BDCT_ESTS = ['pure.BDCT.1', 'pure.BDCT.pt1', 'pure.BDCT.8', 'pure.BDCT.pt8', 'mixed.BDCT.8', 'mixed.BDCT.pt8']
 
 # BDSS_ESTS = ['pure.BDSS.1', 'pure.BDSS.2', 'mixed.BDSS.2', 'pure.BDSS.4', 'mixed.BDSS.4', 'pure.BDSS.8', 'mixed.BDSS.8']
 BDSS_ESTS = ['pure.BDSS.8', 'mixed.BDSS.8']
-BDSS_ESTS = ['mixed.BDSS.8', 'mixed.BDSS.pt8']
+BDSS_ESTS = ['mixed.BDSS.8']
 # BDSS_ESTS = ['pure.BDSS.1', 'pure.BDSS.pt1', 'pure.BDSS.8', 'pure.BDSS.pt8', 'mixed.BDSS.8', 'mixed.BDSS.pt8']
 
 # BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.2', 'pure.BD.4', 'pure.BD.8']
-BD_ESTS = ['bd', 'pure.BD.8', 'pure.BD.pt8']
+BD_ESTS = ['bd', 'pure.BD.8']
 # BD_ESTS = ['bd', 'pure.BD.1', 'pure.BD.pt1', 'pure.BD.8', 'pure.BD.pt8']
 
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.2', 'mixed.BDEI.2', 'pure.BDEI.4', 'mixed.BDEI.4', 'pure.BDEI.8', 'mixed.BDEI.8']
 BDEI_ESTS = ['bdei', 'pure.BDEI.8', 'mixed.BDEI.8']
-BDEI_ESTS = ['bdei', 'mixed.BDEI.8', 'mixed.BDEI.pt8']
+BDEI_ESTS = ['bdei', 'mixed.BDEI.8']
+# BDEI_ESTS = ['mixed.BDEI.8']
 # BDEI_ESTS = ['pure.BDEI.8', 'mixed.BDEI.8']
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.8', 'mixed.BDEI.8']
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.pt1', 'pure.BDEI.8', 'pure.BDEI.pt8', 'mixed.BDEI.8', 'mixed.BDEI.pt8']
@@ -145,11 +146,11 @@ if __name__ == "__main__":
     params = parser.parse_args()
 
     plt.clf()
-    rc = {'font.size': 24, 'axes.labelsize': 24, 'legend.fontsize': 20, 'axes.titlesize': 30, 'xtick.labelsize': 12,
-          'ytick.labelsize': 12}
+    rc = {'font.size': 30, 'axes.labelsize': 30, 'legend.fontsize': 20, 'axes.titlesize': 30, 'xtick.labelsize': 24,
+          'ytick.labelsize': 24}
     # sns.set(style="whitegrid")
     sns.axes_style(style="whitegrid", rc=rc)
-    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(30, 2 * len(params.estimates)))
+    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(30, 3 * len(params.estimates)))
 
 
     # order = ['', ' ']
@@ -292,10 +293,10 @@ if __name__ == "__main__":
             ax.set_xticks([])
 
             leg = ax.legend()
-            if num_est > 0 or col == BIAS_COL or par != PARAMETERS[0]:
-                leg.remove()
+            # if num_est > 0 or col == BIAS_COL or par != PARAMETERS[0]:
+            leg.remove()
 
-            ax.set_title(f'{fig_title}: {par}', loc='center', y=0.75)
+            # ax.set_title(f'{fig_title}: {par}', loc='center', y=0.75)
 
     # plt.tight_layout()
     # fig.set_size_inches(9, 9)

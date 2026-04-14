@@ -36,11 +36,8 @@ rule combine_estimates:
     '''
     input:
         tree_stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
-        est_dl_pure = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_pure.{model}.{x}.csv.xz'), model=MODELS, x=[1, 8] + [f'pt{_}' for _ in (1, 8)]),
-        est_dl_mixed = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{x}.csv.xz'), model=[m for m in MODELS if 'BD' != m], x=[8] + [f'pt{_}' for _ in (8,)]),
-        # est_dl_mixed2 = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{x}.csv.xz'), model=['BDEI', 'BDSS', 'BDCT'], x=[2, 4, 8] + [f'pt{_}' for _ in (2, 4, 8)]),
-        # est_dl_mixed4 = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{x}.csv.xz'), model=['BDEISS', 'BDSSCT', 'BDEICT'], x=[4, 8] + [f'pt{_}' for _ in (4, 8)]),
-        # est_dl_mixed8 = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{x}.csv.xz'), model=['BDEISSCT'], x=[8] + [f'pt{_}' for _ in (8,)]),
+        est_dl_pure = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_pure.{model}.{x}.csv.xz'), model=MODELS, x=[8]),
+        est_dl_mixed = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{x}.csv.xz'), model=[m for m in MODELS if 'BD' != m], x=[8]),
     output:
         tab = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'estimates.tab'),
     params:
@@ -57,4 +54,3 @@ rule combine_estimates:
         --tab {output.tab} \
         --estimates_dl {input.est_dl_pure}  {input.est_dl_mixed} 
         """
-        #{input.est_dl_mixed2} {input.est_dl_mixed4} {input.est_dl_mixed8}

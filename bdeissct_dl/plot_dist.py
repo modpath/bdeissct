@@ -11,9 +11,9 @@ from matplotlib import pyplot as plt
 
 train_data_prefix = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/'
 
-for model in ('BD',): #[f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]:
-    pure_train_data = glob.glob(os.path.join(train_data_prefix, 'covid_train1', '200_500', model, 'trees.val.csv.xz'))
-    pure_hist = os.path.join(train_data_prefix, 'covid_models', 'pure_models_1', '200_500', f'{model}.val_hist.pdf')
+for model in ('BDEISSCT',): #[f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]:
+    pure_train_data = glob.glob(os.path.join(train_data_prefix, 'train1', '2000_5000', model, 'trees.train.csv.xz'))
+    pure_hist = os.path.join(train_data_prefix, 'models', 'pure_models_1', '2000_5000', f'{model}.train_hist.pdf')
 
     mixed_train_data = []
     num_components = len(model) / 2
@@ -22,9 +22,9 @@ for model in ('BD',): #[f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'S
                          for ss in (['', 'SS'] if 'SS' in model else [''])
                          for ct in (['', 'CT'] if 'CT' in model else [''])]
         n = 8 // len(submodels)
-        mixed_train_data.extend([os.path.join(train_data_prefix, f'train{i}', '200_500', sub_model, 'trees.train.csv.xz') \
+        mixed_train_data.extend([os.path.join(train_data_prefix, f'train{i}', '2000_5000', sub_model, 'trees.train.csv.xz') \
                                  for i in range(1, n + 1) for sub_model in submodels])
-        mixed_hist = os.path.join(train_data_prefix, 'mixed_models_8', '200_500', f'{model}.hist.pdf')
+        mixed_hist = os.path.join(train_data_prefix, 'models', 'mixed_models_8', '2000_5000', f'{model}.hist.pdf')
     else:
         mixed_train_data = []
         mixed_hist = None

@@ -68,7 +68,8 @@ def copy_files_with_name(source_dir, dest_dir, target_filename):
 
 
 
-for size in ('200_500', '500_1000', '1000_2000', '2000_5000'):
+# for size in ('200_500', '500_1000', '1000_2000', '2000_5000'):
+for size in ('2000_5000',):
     for i in range(0, 9):
         source_directory = f"/home/azhukova/mPath/anna/projects/bdext/sim_bdeiss/test/{size}/"
         destination_directory = f"/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/{size}/"

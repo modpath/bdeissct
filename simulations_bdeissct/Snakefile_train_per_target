@@ -10,7 +10,6 @@ import os
 # needs 4000MB of mem per 256-file dataset (so 32000 for BDEISSCT)
 
 localrules: all
-ruleorder: train_BDEISSCT_8 > train_model_8
 
 
 folder = os.path.abspath(config.get("folder", '.'))
@@ -21,8 +20,12 @@ mint = int(config.get("mint", 2000))
 maxt = int(config.get("maxt", 5000))
 SIZE = '{}_{}'.format(mint, maxt)
 
+train = config.get("train", "train")
+test = train.replace('train', 'test')
+
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
 
+model_folder = 'covid_per_target' if 'covid' in train else 'per_target'
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common --qos=normal  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
     if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 1"
@@ -30,105 +33,12 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
-        # expand(os.path.join(model_folder, '{model}.R.keras'), model=MODELS),
-        expand(os.path.join(folder, 'per_target', 'pure_models_{x}', SIZE, '{model}.R.keras'), model=MODELS, x=[1, 8]),
-        # expand(os.path.join(folder, 'per_target', 'mixed_models_2', SIZE, '{model}.R.keras'), model=['BDCT', 'BDEI', 'BDSS']),
-        # expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, '{model}.R.keras'), model=[m for m in MODELS if m not in {'BD', 'BDEISSCT'}]),
-        expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, '{model}.R.keras'), model=[m for m in MODELS if 'BD' != m]),
+        expand(os.path.join(folder, model_folder, 'pure_models_8', SIZE, '{model}.R.keras'), model=MODELS),
+        expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, '{model}.R.keras'), model=[m for m in MODELS if 'BD' != m]),
     shell:
         """
-        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} {snakemake_settings}
-        """
-
-# rule fit_scaler:
-#     '''
-#     Fits a data scaler.
-#     '''
-#     input:
-#         train_trees = expand(os.path.join(sim_folder, '{model}', 'trees.train.csv.xz'), model=MODELS),
-#     output:
-#         scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-#     params:
-#         mem=2000,
-#         name='scaler',
-#         qos='fast',
-#         path = model_folder
-#     threads: 1
-#     singularity: "docker://evolbioinfo/bdext:v0.1.79"
-#     shell:
-#         """
-#         bdeissct_fit_scaler --train_data {input.train_trees} --model_path {params.path}
-#         """
-
-
-rule train_model_1:
-    '''
-    Trains a model.
-    '''
-    input:
-        train_trees = os.path.join(folder, 'train1', SIZE, '{model}', 'trees.train.csv.xz'),
-        val_trees = os.path.join(folder, 'train1', SIZE, '{model}', 'trees.val.csv.xz'),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'pure_models_1', SIZE, '{{model}}.{p}.keras'), p=['R', 'd'])
-    params:
-        mem=32000,
-        name='trpt_p1{model}',
-        qos='fast',
-        path = os.path.join(folder, 'per_target', 'pure_models_1', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name {wildcards.model} --train_data {input.train_trees} --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-
-rule train_model_2:
-    '''
-    Trains a model.
-    '''
-    input:
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{{model}}', 'trees.train.csv.xz'), x=[1, 2]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{{model}}', 'trees.val.csv.xz'), x=[1, 2]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'pure_models_2', SIZE, '{{model}}.{p}.keras'), p=['R', 'd'])
-    params:
-        mem=32000,
-        name='trpt_p2{model}',
-        qos='fast',
-        path = os.path.join(folder, 'per_target', 'pure_models_2', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name {wildcards.model} --train_data {input.train_trees} --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-
-rule train_model_4:
-    '''
-    Trains a model.
-    '''
-    input:
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{{model}}', 'trees.train.csv.xz'), x=range(1, 5)),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{{model}}', 'trees.val.csv.xz'), x=range(1, 5)),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'pure_models_4', SIZE, '{{model}}.{p}.keras'), p=['R', 'd'])
-    params:
-        mem=32000,
-        name='trpt_p4{model}',
-        qos='fast',
-        path = os.path.join(folder, 'per_target', 'pure_models_4', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name {wildcards.model} --train_data {input.train_trees} --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
+        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} sf={test} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} sf={test} {snakemake_settings}
         """
 
 rule train_model_8:
@@ -136,94 +46,20 @@ rule train_model_8:
     Trains a model.
     '''
     input:
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{{model}}', 'trees.train.csv.xz'), x=range(1, 9)),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{{model}}', 'trees.val.csv.xz'), x=range(1, 9)),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
+        train_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{{model}}', 'trees.train.csv.xz'), x=range(1, 9), train=[train]),
+        val_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{{model}}', 'trees.val.csv.xz'), x=range(1, 9), train=[train]),
     output:
-        models = expand(os.path.join(folder, 'per_target', 'pure_models_8', SIZE, '{{model}}.{p}.keras'), p=['R', 'd'])
+        models = expand(os.path.join(folder, model_folder, 'pure_models_8', SIZE, '{{model}}.{p}.keras'), p=['R', 'd'])
     params:
         mem=32000,
         name='trpt_p8{model}',
         qos='fast',
-        path = os.path.join(folder, 'per_target', 'pure_models_8', SIZE)
+        path = os.path.join(folder, model_folder, 'pure_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
+    singularity: "docker://evolbioinfo/bdext:v0.1.83"
     shell:
         """        
         bdeissct_train --model_name {wildcards.model} --train_data {input.train_trees} --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-
-rule train_BDEISSCT_8:
-    '''
-    Trains a model.
-    '''
-    input:
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, 'BDEISSCT', 'trees.train.csv.xz'), x=range(9)),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, 'BDEISSCT', 'trees.val.csv.xz'), x=range(9)),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'pure_models_8', SIZE, 'BDEISSCT.{p}.keras'), p=['R', 'd'])
-    params:
-        mem=32000,
-        name='trpt_p8BDEISSCT',
-        qos='fast',
-        path = os.path.join(folder, 'per_target', 'pure_models_8', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDEISSCT --train_data {input.train_trees} --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-
-rule train_model_BDCT_2:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDCT', 'BD'], x=[1]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDCT', 'BD'], x=[1]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_2', SIZE, 'BDCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C'])
-    params:
-        mem=32000,
-        name='trpt_2BDCT',
-        qos='fast',
-        path = os.path.join(folder, 'per_target', 'mixed_models_2', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDCT --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-
-rule train_model_BDCT_4:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDCT', 'BD'], x=[1, 2]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDCT', 'BD'], x=[1, 2]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, 'BDCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C'])
-    params:
-        mem=32000,
-        name='trpt_4BDCT',
-        qos='fast',
-        path = os.path.join(folder, 'per_target', 'mixed_models_4', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDCT --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
         --model_path {params.path} --per_target
         """
 
@@ -232,19 +68,17 @@ rule train_model_BDCT_8:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDCT', 'BD'], x=[1, 2, 3, 4]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDCT', 'BD'], x=[1, 2, 3, 4]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
+        train_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDCT', 'BD'], x=[1, 2, 3, 4], train=[train]),
+        val_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDCT', 'BD'], x=[1, 2, 3, 4], train=[train]),
     output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, 'BDCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C'])
+        models = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, 'BDCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C'])
     params:
         mem=32000,
         name='trpt_8BDCT',
         qos='fast',
-        path = os.path.join(folder, 'per_target', 'mixed_models_8', SIZE)
+        path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
+    singularity: "docker://evolbioinfo/bdext:v0.1.83"
     shell:
         """        
         bdeissct_train --model_name BDCT --train_data {input.train_trees} \
@@ -257,338 +91,135 @@ rule train_model_BDEI_8:
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEI', 'BD'], x=[1, 2, 3, 4]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEI', 'BD'], x=[1, 2, 3, 4]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
+        train_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEI', 'BD'], x=[1, 2, 3, 4], train=[train]),
+        val_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEI', 'BD'], x=[1, 2, 3, 4], train=[train]),
     output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, 'BDEI.{p}.keras'), p=['R', 'd', 'f_E'])
+        models = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, 'BDEI.{p}.keras'), p=['R', 'd', 'f_E'])
     params:
         mem=32000,
         name='trpt_8BDEI',
         qos='fast',
-        path = expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE))
+        path = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE))
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
+    singularity: "docker://evolbioinfo/bdext:v0.1.83"
     shell:
         """        
         bdeissct_train --model_name BDEI --train_data {input.train_trees} \
          --val_data {input.val_trees} \
         --model_path {params.path} --per_target
         """
-        # --base_model_name BD \
-
-
-rule train_model_BDEI_4:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEI', 'BD'], x=[1, 2]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEI', 'BD'], x=[1, 2]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, 'BDEI.{p}.keras'), p=['R', 'd', 'f_E'])
-    params:
-        mem=32000,
-        name='trpt_4BDEI',
-        qos='fast',
-        path = expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE))
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDEI --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-        # --base_model_name BD \
-
-
-rule train_model_BDEI_2:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEI', 'BD'], x=[1]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEI', 'BD'], x=[1]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_2', SIZE, 'BDEI.{p}.keras'), p=['R', 'd', 'f_E'])
-    params:
-        mem=32000,
-        name='trpt_2BDEI',
-        qos='fast',
-        path = expand(os.path.join(folder, 'per_target', 'mixed_models_2', SIZE))
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDEI --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-        # --base_model_name BD \
-
-rule train_model_BDSS_2:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDSS', 'BD'], x=[1]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDSS', 'BD'], x=[1]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_2', SIZE, 'BDSS.{p}.keras'), p=['R', 'd', 'X_S', 'f_S'])
-    params:
-        mem=32000,
-        name='trpt_2BDSS',
-        qos='fast',
-        path = os.path.join(folder, 'per_target', 'mixed_models_2', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDSS --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-        # --base_model_name BD
-
-rule train_model_BDSS_4:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDSS', 'BD'], x=[1, 2]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDSS', 'BD'], x=[1, 2]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, 'BDSS.{p}.keras'), p=['R', 'd', 'X_S', 'f_S'])
-    params:
-        mem=32000,
-        name='trpt_4BDSS',
-        qos='fast',
-        path = os.path.join(folder, 'per_target', 'mixed_models_4', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDSS --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-        # --base_model_name BD \
 
 rule train_model_BDSS_8:
     '''
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BD.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDSS', 'BD'], x=[1, 2, 3, 4]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDSS', 'BD'], x=[1, 2, 3, 4]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
+        train_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDSS', 'BD'], x=[1, 2, 3, 4], train={train}),
+        val_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDSS', 'BD'], x=[1, 2, 3, 4], train={train}),
     output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, 'BDSS.{p}.keras'), p=['R', 'd', 'X_S', 'f_S'])
+        models = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, 'BDSS.{p}.keras'), p=['R', 'd', 'X_S', 'f_S'])
     params:
         mem=32000,
         name='trpt_8BDSS',
         qos='fast',
-        path = os.path.join(folder, 'per_target', 'mixed_models_8', SIZE)
+        path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
+    singularity: "docker://evolbioinfo/bdext:v0.1.83"
     shell:
         """        
         bdeissct_train --model_name BDSS --train_data {input.train_trees} \
          --val_data {input.val_trees} \
         --model_path {params.path} --per_target
         """
-        # --base_model_name BD \
-
-rule train_model_BDEICT_4:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder, 'BDEI.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEICT', 'BD', 'BDEI', 'BDCT'], x=[1]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEICT', 'BD', 'BDEI', 'BDCT'], x=[1]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, 'BDEICT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C', 'f_E'])
-    params:
-        mem=32000,
-        name='trpt_4BDEICT',
-        qos='normal',
-        path = os.path.join(folder, 'per_target', 'mixed_models_4', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDEICT --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-        # --base_model_name BDEI
 
 rule train_model_BDEICT_8:
     '''
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder, 'BDEI.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEICT', 'BD', 'BDEI', 'BDCT'], x=[1, 2]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEICT', 'BD', 'BDEI', 'BDCT'], x=[1, 2]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
+        train_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEICT', 'BD', 'BDEI', 'BDCT'], x=[1, 2], train={train}),
+        val_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEICT', 'BD', 'BDEI', 'BDCT'], x=[1, 2], train={train}),
     output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, 'BDEICT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C', 'f_E'])
+        models = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, 'BDEICT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C', 'f_E'])
     params:
         mem=32000,
         name='trpt_8BDEICT',
         qos='normal',
-        path = os.path.join(folder, 'per_target', 'mixed_models_8', SIZE)
+        path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
+    singularity: "docker://evolbioinfo/bdext:v0.1.83"
     shell:
         """        
         bdeissct_train --model_name BDEICT --train_data {input.train_trees} \
          --val_data {input.val_trees} \
         --model_path {params.path} --per_target
         """
-        # --base_model_name BDEI \
-
 
 rule train_model_BDSSCT_8:
     '''
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BDSS.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDSSCT', 'BD', 'BDSS', 'BDCT'], x=[1, 2]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDSSCT', 'BD', 'BDSS', 'BDCT'], x=[1, 2]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
+        train_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDSSCT', 'BD', 'BDSS', 'BDCT'], x=[1, 2], train=[train]),
+        val_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDSSCT', 'BD', 'BDSS', 'BDCT'], x=[1, 2], train=[train]),
     output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, 'BDSSCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C', 'f_S', 'X_S'])
+        models = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, 'BDSSCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C', 'f_S', 'X_S'])
     params:
         mem=32000,
         name='trpt_8BDSSCT',
         qos='normal',
-        path = os.path.join(folder, 'per_target', 'mixed_models_8', SIZE)
+        path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
+    singularity: "docker://evolbioinfo/bdext:v0.1.83"
     shell:
         """        
         bdeissct_train --model_name BDSSCT  --train_data {input.train_trees} \
          --val_data {input.val_trees} \
         --model_path {params.path} --per_target
         """
-        # --base_model_name BDSS
-
-rule train_model_BDSSCT_4:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder,'BDSS.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDSSCT', 'BD', 'BDSS', 'BDCT'], x=[1]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDSSCT', 'BD', 'BDSS', 'BDCT'], x=[1]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, 'BDSSCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C', 'f_S', 'X_S'])
-    params:
-        mem=32000,
-        name='trpt_4BDSSCT',
-        qos='normal',
-        path = os.path.join(folder, 'per_target', 'mixed_models_4', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDSSCT  --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-        # --base_model_name BDSS \
-
-rule train_model_BDEISS_4:
-    '''
-    Trains a model.
-    '''
-    input:
-        # model = os.path.join(model_folder,'BDEI.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEISS', 'BD', 'BDEI', 'BDSS'], x=[1]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEISS', 'BD', 'BDEI', 'BDSS'], x=[1]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
-    output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_4', SIZE, 'BDEISS.{p}.keras'), p=['R', 'd', 'f_E', 'f_S', 'X_S'])
-    params:
-        mem=32000,
-        name='trpt_4BDEISS',
-        qos='normal',
-        path = os.path.join(folder, 'per_target', 'mixed_models_4', SIZE)
-    threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
-    shell:
-        """        
-        bdeissct_train --model_name BDEISS --train_data {input.train_trees} \
-         --val_data {input.val_trees} \
-        --model_path {params.path} --per_target
-        """
-        # --base_model_name BDEI \
 
 rule train_model_BDEISS_8:
     '''
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BDEI.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEISS', 'BD', 'BDEI', 'BDSS'], x=[1, 2]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEISS', 'BD', 'BDEI', 'BDSS'], x=[1, 2]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
+        train_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEISS', 'BD', 'BDEI', 'BDSS'], x=[1, 2], train=[train]),
+        val_trees = expand(os.path.join(folder, '{train}{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEISS', 'BD', 'BDEI', 'BDSS'], x=[1, 2], train=[train]),
     output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, 'BDEISS.{p}.keras'), p=['R', 'd', 'f_E', 'f_S', 'X_S'])
+        models = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, 'BDEISS.{p}.keras'), p=['R', 'd', 'f_E', 'f_S', 'X_S'])
     params:
         mem=32000,
         name='trpt_8BDEISS',
         qos='normal',
-        path = os.path.join(folder, 'per_target', 'mixed_models_8', SIZE)
+        path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
+    singularity: "docker://evolbioinfo/bdext:v0.1.83"
     shell:
         """        
         bdeissct_train --model_name BDEISS --train_data {input.train_trees} \
          --val_data {input.val_trees} \
         --model_path {params.path} --per_target
         """
-        # --base_model_name BDEI \
 
 rule train_model_BDEISSCT_8:
     '''
     Trains a model.
     '''
     input:
-        # model = os.path.join(model_folder,'BDEISS.R.keras'),
-        train_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.train.csv.xz'), model=['BDEISSCT', 'BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT'], x=[1]),
-        val_trees = expand(os.path.join(folder, 'train{x}', SIZE, '{model}', 'trees.val.csv.xz'), model=['BDEISSCT', 'BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT'], x=[1]),
-        # scaler = os.path.join(model_folder, 'data_scalerx_mean.npy')
+        train_trees = expand(os.path.join(folder, f'{train}1', SIZE, '{model}', 'trees.train.csv.xz'), model=MODELS),
+        val_trees = expand(os.path.join(folder, f'{train}1', SIZE, '{model}', 'trees.val.csv.xz'), model=MODELS)
     output:
-        models = expand(os.path.join(folder, 'per_target', 'mixed_models_8', SIZE, 'BDEISSCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C', 'f_S', 'X_S', 'f_E'])
+        models = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, 'BDEISSCT.{p}.keras'), p=['R', 'd', 'upsilon', 'X_C', 'f_S', 'X_S', 'f_E'])
     params:
         mem=64000,
         name='trpt_8BDEISSCT',
         qos='normal',
-        path = os.path.join(folder, 'per_target', 'mixed_models_8', SIZE)
+        path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.79"
+    singularity: "docker://evolbioinfo/bdext:v0.1.83"
     shell:
         """        
         bdeissct_train --model_name BDEISSCT --train_data {input.train_trees} \
          --val_data {input.val_trees} \
         --model_path {params.path} --per_target
         """
-        # --base_model_name BDEISS \

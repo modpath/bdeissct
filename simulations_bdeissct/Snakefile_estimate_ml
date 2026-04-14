@@ -22,10 +22,10 @@ mint = int(config.get("mint", 2000))
 maxt = int(config.get("maxt", 5000))
 test_folder = os.path.join(folder, sf, f'{mint}_{maxt}')
 
-# ci = "--ci"
-ci = ""
-# bdei_ci = "-c 100"
-bdei_ci = ""
+ci = "--ci"
+# ci = ""
+bdei_ci = "-c 100"
+# bdei_ci = ""
 
 
 EST_ML = ['bd', 'bdei'] if not 'covid' in sf else ['bd']
@@ -39,7 +39,11 @@ rule all:
     input:
         expand(os.path.join(test_folder, '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
             model=MODELS, estimator=EST_ML)
-
+    shell:
+        """
+        snakemake --snakefile Snakefile_combine_estimates --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_combine_estimates --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings}
+        """
 
 rule estimate_params_bd:
     '''

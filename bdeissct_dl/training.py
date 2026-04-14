@@ -10,9 +10,9 @@ from sklearn.preprocessing import StandardScaler
 from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, INCUBATION_FRACTION, F_S, \
     X_S, TARGET_COLUMNS_BDCT, REPRODUCTIVE_NUMBER, INFECTION_DURATION
-from bdeissct_dl.dl_model import build_model
-from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, \
-    load_model_keras, save_scaler_numpy
+from bdeissct_dl.dl_model import get_outputs, LOSS_FUNCTIONS, LOSS_WEIGHTS, get_model_layers, get_outputs_simple, \
+    get_outputs_pinball, pinball_loss
+from bdeissct_dl.model_serializer import save_model_keras, load_model_keras, load_scaler_numpy, save_scaler_numpy
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
 
 FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes', 'len_forest',
@@ -21,6 +21,36 @@ FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes
                                                  INCUBATION_FRACTION,
                                                  F_S, X_S,
                                                  SCALING_FACTOR}]
+
+
+LEARNING_RATE = 0.01
+
+
+
+def fit_scalers(paths, x_indices, scaler_x=None, y_indices=None, scaler_y=None):
+   for path in paths:
+        df = pd.read_csv(path)
+        if scaler_x:
+            X = df.iloc[:, x_indices].to_numpy(dtype=float, na_value=0)
+            scaler_x.partial_fit(X)
+        if scaler_y:
+            Y = df.iloc[:, y_indices].to_numpy(dtype=float, na_value=0)
+            scaler_y.partial_fit(Y)
+
+def get_scalers(model_name, train_data, x_indices, y_indices=None, model_path=MODEL_PATH, scale_y=True):
+    scaler_x = load_scaler_numpy(model_path, suffix=f'{model_name}.x')
+    scaler_y = None if not scale_y else load_scaler_numpy(model_path, suffix=f'{model_name}.y')
+    if scaler_x is None or (scaler_y and scaler_y is None):
+        scaler_x = StandardScaler()
+        scaler_y = None if not scale_y else StandardScaler()
+        fit_scalers(paths=train_data, x_indices=x_indices, scaler_x=scaler_x,
+                    y_indices=y_indices, scaler_y=scaler_y)
+
+        if scaler_x is not None:
+            save_scaler_numpy(scaler_x, model_path, suffix=f'{model_name}.x')
+        if scaler_y is not None:
+            save_scaler_numpy(scaler_y, model_path, suffix=f'{model_name}.y')
+    return scaler_x, scaler_y
 
 
 def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, filenames=None,
@@ -56,29 +86,7 @@ def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, file
     if scaler_y:
         Y = scaler_y.transform(Y)
 
-    train_labels = {}
-    col_i = 0
-    if REPRODUCTIVE_NUMBER in target_columns:
-        train_labels[REPRODUCTIVE_NUMBER] = Y[:, col_i]
-        col_i += 1
-    if INFECTION_DURATION in target_columns:
-        train_labels[INFECTION_DURATION] = Y[:, col_i]
-        col_i += 1
-    if UPSILON in target_columns:
-        train_labels[UPSILON] = Y[:, col_i]
-        col_i += 1
-    if X_C in target_columns:
-        train_labels[X_C] = Y[:, col_i]
-        col_i += 1
-    if INCUBATION_FRACTION in target_columns:
-        train_labels[INCUBATION_FRACTION] = Y[:, col_i]
-        col_i += 1
-    if F_S in target_columns:
-        train_labels[F_S] = Y[:, col_i]
-        col_i += 1
-    if X_S in target_columns:
-        train_labels[X_S] = Y[:, col_i]
-        col_i += 1
+    train_labels = {col: Y[:, col_i] for (col_i, col) in enumerate(target_columns)}
     return X, train_labels
 
 
@@ -126,29 +134,48 @@ def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT, feature_
     return [col2index_x[_] for _ in feature_columns], col2index_y
 
 
-def train_column_models(params, scaler_x, scaler_y, x_indices, y_indices, target_columns):
-    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.train_data,
+def train_column_models(train_data, val_data, model_path, model_name, scaler_x, scaler_y, x_indices, y_indices, target_columns, epochs=EPOCHS):
+    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=train_data,
                                             scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
-    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.val_data,
+    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=val_data,
                                         scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
 
+    mod_name = None
     for col in target_columns:
         try:
-            if load_model_keras(path=params.model_path, model_name=f'{params.model_name}.{col}'):
+            if load_model_keras(os.path.join(model_path, f'{model_name}.{col}.keras')):
+                mod_name = f'{model_name}.{col}'
                 print(
-                    f'Model {params.model_name}.{col} already exists at {params.model_path}. Skipping training for this target.')
+                    f'Model {model_name} already exists at {model_path}. Skipping training for this target.')
                 continue
         except:
             pass
 
-        print(f'Training to predict {col} with {params.model_name}...')
+        print(f'Training to predict {col} with {model_name}...')
 
-        if params.base_model_name is not None:
-            model = load_model_keras(params.model_path, f'{params.base_model_name}.{col}')
-            print(
-                f'Loaded base model {params.base_model_name} with {len(x_indices)} input features and {col} as output.')
+        if mod_name is not None:
+            model = load_model_keras(os.path.join(model_path, f'{mod_name}.keras'))
+            print(f'Loaded base model {mod_name}.')
+            last_shared_layer = model.get_layer('layer5_dense8_elu').output
+
+            new_outputs = get_outputs([col], last_shared_layer)
+            new_model = tf.keras.models.Model(inputs=model.input, outputs=new_outputs)
+            new_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+                          loss={col: LOSS_FUNCTIONS[col] for col in new_outputs.keys()},
+                          loss_weights={col: LOSS_WEIGHTS[col] for col in new_outputs.keys()},
+                          )
+            model=new_model
         else:
-            model = build_model([col], n_x=len(x_indices))
+
+            inputs, x = get_model_layers(n_x=len(x_indices))
+            outputs = get_outputs([col], x)
+
+            model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
+
+            model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+                          loss={col: LOSS_FUNCTIONS[col]},
+                          loss_weights={col: LOSS_WEIGHTS[col]},
+                          )
             print(f'Building a model from scratch with {len(x_indices)} input features and {col} as output.')
         print(model.summary())
 
@@ -161,14 +188,15 @@ def train_column_models(params, scaler_x, scaler_y, x_indices, y_indices, target
         reduce_lr = get_learning_rate_scaler()
 
         # Training of the Network, with an independent validation set
-        history = model.fit(ds_train, verbose=1, epochs=params.epochs, validation_data=ds_val,
+        history = model.fit(ds_train, verbose=1, epochs=epochs, validation_data=ds_val,
                             callbacks=[early_stop, reduce_lr])
 
-        plot_losses(os.path.join(params.model_path, f'{params.model_name}.{col}.pdf'), history, model, ds_train, ds_val,
+        model_name = f'{model_name}.{col}'
+        plot_losses(os.path.join(model_path, f'{model_name}.pdf'), history, model, ds_train, ds_val,
                     best_epoch=early_stop.best_epoch)
 
-        print(f'Saving the trained model {params.model_name}.{col} to {params.model_path}...')
-        save_model_keras(model, path=params.model_path, model_name=f'{params.model_name}.{col}')
+        print(f'Saving the trained model {model_name} to {model_path}...')
+        save_model_keras(model, path=model_path, model_name=f'{model_name}')
 
 
 def plot_losses(pdf, history, model, train_ds, val_ds, best_epoch: int):
@@ -213,14 +241,19 @@ def plot_losses(pdf, history, model, train_ds, val_ds, best_epoch: int):
 def train_model(params, scaler_x, scaler_y, x_indices, y_indices, target_columns):
 
     print(f'Training a {params.model_name} estimator...')
+    if params.seed and params.seed > 0:
+        print(f'Fixed the random seed to {params.seed}.')
+        tf.random.set_seed(params.seed)
 
-    if params.base_model_name is not None:
-        model = load_model_keras(params.model_path, f'{params.base_model_name}')
-        print(
-            f'Loaded base model {params.base_model_name}.')
-    else:
-        model = build_model(target_columns, n_x=len(x_indices))
-        print(f'Building a model from scratch with {len(x_indices)} input features and {len(target_columns)} as output.')
+    inputs, x = get_model_layers(n_x=len(x_indices))
+    outputs = get_outputs_simple(target_columns, x)
+
+    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
+
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+                  loss="mean_squared_error")
+
+    print(f'Building a model from scratch with {len(x_indices)} input features and {len(target_columns)} as output.')
     print(model.summary())
 
     ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.train_data,
@@ -239,11 +272,58 @@ def train_model(params, scaler_x, scaler_y, x_indices, y_indices, target_columns
     history = model.fit(ds_train, verbose=1, epochs=params.epochs, validation_data=ds_val,
                         callbacks=[early_stop, reduce_lr])
 
-    plot_losses(os.path.join(params.model_path, f'{params.model_name}.pdf'), history, model, ds_train, ds_val,
+    model_name = f'{params.model_name}.{params.seed}' if params.seed and params.seed > 0 else f'{params.model_name}'
+
+    plot_losses(os.path.join(params.model_path, f'{model_name}.pdf'), history, model, ds_train, ds_val,
                 best_epoch=early_stop.best_epoch)
 
-    print(f'Saving the trained model {params.model_name} to {params.model_path}...')
-    save_model_keras(model, path=params.model_path, model_name=f'{params.model_name}')
+    print(f'Saving the trained model {model_name} to {params.model_path}...')
+    save_model_keras(model, path=params.model_path, model_name=f'{model_name}')
+
+
+def train_model_pinball(train_data, val_data, model_path, model_name, scaler_x, scaler_y, x_indices, y_indices,
+                        target_columns, quantiles=(0.025, 0.5, 0.975), epochs=EPOCHS, seed=-1):
+
+    print(f'Training a {model_name} estimator...')
+    if seed and seed > 0:
+        print(f'Fixed the random seed to {seed}.')
+        tf.random.set_seed(seed)
+
+    inputs, x = get_model_layers(n_x=len(x_indices))
+    outputs = get_outputs_pinball(target_columns, x, quantiles=quantiles)
+
+    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
+
+
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+                  loss={col: pinball_loss for col in target_columns})
+
+    print(f'Building a model from scratch with {len(x_indices)} input features and {len(target_columns)} as output.')
+    print(model.summary())
+
+    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=train_data,
+                                            scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
+    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=val_data,
+                                        scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
+
+    ds_train = tf.data.Dataset.from_tensor_slices((ds_train_X, ds_train_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    ds_val = tf.data.Dataset.from_tensor_slices((ds_val_X, ds_val_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+
+    # early stopping to avoid overfitting
+    early_stop = get_early_stopping()
+    reduce_lr = get_learning_rate_scaler()
+
+    # Training of the Network, with an independent validation set
+    history = model.fit(ds_train, verbose=1, epochs=epochs, validation_data=ds_val,
+                        callbacks=[early_stop, reduce_lr])
+
+    model_name = f'{model_name}.{seed}' if seed and seed > 0 else f'{model_name}'
+
+    plot_losses(os.path.join(model_path, f'{model_name}.pdf'), history, model, ds_train, ds_val,
+                best_epoch=early_stop.best_epoch)
+
+    print(f'Saving the trained model {model_name} to {model_path}...')
+    save_model_keras(model, path=model_path, model_name=f'{model_name}')
 
 
 def get_early_stopping() -> tf.keras.callbacks.EarlyStopping:
@@ -280,50 +360,44 @@ def main():
                         help="path to the files where the encoded validation data are stored")
 
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='number of epochs to train the model')
-    parser.add_argument('--base_model_name', type=str, default=None,
-                        help="base model name to use for training, if not specified, the model will be trained from scratch")
+    parser.add_argument('--seed', type=int, default=-1, help='if a non-negative number is given, '
+                                                             'it will be set as a random seed.')
     parser.add_argument('--model_name', type=str, help="model name")
     parser.add_argument('--model_path', default=MODEL_PATH, type=str,
                         help="path to the folder where the trained model should be stored. "
-                             "The model will be stored at this path in the file <model name>.keras.")
+                             "The model will be stored at this path in the file <model name>.keras if no random seed is given."
+                             "If the random seed is given, it will be saved as <model name>.<seed>.keras instead.")
     parser.add_argument('--per_target', action='store_true',
                         help="Train separate models for each target parameter "
                              "instead of a single model for all target parameters.")
     params = parser.parse_args()
 
-    os.makedirs(params.model_path, exist_ok=True)
-
-    target_columns = MODEL2TARGET_COLUMNS[params.model_name]
-    # reshuffle params.train_data order
-    if len(params.train_data) > 1:
-        np.random.shuffle(params.train_data)
-    if len(params.val_data) > 1:
-        np.random.shuffle(params.val_data)
+    train_main(**vars(params))
 
 
-    x_indices, y_col2index = get_data_characteristics(paths=params.train_data, target_columns=target_columns)
+def train_main(model_name, train_data, val_data, model_path=MODEL_PATH, epochs=EPOCHS, seed=-1, per_target=False):
+    os.makedirs(model_path, exist_ok=True)
+
+    target_columns = MODEL2TARGET_COLUMNS[model_name]
+    # reshuffle train_data order
+    if len(train_data) > 1:
+        np.random.shuffle(train_data)
+    if len(val_data) > 1:
+        np.random.shuffle(val_data)
+
+    x_indices, y_col2index = get_data_characteristics(paths=train_data, target_columns=target_columns)
     y_indices = [y_col2index[_] for _ in target_columns]
 
-    scaler_x = load_scaler_numpy(params.model_path, suffix=f'{params.model_name}.x')
-    scaler_y = load_scaler_numpy(params.model_path, suffix=f'{params.model_name}.y')
-    if scaler_x is None or scaler_y is None:
-        from bdeissct_dl.scaler_fitting import fit_scalers
-        scaler_x = StandardScaler()
-        scaler_y = StandardScaler()
-        fit_scalers(paths=params.train_data, x_indices=x_indices, scaler_x=scaler_x,
-                    y_indices=y_indices, scaler_y=scaler_y)
+    scaler_x, scaler_y = get_scalers(model_name, train_data, x_indices, y_indices, model_path=model_path,
+                                     scale_y=not per_target)
 
-        if scaler_x is not None:
-            save_scaler_numpy(scaler_x, params.model_path, suffix=f'{params.model_name}.x')
-        if scaler_y is not None:
-            save_scaler_numpy(scaler_y, params.model_path, suffix=f'{params.model_name}.y')
-
-    if params.per_target:
-        train_column_models(params, scaler_x, scaler_y=scaler_y, x_indices=x_indices,
-                            y_indices=y_indices, target_columns=target_columns)
+    if per_target:
+        train_column_models(train_data, val_data, model_path, model_name, scaler_x, scaler_y=scaler_y, x_indices=x_indices,
+                            y_indices=y_indices, target_columns=target_columns, epochs=epochs)
     else:
-        train_model(params, scaler_x=scaler_x, scaler_y=scaler_y, x_indices=x_indices,
-                    y_indices=y_indices, target_columns=target_columns)
+        train_model_pinball(train_data, val_data, model_path, model_name, scaler_x=scaler_x, scaler_y=scaler_y, x_indices=x_indices,
+                            y_indices=y_indices, target_columns=target_columns, epochs=epochs, seed=seed)
+
 
 if '__main__' == __name__:
     main()

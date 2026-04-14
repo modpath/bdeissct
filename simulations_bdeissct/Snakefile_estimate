@@ -19,14 +19,13 @@ os.makedirs('logs', exist_ok=True)
 sf = config.get("sf", 'test')
 sim_folder = os.path.join(folder, sf)
 model_folder = os.path.join(folder, 'models' if not 'covid' in sf else 'covid_models')
+calibration_folder = os.path.join(folder, 'calibration')
+pt_model_folder = os.path.join(folder, 'per_target' if not 'covid' in sf else 'covid_per_target')
 MODELS = [f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]
 
 mint = int(config.get("mint", 1000))
 maxt = int(config.get("maxt", 2000))
 SIZE = f'{mint}_{maxt}'
-
-# ci = "--ci"
-ci = ""
 
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
@@ -36,19 +35,13 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 rule all:
     input:
         expand(os.path.join(sim_folder, f'{SIZE}', '{model}','trees.estimates_pure.{estimator}.{x}.csv.xz'),
-            model=MODELS, estimator=MODELS, x=[1, 8] + [f'pt{_}' for _ in (1, 8)]),
+            model=MODELS, estimator=MODELS, x=[8]),
         expand(os.path.join(sim_folder, f'{SIZE}', '{model}','trees.estimates_mixed.{estimator}.{x}.csv.xz'),
-            model=MODELS, estimator=[m for m in MODELS if 'BD' != m], x=[8] + ['pt8']),
-        # expand(os.path.join(sim_folder, f'{size}', '{model}','trees.estimates_mixed.{estimator}.{x}.csv.xz'),
-        #     model=MODELS, estimator=[m for m in MODELS if 4 == len(m)], x=[2, 4, 8] + [f'pt{_}' for _ in (2, 4, 8)]),
-        # expand(os.path.join(sim_folder, f'{size}', '{model}','trees.estimates_mixed.{estimator}.{x}.csv.xz'),
-        #     model=MODELS, estimator=[m for m in MODELS if 6 == len(m)], x=[4, 8] + [f'pt{_}' for _ in (4, 8)]),
-        # expand(os.path.join(sim_folder, f'{size}', '{model}','trees.estimates_mixed.{estimator}.{x}.csv.xz'),
-        #     model=MODELS, estimator=[m for m in MODELS if 8 == len(m)], x=[8] + ['pt8']),
+            model=MODELS, estimator=[m for m in MODELS if 'BD' != m], x=[8]),
     shell:
         """
-        snakemake --snakefile Snakefile_combine_estimates --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_combine_estimates --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings}
+        snakemake --snakefile Snakefile_estimate_ml --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_estimate_ml --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings}
         """
 
 
@@ -58,20 +51,20 @@ rule estimate_params_dl:
     '''
     input:
         stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
-        dl_model= os.path.join(folder, model_folder, '{type}_models_{x}', '{size}', '{estimator}.keras')
+        dl_model= expand(os.path.join(folder, model_folder, '{{type}}_models_{{x}}', '{{size}}', '{{estimator}}.{seed}.keras'), seed=[239])
     output:
         est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'trees.estimates_{type}.{estimator}.{x,\d}.csv.xz')
     params:
         mem = 2000,
         name = 'dl',
         qos = 'fast',
-        pattern = os.path.join(folder, model_folder, '{type}_models_{x}', '{size}')
+        pattern = os.path.join(folder, model_folder, '{type}_models_{x}', '{size}'),
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.81"
+    singularity: "docker://evolbioinfo/bdext:v0.1.94"
     shell:
         """
-        bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \
-        --model_path {params.pattern}
+        bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} \
+        --model_path {params.pattern} --seed 239
         """
 
 rule estimate_params_dl_per_target:
@@ -80,19 +73,19 @@ rule estimate_params_dl_per_target:
     '''
     input:
         stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
-        dl_model= os.path.join(folder, 'per_target', '{type}_models_{x}', '{size}', '{estimator}.R.keras')
+        dl_model= os.path.join(folder, pt_model_folder, '{type}_models_{x}', '{size}', '{estimator}.R.keras')
     output:
         est = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'trees.estimates_{type}.{estimator}.pt{x,\d}.csv.xz')
     params:
         mem = 2000,
         name = 'dl',
         qos = 'fast',
-        pattern = os.path.join(folder, 'per_target', '{type}_models_{x}', '{size}')
+        pattern = os.path.join(folder, pt_model_folder, '{type}_models_{x}', '{size}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.81"
+    singularity: "docker://evolbioinfo/bdext:v0.1.93"
     shell:
         """
-        bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} {ci} \
+        bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} \
         --model_path {params.pattern}
         """
 

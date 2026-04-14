@@ -48,10 +48,10 @@ def scale(Y, SF):
 def scale_back(Y, SF):
     for col in (Y.keys() if type(Y) == dict else Y.columns):
         for rate in RATE_PARAMETERS:
-            if col == rate:
+            if col.replace('_lower', '').replace('_upper', '') == rate:
                 Y[col] /= SF
         for time in TIME_PARAMETERS:
-            if col == time:
+            if col.replace('_lower', '').replace('_upper', '') == time:
                 Y[col] *= SF
 
 

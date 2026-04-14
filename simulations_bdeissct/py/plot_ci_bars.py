@@ -34,8 +34,8 @@ EST_ORDER = BD_ESTS \
             + BDEISS_ESTS + BDEICT_ESTS + BDSSCT_ESTS \
             + BDEISSCT_ESTS
 
-BIAS_COL = 'bias'
-ERROR_COL = 'error'
+BIAS_COL = 'ci_width'
+ERROR_COL = 'within_ci'
 
 palette = sns.color_palette("colorblind")
 total_palette = [palette[0]] * len(BD_ESTS) \
@@ -67,14 +67,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Plots errors.")
     parser.add_argument('--estimates', default=estimate_files, type=str, nargs='+', help="estimated parameters")
-    parser.add_argument('--pdf', default=f'{folder}/estimates.svg', type=str, help="plot")
+    parser.add_argument('--pdf', default=f'{folder}/cis.svg', type=str, help="plot")
     params = parser.parse_args()
 
     plt.clf()
     rc = {'font.size': 30, 'axes.labelsize': 30, 'legend.fontsize': 20, 'axes.titlesize': 30, 'xtick.labelsize': 24,
           'ytick.labelsize': 30}
     sns.axes_style(style="whitegrid", rc=rc)
-    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(23, 2.1 * len(params.estimates)))
+    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(22, 2 * len(params.estimates)))
 
 
 
@@ -98,13 +98,15 @@ if __name__ == "__main__":
                 if need_to_skip(par, estimator_type, model):
                     continue
 
-                df.loc[mask, f'{par}_error'] = df.loc[mask, par] - real_df.loc[idx, par]
+                df.loc[mask, f'{par}_within'] = (df.loc[mask, f'{par}_lower'] <= real_df.loc[idx, par]) & (df.loc[mask, f'{par}_upper'] >= real_df.loc[idx, par])
+                df.loc[mask, f'{par}_width'] =  df.loc[mask, f'{par}_upper'] - df.loc[mask, f'{par}_lower']
                 if par != 'upsilon' and par != 'f_E' and par != 'f_S' and not par.startswith('pi'):
-                    df.loc[mask, f'{par}_error'] /= np.where(real_df.loc[idx, par] > 0, real_df.loc[idx, par], 1)
+                    df.loc[mask, f'{par}_width'] /= np.where(real_df.loc[idx, par] > 0, real_df.loc[idx, par], 1)
 
-        data = []
-        par2type2avg_error = defaultdict(lambda: dict())
-        par2type2bias = defaultdict(lambda: dict())
+        data_within = []
+        data_width = []
+        par2type2avg_within = defaultdict(lambda: dict())
+        par2type2avg_width = defaultdict(lambda: dict())
 
         est_labels = []
         for estimator_type in EST_ORDER:
@@ -113,42 +115,46 @@ if __name__ == "__main__":
 
                 for par in PARAMETERS:
                     if need_to_skip(par, estimator_type, model):
-                        par2type2avg_error[par][estimator_type_label] = '___'
-                        par2type2bias[par][estimator_type_label] = '___'
+                        par2type2avg_within[par][estimator_type_label] = '___'
+                        par2type2avg_width[par][estimator_type_label] = '___'
                     else:
                         cur_mask = (df['type'] == estimator_type)
                         if 'X_C' in par:
-                            data.extend([[par2greek[par], _, estimator_type_label]
+                            data_within.extend([[par2greek[par], _, estimator_type_label]
                                          for _ in np.where(df.loc[cur_mask, 'upsilon'] <= 0.001, 0,
-                                                           df.loc[cur_mask, f'{par}_error'])])
-                        elif 'X_S' in par:
-                            data.extend([[par2greek[par], _, estimator_type_label]
-                                         for _ in np.where(df.loc[cur_mask, 'f_S'] <= 0.001, 0,
-                                                           df.loc[cur_mask, f'{par}_error'])])
+                                                           df.loc[cur_mask, f'{par}_within'])])
+                            data_width.extend([[par2greek[par], _, estimator_type_label]
+                                         for _ in np.where(df.loc[cur_mask, 'upsilon'] <= 0.001, 0,
+                                                           df.loc[cur_mask, f'{par}_width'])])
                         else:
-                            data.extend([[par2greek[par], _, estimator_type_label]
-                                         for _ in df.loc[cur_mask, f'{par}_error']])
+                            data_within.extend([[par2greek[par], _, estimator_type_label]
+                                         for _ in df.loc[cur_mask, f'{par}_within']])
+                            data_width.extend([[par2greek[par], _, estimator_type_label]
+                                         for _ in df.loc[cur_mask, f'{par}_width']])
                         if 'X_C' in par:
                             cur_mask &= df['upsilon'] > 0.001
-                        elif 'X_S' in par:
-                            cur_mask &= df['f_S'] > 0.001
                         if cur_mask.sum() == 0:
-                            par2type2avg_error[par][estimator_type_label] = '___'
-                            par2type2bias[par][estimator_type_label] = '___'
+                            par2type2avg_within[par][estimator_type_label] = '___'
+                            par2type2avg_width[par][estimator_type_label] = '___'
                         else:
-                            par2type2avg_error[par][estimator_type_label] = \
-                                (f'{100 * np.mean(np.abs(df.loc[cur_mask, f"{par}_error"])):3.0f}').replace(' ', '_')
-                            par2type2bias[par][estimator_type_label] = \
-                                (f'{100 * np.mean(df.loc[cur_mask, f"{par}_error"]):+3.0f}').replace(' ', '_')
+                            par2type2avg_within[par][estimator_type_label] = \
+                                (f'{100 * np.sum(df.loc[cur_mask, f"{par}_within"].astype(int)) / len(df.loc[cur_mask,:]):2.0f}').replace(' ', '_')
+                            par2type2avg_width[par][estimator_type_label] = \
+                                (f'{100 * np.mean(df.loc[cur_mask, f"{par}_width"]):2.0f}').replace(' ', '_')
 
-        plot_df = pd.DataFrame(data=data, columns=['parameter', BIAS_COL, 'config'])
-        plot_df[ERROR_COL] = np.abs(plot_df[BIAS_COL])
+        plot_df_within = pd.DataFrame(data_within, columns=['parameter', 'value', 'config'])
+        plot_df_width = pd.DataFrame(data_width, columns=['parameter', 'value', 'config'])
 
 
         for ax, (col, par) in zip(axs[num_est] if len(params.estimates) > 1 else axs, (*[(ERROR_COL, _) for _ in PARAMETERS], *[(BIAS_COL, _) for _ in PARAMETERS])):
-            data = plot_df.loc[plot_df['parameter'] == par, :]
-            ax = sns.barplot(data=data, x="parameter", y=col, hue="config", estimator='mean', palette=total_palette,
-                             ax=ax, errorbar='ci', gap=0.2, width=1, hue_order=EST_ORDER)
+            if col == ERROR_COL:
+                data = plot_df_within.loc[plot_df_within['parameter'] == par, :]
+            else:
+                data = plot_df_width.loc[plot_df_width['parameter'] == par, :]
+
+            ax = sns.barplot(data=data, x="parameter", y='value', hue="config", estimator='mean', palette=total_palette,
+                             ax=ax, errorbar='ci' if BIAS_COL == col else None, gap=0.2, width=1, hue_order=EST_ORDER)
+
 
             # ax.containers has one BarContainer per hue, in EST_ORDER order
             for container, estimator in zip(ax.containers, EST_ORDER):
@@ -184,12 +190,20 @@ if __name__ == "__main__":
                             par_bars[bar_idx].set_hatch(hatch)
                         bar_idx += 1
 
-            if BIAS_COL == col:
-                ax.axhline(y=0, xmin=0, xmax=1)
-            ticks = list(np.arange(-0.6 if BIAS_COL == col else 0, 0.61 if BIAS_COL == col else 0.61, 0.2 if BIAS_COL == col else 0.1).astype(float))
-            ax.set_yticks(ticks)
-            ax.set_ylim(-0.61 if BIAS_COL == col else 0, 0.67 if BIAS_COL == col else 0.61)
-            ax.set_yticklabels([f'{100 * _:.0f}%' for _ in ticks])
+            if col == ERROR_COL:
+                # CI coverage: 0-100%
+                ax.axhline(y=0.95, xmin=0, xmax=1, color='k', linewidth=2, linestyle='-', alpha=0.5)
+                ticks = [0, .25, .5, .75, .95]
+                ax.set_yticks(ticks)
+                ax.set_ylim(0, 1.05)
+                ax.set_yticklabels([f'{100 * _:.0f}%' for _ in ticks])
+            else:
+                # CI width: relative percentages
+                # ax.axhline(y=0, xmin=0, xmax=1)
+                ticks = [0, .1, .2, .3, .4, .5]
+                ax.set_yticks(ticks)
+                ax.set_ylim(0, .55)
+                ax.set_yticklabels([f'{100 * _:.0f}%' for _ in ticks])
             ax.tick_params(axis='y', labelsize=14)
 
             def get_xbox(par):
@@ -199,13 +213,13 @@ if __name__ == "__main__":
                                                    fontweight='bold'))
 
                 if col == ERROR_COL:
-                    texts = (par2type2avg_error[par][_] for _ in est_labels)
+                    texts = (par2type2avg_within[par][_] for _ in est_labels)
                 else:
-                    texts = (par2type2bias[par][_] for _ in est_labels)
+                    texts = (par2type2avg_width[par][_] for _ in est_labels)
 
                 return HPacker(children=[get_ta(color, text)
                                          for (text, color) in zip(texts, total_palette)],
-                               align="center", pad=0, sep=5)
+                               align="center", pad=2, sep=10)
 
             xbox = get_xbox(par)
             anchored_xbox = AnchoredOffsetbox(loc=3, child=xbox, pad=0, frameon=False,

@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
-from bdeissct_dl.dl_model import relu_plus_one, half_sigmoid
+from bdeissct_dl.dl_model import relu_plus_one, half_sigmoid, pinball_loss
 
 np.random.seed(239)
 tf.random.set_seed(239)
@@ -15,10 +15,12 @@ tf.random.set_seed(239)
 def save_model_keras(model, path, model_name):
     model.save(os.path.join(path, f'{model_name}.keras'), overwrite=True, zipped=True)
 
-def load_model_keras(path, model_name):
+def load_model_keras(model_path):
     tf.keras.config.enable_unsafe_deserialization()
-    return tf.keras.models.load_model(os.path.join(path, f'{model_name}.keras'),
-                                      custom_objects={"relu_plus_one": relu_plus_one, "half_sigmoid": half_sigmoid})
+    return tf.keras.models.load_model(model_path,
+                                      custom_objects={"relu_plus_one": relu_plus_one,
+                                                      "half_sigmoid": half_sigmoid,
+                                                      "pinball_loss": pinball_loss})
 
 def save_model_h5(model, path, model_name):
     model.save(os.path.join(path, f'{model_name}.h5'), overwrite=True, zipped=True)

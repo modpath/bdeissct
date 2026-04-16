@@ -40,8 +40,8 @@ rule all:
             model=MODELS, estimator=[m for m in MODELS if 'BD' != m], x=[8]),
     shell:
         """
-        snakemake --snakefile Snakefile_estimate_ml --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_estimate_ml --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings}
+        snakemake --snakefile Snakefile_combine_estimates --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_combine_estimates --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings}
         """
 
 

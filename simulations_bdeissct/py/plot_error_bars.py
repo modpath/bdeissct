@@ -58,7 +58,7 @@ def need_to_skip(par, estimator_type, model):
         return True
     return False
 
-folder = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500'
+folder = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/2000_5000'
 estimate_files = [f'{folder}/{model}/estimates.tab' for model in ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
 
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     rc = {'font.size': 30, 'axes.labelsize': 30, 'legend.fontsize': 20, 'axes.titlesize': 30, 'xtick.labelsize': 24,
           'ytick.labelsize': 30}
     sns.axes_style(style="whitegrid", rc=rc)
-    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(23, 2.1 * len(params.estimates)))
+    fig, axs = plt.subplots(len(params.estimates), len(PARAMETERS) * 2, figsize=(22, 2.5 * len(params.estimates)))
 
 
 
@@ -154,7 +154,7 @@ if __name__ == "__main__":
             for container, estimator in zip(ax.containers, EST_ORDER):
                 alpha = 1
                 if ('CT' in model and 'CT' not in estimator) or ('EI' in model and 'EI' not in estimator) or ('SS' in model and 'SS' not in estimator):
-                    alpha = 0.5
+                    alpha = 0.7
                 for bar in container:
                     bar.set_alpha(alpha)
 
@@ -217,6 +217,7 @@ if __name__ == "__main__":
             ax.set_xticks([])
 
             leg = ax.legend()
-            leg.remove()
+            if col != BIAS_COL or par != 'R' or model != 'BD':
+                leg.remove()
 
     plt.savefig(params.pdf, dpi=100)

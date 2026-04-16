@@ -36,11 +36,6 @@ rule all:
     input:
         expand(os.path.join(sim_folder, '{model}', 'trees.train.csv.xz'), model=MODELS),
         expand(os.path.join(sim_folder, '{model}', 'trees.val.csv.xz'), model=MODELS),
-    # shell:
-        # """
-        # snakemake --snakefile Snakefile_train --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings} --unlock
-        # snakemake --snakefile Snakefile_train --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings}
-        # """
 
 
 rule encode_tree:

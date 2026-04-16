@@ -29,7 +29,6 @@ rule all:
         expand(os.path.join(sim_folder, '{size}', '{model}', 'estimates.tab'), model=MODELS, size=[SIZE]),
 
 
-
 rule combine_estimates:
     '''
     Combine estimates.
@@ -50,7 +49,6 @@ rule combine_estimates:
         """
         python3 py/summary_table.py --real {input.tree_stats} \
         --estimates_bd {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bd \
-        --estimates_bdei {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bdei \
         --tab {output.tab} \
         --estimates_dl {input.est_dl_pure}  {input.est_dl_mixed} 
         """

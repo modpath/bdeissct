@@ -16,6 +16,7 @@ REPETITIONS = list(range(num))
 os.makedirs('logs', exist_ok=True)
 
 sf = config.get("sf", 'test')
+
 MODELS = [f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]
 mint = int(config.get("mint", 200))
 maxt = int(config.get("maxt", 500))

@@ -22,13 +22,8 @@ mint = int(config.get("mint", 2000))
 maxt = int(config.get("maxt", 5000))
 test_folder = os.path.join(folder, sf, f'{mint}_{maxt}')
 
-ci = "--ci"
-# ci = ""
-bdei_ci = "-c 100"
-# bdei_ci = ""
 
-
-EST_ML = ['bd', 'bdei'] if not 'covid' in sf else ['bd']
+EST_ML = ['bd']
 
 
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
@@ -39,11 +34,6 @@ rule all:
     input:
         expand(os.path.join(test_folder, '{model}', 'tree.{i}.est_{estimator}'), i=REPETITIONS,
             model=MODELS, estimator=EST_ML)
-    shell:
-        """
-        snakemake --snakefile Snakefile_combine_estimates --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_combine_estimates --config mint={mint} maxt={maxt} sf={sf} {snakemake_settings}
-        """
 
 rule estimate_params_bd:
     '''
@@ -64,32 +54,5 @@ rule estimate_params_bd:
         """
         p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "rho") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
 
-        bd_infer --p $p  --nwk {input.nwk} --log {output.est} {ci}
+        bd_infer --p $p  --nwk {input.nwk} --log {output.est} --ci
         """
-
-
-rule estimate_params_bdei:
-    '''
-    Estimate parameters.
-    '''
-    input:
-        nwk = os.path.join(test_folder, '{model}', 'tree.{i}.nwk'),
-        log = os.path.join(test_folder, '{model}', 'tree.{i}.log'),
-        bd_est = os.path.join(test_folder, '{model}', 'tree.{i}.est_bd'),
-    output:
-        est = os.path.join(test_folder, '{model,[BDEISCT0-9]+}', 'tree.{i}.est_bdei'),
-    params:
-        mem = 2000,
-        name = 'bdei{i}',
-        qos = 'fast'
-    threads: 2
-    singularity: "docker://evolbioinfo/bdei:v0.13"
-    shell:
-        """
-        p=`awk -F, ' NR == 1 {{ for (i = 1; i <= $NF; i++) {{ if ($i == "rho") {{ col = i; break }} }} }} NR == 2 {{ print $col }} ' {input.log}`
-        la=`awk -F, 'NR==2 {{ print $5 }}' {input.bd_est}`
-        psi=`awk -F, 'NR==2 {{ print $6 }}' {input.bd_est}`
-
-        bdei_infer --p $p  --nwk {input.nwk} --log {output.est} {bdei_ci} --start $psi $la $psi $p --threads {threads} 
-        """
-

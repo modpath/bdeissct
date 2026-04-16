@@ -16,7 +16,7 @@ folder = os.path.abspath(config.get("folder", '.'))
 
 os.makedirs('logs', exist_ok=True)
 
-train = config.get("train", "train")
+test = train.replace('train', 'test')
 
 mint = int(config.get("mint", 200))
 maxt = int(config.get("maxt", 500))
@@ -28,7 +28,7 @@ MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT'
 snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500 --rerun-incomplete --cluster  \"sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}\"  --use-singularity --singularity-prefix \"$HOME/.singularity\" --singularity-args \"-B /pasteur\" " \
     if "pasteur" in folder else " --rerun-triggers mtime --keep-going --cores 1"
 
-model_folder = 'covid_models' if 'covid' in train else 'models'
+model_folder = 'models'
 
 rule all:
     input:
@@ -36,11 +36,11 @@ rule all:
         expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, '{model}.{seed}.keras'), model=[m for m in MODELS if 'BD' != m], seed=[239]),
     shell:
         """
-        snakemake --snakefile Snakefile_train_per_target --config mint={mint} maxt={maxt} train={train} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_train_per_target --config mint={mint} maxt={maxt} train={train} {snakemake_settings}
+        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} sf={test} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} sf={test} {snakemake_settings}
         """
 
-rule train_model_8:
+rule train_pure_model_8:
     '''
     Trains a model.
     '''

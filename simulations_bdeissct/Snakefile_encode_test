@@ -17,7 +17,7 @@ folder = os.path.abspath(config.get("folder", '.'))
 os.makedirs('logs', exist_ok=True)
 mint = int(config.get("mint", 200))
 maxt = int(config.get("maxt", 500))
-sf = config.get("sf", 'covid_test')
+sf = config.get("sf", 'test')
 
 test_folder = os.path.join(folder, sf, f'{mint}_{maxt}')
 MODELS = [f'BD{ei}{ss}{ct}' for ei in ['', 'EI'] for ss in ['', 'SS'] for ct in ['', 'CT']]

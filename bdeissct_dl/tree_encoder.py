@@ -55,16 +55,6 @@ def scale_back(Y, SF):
                 Y[col] *= SF
 
 
-def scale_back_array(Y, SF, columns):
-    for i, col in enumerate(columns):
-        for rate in RATE_PARAMETERS:
-            if col == rate:
-                Y[:, i] /= SF
-        for time in TIME_PARAMETERS:
-            if col == time:
-                Y[:, i] *= SF
-
-
 def parse_parameters(log):
     df = pd.read_csv(log)
     for i in df.index:

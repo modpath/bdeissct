@@ -33,7 +33,8 @@ setup(
             'console_scripts': [
                 'bdeissct_infer = bdeissct_dl.estimator:main',
                 'bdeissct_encode = bdeissct_dl.tree_encoder:main',
-                'bdeissct_train = bdeissct_dl.training:main'
+                'bdeissct_train = bdeissct_dl.training:main',
+                'bdeissct_check = bdeissct_dl.sumstat_checker:main'
             ]
     },
 )

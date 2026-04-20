@@ -5,11 +5,10 @@ import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
-from bdeissct_dl.dl_model import relu_plus_one, half_sigmoid, pinball_loss
+from bdeissct_dl.dl_model import pinball_loss
 
 np.random.seed(239)
 tf.random.set_seed(239)
-
 
 
 def save_model_keras(model, path, model_name):
@@ -18,26 +17,7 @@ def save_model_keras(model, path, model_name):
 def load_model_keras(model_path):
     tf.keras.config.enable_unsafe_deserialization()
     return tf.keras.models.load_model(model_path,
-                                      custom_objects={"relu_plus_one": relu_plus_one,
-                                                      "half_sigmoid": half_sigmoid,
-                                                      "pinball_loss": pinball_loss})
-
-def save_model_h5(model, path, model_name):
-    model.save(os.path.join(path, f'{model_name}.h5'), overwrite=True, zipped=True)
-
-def load_model_h5(path, model_name):
-    return tf.keras.models.load_model(os.path.join(path, f'{model_name}.h5'))
-
-def save_model_json(model, path, model_name):
-    with open(os.path.join(path, f'{model_name}.json'), 'w+') as json_file:
-        json_file.write(model.to_json())
-    model.save_weights(os.path.join(path, f'{model_name}.weights.h5'))
-
-def load_model_json(path, model_name):
-    with open(os.path.join(path, f'{model_name}.json'), 'r') as f:
-        model = tf.keras.models.model_from_json(f.read())
-    model.load_weights(os.path.join(path, f'{model_name}.weights.h5'))
-    return model
+                                      custom_objects={"pinball_loss": pinball_loss})
 
 def save_scaler_numpy(scaler, prefix, suffix=''):
     np.save(os.path.join(prefix, f'data_scaler{suffix}_mean.npy'), scaler.mean_, allow_pickle=False)

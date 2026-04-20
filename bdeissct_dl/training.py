@@ -7,12 +7,11 @@ import tensorflow as tf
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
-from bdeissct_dl import MODEL_PATH, BATCH_SIZE, EPOCHS
+from bdeissct_dl import MODEL_PATH
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, INCUBATION_FRACTION, F_S, \
     X_S, TARGET_COLUMNS_BDCT, REPRODUCTIVE_NUMBER, INFECTION_DURATION
-from bdeissct_dl.dl_model import get_outputs, LOSS_FUNCTIONS, LOSS_WEIGHTS, get_model_layers, get_outputs_simple, \
-    get_outputs_pinball, pinball_loss
-from bdeissct_dl.model_serializer import save_model_keras, load_model_keras, load_scaler_numpy, save_scaler_numpy
+from bdeissct_dl.dl_model import get_model_layers, get_outputs_pinball, pinball_loss, QUANTILES
+from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, save_scaler_numpy
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
 
 FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes', 'len_forest',
@@ -24,8 +23,8 @@ FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes
 
 
 LEARNING_RATE = 0.01
-
-
+EPOCHS = 1000
+BATCH_SIZE = 8192
 
 def fit_scalers(paths, x_indices, scaler_x=None, y_indices=None, scaler_y=None):
    for path in paths:
@@ -90,14 +89,6 @@ def get_train_data(target_columns, columns_x, columns_y, file_pattern=None, file
     return X, train_labels
 
 
-def calc_validation_fraction(m):
-    if m <= 1e4:
-        return 0.2
-    elif m <= 1e5:
-        return 0.1
-    return 0.01
-
-
 def get_test_data(dfs=None, paths=None, scaler_x=None):
     if not dfs:
         dfs = [pd.read_csv(path) for path in paths]
@@ -132,71 +123,6 @@ def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT, feature_
         if col in target_column_set:
             col2index_y[col] = i
     return [col2index_x[_] for _ in feature_columns], col2index_y
-
-
-def train_column_models(train_data, val_data, model_path, model_name, scaler_x, scaler_y, x_indices, y_indices, target_columns, epochs=EPOCHS):
-    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=train_data,
-                                            scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
-    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=val_data,
-                                        scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
-
-    mod_name = None
-    for col in target_columns:
-        try:
-            if load_model_keras(os.path.join(model_path, f'{model_name}.{col}.keras')):
-                mod_name = f'{model_name}.{col}'
-                print(
-                    f'Model {model_name} already exists at {model_path}. Skipping training for this target.')
-                continue
-        except:
-            pass
-
-        print(f'Training to predict {col} with {model_name}...')
-
-        if mod_name is not None:
-            model = load_model_keras(os.path.join(model_path, f'{mod_name}.keras'))
-            print(f'Loaded base model {mod_name}.')
-            last_shared_layer = model.get_layer('layer5_dense8_elu').output
-
-            new_outputs = get_outputs([col], last_shared_layer)
-            new_model = tf.keras.models.Model(inputs=model.input, outputs=new_outputs)
-            new_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
-                          loss={col: LOSS_FUNCTIONS[col] for col in new_outputs.keys()},
-                          loss_weights={col: LOSS_WEIGHTS[col] for col in new_outputs.keys()},
-                          )
-            model=new_model
-        else:
-
-            inputs, x = get_model_layers(n_x=len(x_indices))
-            outputs = get_outputs([col], x)
-
-            model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
-
-            model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
-                          loss={col: LOSS_FUNCTIONS[col]},
-                          loss_weights={col: LOSS_WEIGHTS[col]},
-                          )
-            print(f'Building a model from scratch with {len(x_indices)} input features and {col} as output.')
-        print(model.summary())
-
-        ds_train = tf.data.Dataset.from_tensor_slices((ds_train_X, {col: ds_train_Y[col]})).batch(BATCH_SIZE).prefetch(
-            tf.data.AUTOTUNE)
-        ds_val = tf.data.Dataset.from_tensor_slices((ds_val_X, {col: ds_val_Y[col]})).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
-
-        # early stopping to avoid overfitting
-        early_stop = get_early_stopping()
-        reduce_lr = get_learning_rate_scaler()
-
-        # Training of the Network, with an independent validation set
-        history = model.fit(ds_train, verbose=1, epochs=epochs, validation_data=ds_val,
-                            callbacks=[early_stop, reduce_lr])
-
-        model_name = f'{model_name}.{col}'
-        plot_losses(os.path.join(model_path, f'{model_name}.pdf'), history, model, ds_train, ds_val,
-                    best_epoch=early_stop.best_epoch)
-
-        print(f'Saving the trained model {model_name} to {model_path}...')
-        save_model_keras(model, path=model_path, model_name=f'{model_name}')
 
 
 def plot_losses(pdf, history, model, train_ds, val_ds, best_epoch: int):
@@ -238,94 +164,6 @@ def plot_losses(pdf, history, model, train_ds, val_ds, best_epoch: int):
     plt.savefig(pdf, dpi=100)
 
 
-def train_model(params, scaler_x, scaler_y, x_indices, y_indices, target_columns):
-
-    print(f'Training a {params.model_name} estimator...')
-    if params.seed and params.seed > 0:
-        print(f'Fixed the random seed to {params.seed}.')
-        tf.random.set_seed(params.seed)
-
-    inputs, x = get_model_layers(n_x=len(x_indices))
-    outputs = get_outputs_simple(target_columns, x)
-
-    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
-
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
-                  loss="mean_squared_error")
-
-    print(f'Building a model from scratch with {len(x_indices)} input features and {len(target_columns)} as output.')
-    print(model.summary())
-
-    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.train_data,
-                                            scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
-    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=params.val_data,
-                                        scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
-
-    ds_train = tf.data.Dataset.from_tensor_slices((ds_train_X, ds_train_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
-    ds_val = tf.data.Dataset.from_tensor_slices((ds_val_X, ds_val_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
-
-    # early stopping to avoid overfitting
-    early_stop = get_early_stopping()
-    reduce_lr = get_learning_rate_scaler()
-
-    # Training of the Network, with an independent validation set
-    history = model.fit(ds_train, verbose=1, epochs=params.epochs, validation_data=ds_val,
-                        callbacks=[early_stop, reduce_lr])
-
-    model_name = f'{params.model_name}.{params.seed}' if params.seed and params.seed > 0 else f'{params.model_name}'
-
-    plot_losses(os.path.join(params.model_path, f'{model_name}.pdf'), history, model, ds_train, ds_val,
-                best_epoch=early_stop.best_epoch)
-
-    print(f'Saving the trained model {model_name} to {params.model_path}...')
-    save_model_keras(model, path=params.model_path, model_name=f'{model_name}')
-
-
-def train_model_pinball(train_data, val_data, model_path, model_name, scaler_x, scaler_y, x_indices, y_indices,
-                        target_columns, quantiles=(0.025, 0.5, 0.975), epochs=EPOCHS, seed=-1):
-
-    print(f'Training a {model_name} estimator...')
-    if seed and seed > 0:
-        print(f'Fixed the random seed to {seed}.')
-        tf.random.set_seed(seed)
-
-    inputs, x = get_model_layers(n_x=len(x_indices))
-    outputs = get_outputs_pinball(target_columns, x, quantiles=quantiles)
-
-    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
-
-
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
-                  loss={col: pinball_loss for col in target_columns})
-
-    print(f'Building a model from scratch with {len(x_indices)} input features and {len(target_columns)} as output.')
-    print(model.summary())
-
-    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=train_data,
-                                            scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
-    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=val_data,
-                                        scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
-
-    ds_train = tf.data.Dataset.from_tensor_slices((ds_train_X, ds_train_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
-    ds_val = tf.data.Dataset.from_tensor_slices((ds_val_X, ds_val_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
-
-    # early stopping to avoid overfitting
-    early_stop = get_early_stopping()
-    reduce_lr = get_learning_rate_scaler()
-
-    # Training of the Network, with an independent validation set
-    history = model.fit(ds_train, verbose=1, epochs=epochs, validation_data=ds_val,
-                        callbacks=[early_stop, reduce_lr])
-
-    model_name = f'{model_name}.{seed}' if seed and seed > 0 else f'{model_name}'
-
-    plot_losses(os.path.join(model_path, f'{model_name}.pdf'), history, model, ds_train, ds_val,
-                best_epoch=early_stop.best_epoch)
-
-    print(f'Saving the trained model {model_name} to {model_path}...')
-    save_model_keras(model, path=model_path, model_name=f'{model_name}')
-
-
 def get_early_stopping() -> tf.keras.callbacks.EarlyStopping:
     return tf.keras.callbacks.EarlyStopping(
         monitor='val_loss',
@@ -363,13 +201,10 @@ def main():
     parser.add_argument('--seed', type=int, default=-1, help='if a non-negative number is given, '
                                                              'it will be set as a random seed.')
     parser.add_argument('--model_name', type=str, help="model name")
-    parser.add_argument('--model_path', default=MODEL_PATH, type=str,
+    parser.add_argument('--model_path', type=str,
                         help="path to the folder where the trained model should be stored. "
                              "The model will be stored at this path in the file <model name>.keras if no random seed is given."
                              "If the random seed is given, it will be saved as <model name>.<seed>.keras instead.")
-    parser.add_argument('--per_target', action='store_true',
-                        help="Train separate models for each target parameter "
-                             "instead of a single model for all target parameters.")
     params = parser.parse_args()
 
     train_main(**vars(params))
@@ -391,12 +226,43 @@ def train_main(model_name, train_data, val_data, model_path=MODEL_PATH, epochs=E
     scaler_x, scaler_y = get_scalers(model_name, train_data, x_indices, y_indices, model_path=model_path,
                                      scale_y=not per_target)
 
-    if per_target:
-        train_column_models(train_data, val_data, model_path, model_name, scaler_x, scaler_y=scaler_y, x_indices=x_indices,
-                            y_indices=y_indices, target_columns=target_columns, epochs=epochs)
-    else:
-        train_model_pinball(train_data, val_data, model_path, model_name, scaler_x=scaler_x, scaler_y=scaler_y, x_indices=x_indices,
-                            y_indices=y_indices, target_columns=target_columns, epochs=epochs, seed=seed)
+    print(f'Training a {model_name} estimator...')
+    if seed and seed > 0:
+        print(f'Fixed the random seed to {seed}.')
+        tf.random.set_seed(seed)
+
+    inputs, x = get_model_layers(n_x=len(x_indices))
+    outputs = get_outputs_pinball(target_columns, x, quantiles=QUANTILES)
+    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+                  loss={col: pinball_loss for col in target_columns})
+
+    print(f'Building a model from scratch with {len(x_indices)} input features and {len(target_columns)} as output.')
+    print(model.summary())
+
+    ds_train_X, ds_train_Y = get_train_data(target_columns, x_indices, y_indices, filenames=train_data,
+                                            scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
+    ds_val_X, ds_val_Y = get_train_data(target_columns, x_indices, y_indices, filenames=val_data,
+                                        scaler_x=scaler_x, scaler_y=scaler_y, shuffle=True)
+
+    ds_train = tf.data.Dataset.from_tensor_slices((ds_train_X, ds_train_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    ds_val = tf.data.Dataset.from_tensor_slices((ds_val_X, ds_val_Y)).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+
+    # early stopping to avoid overfitting
+    early_stop = get_early_stopping()
+    reduce_lr = get_learning_rate_scaler()
+
+    # Training of the Network, with an independent validation set
+    history = model.fit(ds_train, verbose=1, epochs=epochs, validation_data=ds_val,
+                        callbacks=[early_stop, reduce_lr])
+
+    model_name = f'{model_name}.{seed}' if seed and seed > 0 else f'{model_name}'
+
+    plot_losses(os.path.join(model_path, f'{model_name}.pdf'), history, model, ds_train, ds_val,
+                best_epoch=early_stop.best_epoch)
+
+    print(f'Saving the trained model {model_name} to {model_path}...')
+    save_model_keras(model, path=model_path, model_name=f'{model_name}')
 
 
 if '__main__' == __name__:

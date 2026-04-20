@@ -1,53 +1,25 @@
 import os
-from glob import glob
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 
-from bdeissct_dl import MODEL_PATH, CALIBRATION_PATH
+from bdeissct_dl import MODEL_PATH
 from bdeissct_dl.bdeissct_model import (MODEL2TARGET_COLUMNS, BD, INCUBATION_FRACTION, F_S, X_S, UPSILON, X_C)
 from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
 from bdeissct_dl.training import get_test_data
-from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back, SCALING_FACTOR
+from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
 from bdeissct_dl.tree_manager import read_forest
 
-def predict_parameters_by_column(forest_sumstats, model_name=BD, model_path=MODEL_PATH):
-    scaler_x = load_scaler_numpy(model_path, suffix=f'{model_name}.x')
-    # scaler_y = load_scaler_numpy(model_path, suffix=f'{model_name}.y')
-    X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
 
-    target_columns = list(MODEL2TARGET_COLUMNS[model_name])
-
-    result = None
-    for col in target_columns:
-        model = load_model_keras(os.path.join(model_path, f'{model_name}.{col}.keras'))
-        Y_pred = model.predict(X)
-
-        if len(Y_pred[col].shape) == 2 and Y_pred[col].shape[1] == 1:
-            Y_pred[col] = Y_pred[col].squeeze(axis=1)
-
-        res_df = pd.DataFrame.from_dict(Y_pred, orient='columns')
-        result = result.join(res_df, how='outer') if result is not None else res_df
-
-    # if scaler_y is not None:
-    #     Y_pred = result[target_columns].to_numpy(dtype=float, na_value=0)
-    #     Y_pred = scaler_y.inverse_transform(Y_pred)
-    #     result = pd.DataFrame(Y_pred, columns=target_columns)
-    scale_back(result, SF)
-
-    return result
-
-
-def predict_parameters(forest_sumstats, model_name=BD, model_path=MODEL_PATH):
+def predict_parameters(forest_sumstats, model_name=BD, model_path=MODEL_PATH, seed=-1):
     scaler_x = load_scaler_numpy(model_path, suffix=f'{model_name}.x')
     scaler_y = load_scaler_numpy(model_path, suffix=f'{model_name}.y')
     X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
 
-    model_files = glob(os.path.join(model_path, f'{model_name}.*keras'))
 
     target_columns = MODEL2TARGET_COLUMNS[model_name]
-    model = load_model_keras(model_files[0])
+    seed = '' if seed <= 0 else f'.{seed}'
+    model = load_model_keras(os.path.join(model_path, f'{model_name}{seed}.keras'))
     Y_pred = model.predict(X)
     quantiles=False
     for col in target_columns:
@@ -56,8 +28,6 @@ def predict_parameters(forest_sumstats, model_name=BD, model_path=MODEL_PATH):
                 Y_pred[col] = Y_pred[col].squeeze(axis=1)
             else:
                 quantiles = True
-            # if Y_pred[col].shape[0] == 1:
-            #     Y_pred[col] = Y_pred[col][0]
     if not quantiles:
         Y_pred = np.column_stack([Y_pred[col] for col in target_columns])
         if scaler_y is not None:
@@ -74,16 +44,6 @@ def predict_parameters(forest_sumstats, model_name=BD, model_path=MODEL_PATH):
         Y_pred = pd.concat([pd.DataFrame(Y_pred_median, columns=target_columns),
                             pd.DataFrame(Y_pred_min, columns=[f'{col}_lower' for col in target_columns]),
                             pd.DataFrame(Y_pred_max, columns=[f'{col}_upper' for col in target_columns])], axis=1)
-        # Y_pred = model(X, training=True)
-        # res = []
-        # for col in target_columns:
-        #     curr = Y_pred[col].numpy()
-        #     if len(curr.shape) == 2 and curr.shape[1] == 1:
-        #         curr = curr.squeeze(axis=1)
-        #         # if Y_pred[col].shape[0] == 1:
-        #         #     Y_pred[col] = Y_pred[col][0]
-        #     res.append(curr)
-        # Y_pred = np.column_stack(res)
 
     scale_back(Y_pred, SF)
 
@@ -122,15 +82,13 @@ def main():
     parser.add_argument('--p', default=0, type=float, help='sampling probability')
     parser.add_argument('--log', default=None, type=str, help="output log file")
     parser.add_argument('--nwk', default=None, type=str, help="input tree file")
-    parser.add_argument('--ci', action='store_true', help="calculate CIs")
-    parser.add_argument('--calibration_path', default=CALIBRATION_PATH, type=str, help="calibration_data")
     parser.add_argument('--sumstats', default=None, type=str, help="input tree file(s) encoded as sumstats")
     params = parser.parse_args()
 
     estimate_main(**vars(params))
 
 
-def estimate_main(log, model_name, sumstats=None, p=-1, nwk=None, model_path=MODEL_PATH, ci=False, calibration_path=CALIBRATION_PATH, seed=-1):
+def estimate_main(log, model_name, sumstats=None, p=-1, nwk=None, model_path=MODEL_PATH, seed=-1):
     if not sumstats:
         if p <= 0 or p > 1:
             raise ValueError('The sampling probability must be between 0 (exclusive) and 1 (inclusive).')
@@ -141,29 +99,7 @@ def estimate_main(log, model_name, sumstats=None, p=-1, nwk=None, model_path=MOD
     else:
         forest_df = pd.read_csv(sumstats)
 
-    seed_str = f'.{seed}' if seed > 0 else ''
-    if os.path.exists(os.path.join(model_path, f'{model_name}{seed_str}.keras')):
-        result = predict_parameters(forest_df, model_name=model_name, model_path=model_path)
-    else:
-        result = predict_parameters_by_column(forest_df, model_name=model_name, model_path=model_path)
-
-    if ci:
-        calibration_df = pd.read_csv(os.path.join(calibration_path, f'{model_name}.csv.xz'))
-        result_calibration = predict_parameters(calibration_df, model_name=model_name, model_path=model_path)
-        target_columns = list(MODEL2TARGET_COLUMNS[model_name])
-        sf = calibration_df[SCALING_FACTOR]
-        calibration_df = calibration_df[target_columns]
-        scale_back(calibration_df, sf)
-        n = len(calibration_df)
-        for col in target_columns:
-            scores = np.maximum(-result_calibration[f'{col}_lower'] + calibration_df[col], -calibration_df[col] + result_calibration[f'{col}_upper'])
-            qhat = np.quantile(scores, np.ceil((n + 1) * 0.95 / n))
-            # qhat = 1.96
-            print(col, qhat)
-            result[f'{col}_lower'] = result[f'{col}_lower'] - qhat
-            result[f'{col}_upper'] = result[f'{col}_upper'] + qhat
-        enforce_BDEISSCT_bounds(result)
-
+    result = predict_parameters(forest_df, model_name=model_name, model_path=model_path, seed=seed)
     result.to_csv(log, header=True)
 
 

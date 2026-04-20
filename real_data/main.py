@@ -12,38 +12,33 @@ from bdeissct_dl.tree_encoder import forest2sumstat_df
 from bdeissct_dl.tree_manager import read_forest
 
 FOLDER = os.path.abspath(os.path.dirname(__file__))
-MP = os.path.join(FOLDER, '..', 'simulations_bdeissct', 'models', '{type}', '200_500')
 NWKS = [os.path.join(FOLDER, 'wave3.days.nwk'),
-        os.path.join(FOLDER, 'wave4.days.nwk'),
         os.path.join(FOLDER, 'HIV_Zurich.nwk')        ]
-RHOS = [0.238, 0.154, 0.25]
+RHOS = [0.238, 0.25]
 
 
-for nwk, rho in zip(NWKS, RHOS):
-    print('----------------------\n', nwk)
+def infer_ml(nwk):
     forest = read_forest(nwk)
     annotate_forest_with_time(forest)
     T = get_T(T=None, forest=forest)
 
-    result_df = pd.DataFrame()
     (la, psi, _), cis = bd_infer(forest, T, p=rho, ci=True)
     la_min, la_max, psi_min, psi_max = cis[0, 0], cis[0, 1], cis[1, 0], cis[1, 1]
-    result_df.loc['BD-ML', ['R', 'd', 'R_lower', 'd_lower', 'R_upper', 'd_upper']] = \
-        [la / psi, 1 / psi, la_min / psi_max, 1 / psi_max, la_max / psi_min, 1 / psi_min]
+    return la / psi, 1 / psi, la_min / psi_max, 1 / psi_max, la_max / psi_min, 1 / psi_min
 
-    forest = read_forest(nwk)
-    sumstat_df = forest2sumstat_df(forest, rho)
+for nwk, rho in zip(NWKS, RHOS):
+    print('----------------------\n', nwk)
+    result_df = pd.DataFrame()
+    result_df.loc['BD-ML', ['R', 'd', 'R_lower', 'd_lower', 'R_upper', 'd_upper']] = infer_ml(nwk)
 
-    for model in MODELS:
+    sumstat_df = forest2sumstat_df(read_forest(nwk), rho)
+
+    for i, model in enumerate(MODELS):
         print(model)
-        for prefix in ('mixed_models_8', ) if 'BD' != model else ('pure_models_8',):
-            mp_format = MP.format(type=prefix)
-            if os.path.exists(os.path.join(mp_format, f'{model}.239.keras')):
-                check_sumstats(forest2sumstat_df(forest, rho), model_path=mp_format, model_name=model, limit=5)
-
-                predictions = predict_parameters(sumstat_df, model_path=mp_format, model_name=model)
-                predictions.index = [f'{model}.{prefix}']
-                result_df = pd.concat((result_df, predictions))
+        check_sumstats(nwk=nwk, p=rho, model_name=model, log=nwk.replace('.nwk', '.log_ss'), mode='a' if i > 0 else 'w')
+        predictions = predict_parameters(sumstat_df, model_name=model)
+        predictions.index = [f'{model}']
+        result_df = pd.concat((result_df, predictions))
 
     result_df['d_E_lower'] = result_df['d'] * np.where(pd.isna(result_df['f_E']), 0, result_df['f_E_lower'])
     result_df['d_E_upper'] = result_df['d'] * np.where(pd.isna(result_df['f_E']), 0, result_df['f_E_upper'])

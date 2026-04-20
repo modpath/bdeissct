@@ -8,7 +8,7 @@ from bdeissct_dl.tree_encoder import forest2sumstat_df
 from bdeissct_dl.tree_manager import read_forest
 
 
-def check_sumstats(log, sumstats=None, nwk=None, p=None, model_name=BD, model_path=None, threshold=5):
+def check_sumstats(log, sumstats=None, nwk=None, p=None, model_name=BD, model_path=None, threshold=5, mode='w'):
     if nwk:
         if p is None or p <= 0 or p > 1:
             raise ValueError('The sampling probability must be grater than 0 and not greater than 1.')
@@ -32,13 +32,14 @@ def check_sumstats(log, sumstats=None, nwk=None, p=None, model_name=BD, model_pa
     feature_columns = FEATURE_COLUMNS
 
     index = np.arange(len(X))
-    with open(log, 'w') as log_file:
-        log_file.write("\tfeature\tz-score\n")
+    with open(log, mode) as log_file:
+        if mode != 'a':
+            log_file.write("\tmodel\tfeature\tz-score\n")
         for i in range(len(feature_columns)):
             mask = (X[:, i] < -threshold) | (X[:, i] > threshold)
             if np.any(mask):
                 for _ in index[mask]:
-                    log_file.write(f'{_}\t{feature_columns[i]:44s}\t{X[_, i] :.6f}\n')
+                    log_file.write(f'{_}\t{model_name}\t{feature_columns[i]:44s}\t{X[_, i] :.6f}\n')
 
 
 def main():

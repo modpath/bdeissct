@@ -54,7 +54,7 @@ rule chop_trees:
         name='chop.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.73"
+    singularity: "docker://evolbioinfo/bdext:v0.1.96"
     shell:
         """         
         python3 py/cut_tree.py --out_nwk {output.nwk} --in_nwk {input.nwk} \

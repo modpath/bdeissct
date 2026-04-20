@@ -60,7 +60,7 @@ rule estimate_params_dl:
         qos = 'fast',
         pattern = os.path.join(folder, model_folder, '{type}_models_{x}', '{size}'),
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.94"
+    singularity: "docker://evolbioinfo/bdext:v0.1.96"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} \
@@ -82,7 +82,7 @@ rule estimate_params_dl_per_target:
         qos = 'fast',
         pattern = os.path.join(folder, pt_model_folder, '{type}_models_{x}', '{size}')
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.93"
+    singularity: "docker://evolbioinfo/bdext:v0.1.96"
     shell:
         """
         bdeissct_infer --sumstats {input.stats} --log {output.est} --model_name {wildcards.estimator} \

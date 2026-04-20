@@ -7,8 +7,8 @@ from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl.dl_model import pinball_loss
 
-np.random.seed(239)
-tf.random.set_seed(239)
+RANDOM_SEED = 239
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models')
 
 
 def save_model_keras(model, path, model_name):
@@ -36,6 +36,33 @@ def load_scaler_numpy(prefix, suffix=''):
             scaler.n_samples_seen_ = int(f.read())
         return scaler
     return None
+
+
+def get_model_dir(min_tips, max_tips):
+    """
+    Searches for the best model directory in MODEL_PATH that contains a range of tips covering [min_tips, max_tips].
+
+    :param min_tips: minimal tree size (number of tips) in the test set
+    :param max_tips: maximal tree size (number of tips) in the test set
+    :return: best model directory path
+    """
+
+    model_dirs = [d for d in os.listdir(MODEL_PATH) if os.path.isdir(os.path.join(MODEL_PATH, d))]
+    ranges = []
+    for d in model_dirs:
+        try:
+            m, M = map(int, d.split('_'))
+            ranges.append((m, M, d))
+        except ValueError:
+            continue
+    # Find the best range: smallest interval that contains [min_tips, max_tips]
+    candidates = [(m, M, d) for m, M, d in ranges if m <= min_tips and M >= max_tips]
+    if candidates:
+        best = min(candidates, key=lambda x: x[1] - x[0])
+        return os.path.join(MODEL_PATH, best[-1])
+    else:
+        raise ValueError(f"No suitable model directory found for min_tips={min_tips}, max_tips={max_tips}")
+
 
 
 

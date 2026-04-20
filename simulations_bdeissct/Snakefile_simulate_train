@@ -54,7 +54,7 @@ rule simulate_trees:
     singularity: "docker://evolbioinfo/bdext:v0.1.66"
     shell:
         """         
-        python3 py/generate_tree_sets.py --log {output.log} --nwk {output.nwk} \
+        bdeissct_simulate --log {output.log} --nwk {output.nwk} \
         --min_tips {mint} --max_tips {maxt} \
         --n {TREES_PER_FILE} \
         --min_R 1 \
@@ -74,5 +74,5 @@ rule simulate_trees:
         --max_fss 0.5  \
         --min_xss 1  \
         --max_xss 25 \
-        --model {wildcards.model} 
+        --model_name {wildcards.model} 
         """

@@ -1,29 +1,33 @@
 import numpy as np
 import pandas as pd
 
-from bdeissct_dl import MODEL_PATH
+from bdeissct_dl.bdeissct_model import BD
+from bdeissct_dl.model_serializer import load_scaler_numpy, get_model_dir
 from bdeissct_dl.training import get_test_data, FEATURE_COLUMNS
 from bdeissct_dl.tree_encoder import forest2sumstat_df
 from bdeissct_dl.tree_manager import read_forest
-from bdeissct_dl.model_serializer import load_scaler_numpy
-from bdeissct_dl.bdeissct_model import BD
 
 
-def check_sumstats(log, sumstats=None, nwk=None, p=None, model_name=BD, model_path=MODEL_PATH, threshold=5):
+def check_sumstats(log, sumstats=None, nwk=None, p=None, model_name=BD, model_path=None, threshold=5):
     if nwk:
         if p is None or p <= 0 or p > 1:
             raise ValueError('The sampling probability must be grater than 0 and not greater than 1.')
 
         forest = read_forest(nwk)
-        sumstats = [forest2sumstat_df(forest, rho=p)]
+        sumstats = forest2sumstat_df(forest, rho=p)
     elif sumstats:
-        sumstats = [pd.read_csv(sumstats)]
+        sumstats = pd.read_csv(sumstats)
     else:
         raise ValueError('Either a csv file containing summary statistics '
                          'or a nwk file with the tree/forest and the corresponding sampling probability must be provided.')
 
+    if model_path is None:
+        min_tips = int(sumstats['n_tips'].min())
+        max_tips = int(sumstats['n_tips'].max())
+        model_path = get_model_dir(min_tips, max_tips)
+
     scaler_x = load_scaler_numpy(model_path, suffix=f'{model_name}.x')
-    X, _ = get_test_data(dfs=sumstats, scaler_x=scaler_x)
+    X, _ = get_test_data(dfs=[sumstats], scaler_x=scaler_x)
 
     feature_columns = FEATURE_COLUMNS
 
@@ -39,7 +43,7 @@ def check_sumstats(log, sumstats=None, nwk=None, p=None, model_name=BD, model_pa
 
 def main():
     """
-    Entry point for BDCT model finder with command-line arguments.
+    Entry point for comparison of the training data for BD(EI)(SS)(CT) model and the input forest data with command-line arguments.
     :return: void
     """
     import argparse
@@ -58,7 +62,7 @@ def main():
                              'and get printed in the output log file.')
     parser.add_argument('--model_name', default=BD, type=str,
                         help=f'BD(EI)(SS)(CT) model flavour')
-    parser.add_argument('--model_path', default=MODEL_PATH,
+    parser.add_argument('--model_path', default=None, type=str,
                         help='By default our pretrained BD(EI)(SS)(CT) scalers are used, '
                              'but it is possible to specify a path to a custom folder here, '
                              'containing scaler-related files to rescale the input data X. '

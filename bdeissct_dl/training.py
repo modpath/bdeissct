@@ -7,11 +7,10 @@ import tensorflow as tf
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
-from bdeissct_dl import MODEL_PATH
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, INCUBATION_FRACTION, F_S, \
     X_S, TARGET_COLUMNS_BDCT, REPRODUCTIVE_NUMBER, INFECTION_DURATION
 from bdeissct_dl.dl_model import get_model_layers, get_outputs_pinball, pinball_loss, QUANTILES
-from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, save_scaler_numpy
+from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, save_scaler_numpy, RANDOM_SEED
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
 
 FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes', 'len_forest',
@@ -36,7 +35,7 @@ def fit_scalers(paths, x_indices, scaler_x=None, y_indices=None, scaler_y=None):
             Y = df.iloc[:, y_indices].to_numpy(dtype=float, na_value=0)
             scaler_y.partial_fit(Y)
 
-def get_scalers(model_name, train_data, x_indices, y_indices=None, model_path=MODEL_PATH, scale_y=True):
+def get_scalers(model_name, train_data, model_path, x_indices, y_indices=None, scale_y=True):
     scaler_x = load_scaler_numpy(model_path, suffix=f'{model_name}.x')
     scaler_y = None if not scale_y else load_scaler_numpy(model_path, suffix=f'{model_name}.y')
     if scaler_x is None or (scaler_y and scaler_y is None):
@@ -198,7 +197,7 @@ def main():
                         help="path to the files where the encoded validation data are stored")
 
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='number of epochs to train the model')
-    parser.add_argument('--seed', type=int, default=-1, help='if a non-negative number is given, '
+    parser.add_argument('--seed', type=int, default=RANDOM_SEED, help='if a non-negative number is given, '
                                                              'it will be set as a random seed.')
     parser.add_argument('--model_name', type=str, help="model name")
     parser.add_argument('--model_path', type=str,
@@ -210,7 +209,7 @@ def main():
     train_main(**vars(params))
 
 
-def train_main(model_name, train_data, val_data, model_path=MODEL_PATH, epochs=EPOCHS, seed=-1, per_target=False):
+def train_main(model_name, train_data, val_data, model_path, epochs=EPOCHS, seed=RANDOM_SEED, per_target=False):
     os.makedirs(model_path, exist_ok=True)
 
     target_columns = MODEL2TARGET_COLUMNS[model_name]
@@ -223,13 +222,15 @@ def train_main(model_name, train_data, val_data, model_path=MODEL_PATH, epochs=E
     x_indices, y_col2index = get_data_characteristics(paths=train_data, target_columns=target_columns)
     y_indices = [y_col2index[_] for _ in target_columns]
 
-    scaler_x, scaler_y = get_scalers(model_name, train_data, x_indices, y_indices, model_path=model_path,
+    scaler_x, scaler_y = get_scalers(model_name==model_name, train_data=train_data, 
+                                     x_indices=x_indices, y_indices=y_indices, model_path=model_path,
                                      scale_y=not per_target)
 
     print(f'Training a {model_name} estimator...')
     if seed and seed > 0:
         print(f'Fixed the random seed to {seed}.')
-        tf.random.set_seed(seed)
+        np.random.seed(239)
+        tf.random.set_seed(239)
 
     inputs, x = get_model_layers(n_x=len(x_indices))
     outputs = get_outputs_pinball(target_columns, x, quantiles=QUANTILES)

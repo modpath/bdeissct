@@ -366,10 +366,10 @@ def main():
     import argparse
 
     parser = \
-        argparse.ArgumentParser(description="Encode BDCT trees.")
+        argparse.ArgumentParser(description="Encode BD(EI)(SS)CT trees into summary statistics.")
+    parser.add_argument('--nwks', nargs='*', type=str, help="input tree/forest files in newick format")
     parser.add_argument('--logs', nargs='*', type=str,
                         help="parameter files corresponding to the input trees, in csv format")
-    parser.add_argument('--nwks', nargs='*', type=str, help="input tree/forest files in newick format")
     parser.add_argument('--patterns', nargs='*', type=str,
                         help="input tree/forest file templates to be treated with glob. "
                              "If the templates are given instead of --nwks, the corresponding log files are "

@@ -3,15 +3,19 @@ import os
 import numpy as np
 import pandas as pd
 
-from bdeissct_dl import MODEL_PATH
 from bdeissct_dl.bdeissct_model import (MODEL2TARGET_COLUMNS, BD, INCUBATION_FRACTION, F_S, X_S, UPSILON, X_C)
-from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy
+from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy, get_model_dir, RANDOM_SEED
 from bdeissct_dl.training import get_test_data
 from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
 from bdeissct_dl.tree_manager import read_forest
 
 
-def predict_parameters(forest_sumstats, model_name=BD, model_path=MODEL_PATH, seed=-1):
+def predict_parameters(forest_sumstats, model_name=BD, model_path=None, seed=RANDOM_SEED):
+    if model_path is None:
+        min_tips = int(forest_sumstats['n_tips'].min())
+        max_tips = int(forest_sumstats['n_tips'].max())
+        model_path = get_model_dir(min_tips, max_tips)
+
     scaler_x = load_scaler_numpy(model_path, suffix=f'{model_name}.x')
     scaler_y = load_scaler_numpy(model_path, suffix=f'{model_name}.y')
     X, SF = get_test_data(dfs=[forest_sumstats], scaler_x=scaler_x)
@@ -62,8 +66,8 @@ def main():
         argparse.ArgumentParser(description="Estimate BD(EI)(SS)(CT) model parameters.")
     parser.add_argument('--model_name', default=BD, type=str,
                         help=f'BDEISSCT model flavour')
-    parser.add_argument('--model_path', default=MODEL_PATH,
-                        help='By default our pretrained BD(EI)(SS)(CT) models are used, '
+    parser.add_argument('--model_path', default=None, type=str,
+                        help=f'By default our pretrained BD(EI)(SS)(CT) models are used (with seed {RANDOM_SEED}), '
                              'but it is possible to specify a path to a custom folder here, '
                              'containing scaler-related files to rescale the input data X and output data Y and the model file(s). '
                              'For the X scaler the files should be named '
@@ -74,12 +78,12 @@ def main():
                              '(a text file containing the number of examples in the training set). '
                              'For the Y scaler replace x with y in the filenames above. '
                              'The model file can be either "<model_name>.keras" (containing a model with a random seed value set randomly), '
-                             'or (potentially multiple files) "<model_name>.<seed>.keras" '
+                             'or "<model_name>.<seed>.keras" '
                              '(containing a model with a random seed value set to seed specified as --seed).'
                         )
-    parser.add_argument('--seed', type=int, default=-1, help='if a non-negative number is given, '
+    parser.add_argument('--seed', type=int, default=RANDOM_SEED, help='if a non-negative number is given, '
                                                              'it will be searched for in the model name.')
-    parser.add_argument('--p', default=0, type=float, help='sampling probability')
+    parser.add_argument('--p', default=-1, type=float, help='sampling probability')
     parser.add_argument('--log', default=None, type=str, help="output log file")
     parser.add_argument('--nwk', default=None, type=str, help="input tree file")
     parser.add_argument('--sumstats', default=None, type=str, help="input tree file(s) encoded as sumstats")
@@ -88,7 +92,7 @@ def main():
     estimate_main(**vars(params))
 
 
-def estimate_main(log, model_name, sumstats=None, p=-1, nwk=None, model_path=MODEL_PATH, seed=-1):
+def estimate_main(log, model_name, sumstats=None, p=-1, nwk=None, model_path=None, seed=RANDOM_SEED):
     if not sumstats:
         if p <= 0 or p > 1:
             raise ValueError('The sampling probability must be between 0 (exclusive) and 1 (inclusive).')

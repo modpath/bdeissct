@@ -4,14 +4,15 @@ import re
 import pandas as pd
 from treesimulator.mtbd_models import *
 
+FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..')
+
 model2n = {}
-for model_name in ('BD', 'BDEI', 'BDSS', 'BDEISS'): #, 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT'):
+for model_name in ('BD', 'BDEI', 'BDSS', 'BDEISS'):
     df = pd.DataFrame(columns=['type',
                                'R',
                                'd',])
 
-    model_files = glob.glob(
-        f'/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500/{model_name}/tree.*.log')
+    model_files = glob.glob(os.path.join(FOLDER, '2000_5000', model_name, 'tree.*.log'))
     model2n[model_name] = len(model_files)
     for real in model_files:
         i = int(re.findall(r'[0-9]+', real)[-1])

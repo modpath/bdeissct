@@ -11,7 +11,7 @@ def pinball_loss(y_true, y_pred):
     quantiles: tuple of quantile levels (e.g., (0.025, 0.5, 0.975))
     Assumes y_pred is a vector of quantile predictions, and y_true is the scalar true value.
     """
-    quantiles_tensor = tf.constant((0.025, 0.5, 0.975), dtype=tf.float32)
+    quantiles_tensor = tf.constant(QUANTILES, dtype=tf.float32)
     # y_true is scalar per sample, y_pred is vector of quantile preds
     y_true_expanded = tf.expand_dims(y_true, axis=-1)  # shape (batch, 1)
     errors = y_true_expanded - y_pred  # shape (batch, num_quantiles)
@@ -39,7 +39,7 @@ def get_model_layers(n_x):
     return inputs, x
 
 
-def get_outputs_pinball(target_columns, x, quantiles=(0.025, 0.5, 0.975)):
+def get_outputs_pinball(target_columns, x, quantiles=QUANTILES):
     outputs = {}
     for col in target_columns:
         outputs[col] = tf.keras.layers.Dense(len(quantiles), name=col)(x)

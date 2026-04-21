@@ -71,5 +71,6 @@ rule simulate_tree:
         --max_fss 0.5  \
         --min_xss 5  \
         --max_xss 25 \
-        --model_name {wildcards.model} 
+        --model_name {wildcards.model} \
+        --record_observed
         """

@@ -21,7 +21,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.1.96',
+    version='0.1.97',
     description='Estimation of BDEISS-CT parameters from phylogenetic trees.',
     author='Anna Zhukova',
     author_email='anna.zhukova@pasteur.fr',
@@ -36,7 +36,8 @@ setup(
                 'bdeissct_encode = bdeissct_dl.tree_encoder:main',
                 'bdeissct_train = bdeissct_dl.training:main',
                 'bdeissct_check = bdeissct_dl.sumstat_checker:main',
-                'bdeissct_simulate = bdeissct_dl.tree_simulator:main'
+                'bdeissct_simulate = bdeissct_dl.tree_simulator:main',
+                'chop_tree = bdeissct_dl.tree_cutter:main'
             ]
     },
 )

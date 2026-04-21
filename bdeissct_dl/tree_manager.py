@@ -103,6 +103,35 @@ def resolve_tree(tree, max_extra_brlen=0):
                             for (k, v) in sorted(polytomy_counter.items(), key=lambda _: -_[0]))))
 
 
+def remove_certain_leaves(tr, to_remove=lambda node: False):
+    """
+    Removes all the branches leading to leaves identified positively by to_remove function.
+    :param tr: the tree of interest (ete3 Tree)
+    :param to_remove: a method to check is a leaf should be removed.
+    :return: void, modifies the initial tree.
+    """
+
+    tips = [tip for tip in tr if to_remove(tip)]
+    for node in tips:
+        if node.is_root():
+            return None
+        parent = node.up
+        parent.remove_child(node)
+        # If the parent node has only one child now, merge them.
+        if len(parent.children) == 1:
+            brother = parent.children[0]
+            brother.dist += parent.dist
+            if parent.is_root():
+                brother.up = None
+                tr = brother
+            else:
+                grandparent = parent.up
+                grandparent.remove_child(parent)
+                grandparent.add_child(brother)
+    return tr
+
+
+
 def resolve_forest(forest, max_extra_brlen=None):
     """
     Resolves polytomies in the forest in a coalescent manner.

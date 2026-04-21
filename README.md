@@ -1,7 +1,8 @@
 # bdext
 
-The bdext package provides scripts to train and assess
-Deep-Learning-enables estimators of BD(EI)(SS)(CT) model parameters from phylogenetic trees 
+The bdext package provides scripts to simulate transmission trees, train
+Deep-Learning-based estimators, and estimate epidemiological parameters with BD(EI)(SS)(CT) models 
+from dated phylogenetic trees. 
 
 
 
@@ -32,182 +33,93 @@ while setting υ=0 or X<sub>C</sub>=1 removes contact-tracing (CT).
 For identifiability, we require the sampling probability ρ to be given by the user. 
 The other parameters are estimated from a time-scaled phylogenetic tree.
 
-[//]: # (## BDEISS-CT parameter estimator)
 
-[//]: # ()
-[//]: # (The bdeissct_dl package provides deep-learning-based BDEISS-CT model parameter estimator )
+## Example data 
 
-[//]: # (from a user-supplied time-scaled phylogenetic tree. )
+In the examples below we will use the [wave3.days.nwk][real_data/wave3.days.nwk] tree as an example to show how to run the commands.
+This tree is a time-scaled phylogenetic tree of SARS-CoV-2 sequences sampled in Hong-Kong during the third wave of the pandemic, resolved with contact-tracing data and rescaled to days. 
+It was reconstructed by [Xie _et al._ 2024](https://doi.org/10.1093/molbev/msae232). 
+The estimated sampling probability for this tree is ρ=0.238.
 
-[//]: # (User must also provide a value for one of the three BD model parameters &#40;λ, ψ, or ρ&#41;. )
+## Installation
 
-[//]: # (We recommend providing the sampling probability ρ, )
+There are 3 alternative ways to run __bdct__ on your computer: 
+with [apptainer](https://apptainer.org/),
+in Python3, or via command line (requires installation with Python3, 
+potentially using [conda](https://docs.conda.io/projects/conda/en/stable/user-guide/install/index.html)).
 
-[//]: # (which could be estimated as the number of tree tips divided by the number of declared cases for the same time period.)
 
-[//]: # ()
-[//]: # ()
-[//]: # (## Input data)
 
-[//]: # (One needs to supply a time-scaled phylogenetic tree in newick format. )
+### Installation and use in python3 or command-line (for linux systems, recommended Ubuntu 21 or newer versions)
 
-[//]: # (In the examples below we will use an HIV tree reconstructed from 200 sequences, )
+You could either install python (version 3.10 or higher) system-wide and then install bdext via pip:
+```bash
+sudo apt install -y python3 python3-pip python3-setuptools python3-distutils
+pip3 install bdext
+```
 
-[//]: # (published in [[Rasmussen _et al._ PLoS Comput. Biol. 2017]]&#40;https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005448&#41;, )
+or alternatively, you could install python (version 3.10 or higher) and bdext via [conda](https://conda.io/docs/) (make sure that conda is installed first). 
+Here we will create a conda environment called _phylodyn_:
+```bash
+conda create --name phylodyn python=3.10
+conda activate phylodyn
+pip install bdext
+```
 
-[//]: # (which you can find at [PairTree GitHub]&#40;https://github.com/davidrasm/PairTree&#41; )
 
-[//]: # (and in [hiv_zurich/Zurich.nwk]&#40;hiv_zurich/Zurich.nwk&#41;. )
+#### Basic usage in a command line
+If you installed __bdext__ in a conda environment (here named _phylodyn_), do not forget to first activate it, e.g.
 
-[//]: # ()
-[//]: # (## Installation)
+```bash
+conda activate phylodyn
+```
 
-[//]: # ()
-[//]: # (There are 4 alternative ways to run __bdeissct_dl__ on your computer: )
+We will analyse the [wave3.days.nwk][real_data/wave3.days.nwk] tree, using ρ=0.238 (see above for details).
+For each of the 8 BDEISS-CT nested models, we will assess whether the tree resembles the transmission trees in its training dataset by checking the summary statistics and reporting those with z-score > 5.
+We will then make estimates with each model.
 
-[//]: # (with [docker]&#40;https://www.docker.com/community-edition&#41;, )
+```bash
+for model in BD EI SS CT BDSS BDEI BDEISS BDEISSCT
+do
+    bdeissct_check --nwk wave3.days.nwk --p 0.238 --model_name ${model} --log wave3.days.ss_${model}.tab
+    bdeissct_infer --nwk wave3.days.nwk --p 0.238 --model_name ${model} --log wave3.days.est_${model}.tab
+done
+```
 
-[//]: # ([apptainer]&#40;https://apptainer.org/&#41;,)
+##### Help
 
-[//]: # (in Python3, or via command line &#40;requires installation with Python3&#41;.)
+To see detailed options, run:
+```bash
+bdeissct_check --help
+bdeissct_infer --help
+```
 
-[//]: # ()
-[//]: # ()
-[//]: # ()
-[//]: # (### Run in python3 or command-line &#40;for linux systems, recommended Ubuntu 21 or newer versions&#41;)
+##### Additional commands
 
-[//]: # ()
-[//]: # (You could either install python &#40;version 3.9 or higher&#41; system-wide and then install bdeissct_dl via pip:)
+There are also commands to simulate trees, encode them into summary statistics and train models available:
+```bash
+bdeissct_simulate --help
+bdeissct_encode --help
+bdeissct_train --help
+```
 
-[//]: # (```bash)
+To see an example of how to use these commands, see the [example/main.py](example/main.py) file.
 
-[//]: # (sudo apt install -y python3 python3-pip python3-setuptools python3-distutils)
+#### Basic usage in Python
 
-[//]: # (pip3 install bdeissct_dl)
+To see an example of how to use bdext in Python, see the [example/main.py](example/main.py) file.
 
-[//]: # (```)
+### Run with apptainer
 
-[//]: # ()
-[//]: # (or alternatively, you could install python &#40;version 3.9 or higher&#41; and bdeissct_dl via [conda]&#40;https://conda.io/docs/&#41; &#40;make sure that conda is installed first&#41;. )
+Once [apptainer](https://apptainer.org/docs/user/latest/quick_start.html#installation) is installed, 
+run the following command:
 
-[//]: # (Here we will create a conda environment called _phyloenv_:)
+```bash
+apptainer run docker://evolbioinfo/bdext
+```
 
-[//]: # (```bash)
+This will launch a terminal session within the container, 
+in which you can run bdext commands following the instructions for the command line ("Basic usage in a command line") above.
 
-[//]: # (conda create --name phyloenv python=3.12)
 
-[//]: # (conda activate phyloenv)
 
-[//]: # (pip install bdeissct_dl)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # ()
-[//]: # (#### Basic usage in a command line)
-
-[//]: # (If you installed __bdeissct_dl__ in a conda environment &#40;here named _phyloenv_&#41;, do not forget to first activate it, e.g.)
-
-[//]: # ()
-[//]: # (```bash)
-
-[//]: # (conda activate phyloenv)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (Run the following command to estimate the BDEISS_CT parameters and their 95% CIs for this tree, assuming the sampling probability of 0.25, )
-
-[//]: # (and save the estimated parameters to a comma-separated file estimates.csv.)
-
-[//]: # (```bash)
-
-[//]: # (bdeissct_infer --nwk Zurich.nwk --ci --p 0.25 --log estimates.csv)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (#### Help)
-
-[//]: # ()
-[//]: # (To see detailed options, run:)
-
-[//]: # (```bash)
-
-[//]: # (bdeissct_infer --help)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # ()
-[//]: # (### Run with docker)
-
-[//]: # ()
-[//]: # (#### Basic usage)
-
-[//]: # (Once [docker]&#40;https://www.docker.com/community-edition&#41; is installed, )
-
-[//]: # (run the following command to estimate BDEISS-CT model parameters:)
-
-[//]: # (```bash)
-
-[//]: # (docker run -v <path_to_the_folder_containing_the_tree>:/data:rw -t evolbioinfo/bdeissct --nwk /data/Zurich.nwk --ci --p 0.25 --log /data/estimates.csv)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (This will produce a comma-separated file estimates.csv in the <path_to_the_folder_containing_the_tree> folder,)
-
-[//]: # ( containing the estimated parameter values and their 95% CIs &#40;can be viewed with a text editor, Excel or Libre Office Calc&#41;.)
-
-[//]: # ()
-[//]: # (#### Help)
-
-[//]: # ()
-[//]: # (To see advanced options, run)
-
-[//]: # (```bash)
-
-[//]: # (docker run -t evolbioinfo/bdeissct -h)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # ()
-[//]: # ()
-[//]: # (### Run with apptainer)
-
-[//]: # ()
-[//]: # (#### Basic usage)
-
-[//]: # (Once [apptainer]&#40;https://apptainer.org/docs/user/latest/quick_start.html#installation&#41; is installed, )
-
-[//]: # (run the following command to estimate BDEISS-CT model parameters &#40;from the folder where the Zurich.nwk tree is contained&#41;:)
-
-[//]: # ()
-[//]: # (```bash)
-
-[//]: # (apptainer run docker://evolbioinfo/bdeissct --nwk Zurich.nwk --ci --p 0.25 --log estimates.csv)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (This will produce a comma-separated file estimates.csv,)
-
-[//]: # ( containing the estimated parameter values and their 95% CIs &#40;can be viewed with a text editor, Excel or Libre Office Calc&#41;.)
-
-[//]: # ()
-[//]: # ()
-[//]: # (#### Help)
-
-[//]: # ()
-[//]: # (To see advanced options, run)
-
-[//]: # (```bash)
-
-[//]: # (apptainer run docker://evolbioinfo/bdeissct -h)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # ()

@@ -1,5 +1,6 @@
 import glob
 import re
+import os
 
 import pandas as pd
 from treesimulator.mtbd_models import *
@@ -12,7 +13,7 @@ for model_name in ('BD', 'BDEI', 'BDSS', 'BDEISS'):
                                'R',
                                'd',])
 
-    model_files = glob.glob(os.path.join(FOLDER, '2000_5000', model_name, 'tree.*.log'))
+    model_files = glob.glob(os.path.join(FOLDER, 'test', '2000_5000', model_name, 'tree.*.log'))
     model2n[model_name] = len(model_files)
     for real in model_files:
         i = int(re.findall(r'[0-9]+', real)[-1])

@@ -58,7 +58,7 @@ rule chop_trees:
     singularity: "docker://evolbioinfo/bdext:v0.1.96"
     shell:
         """         
-        python3 py/cut_tree.py --out_nwk {output.nwk} --in_nwk {input.nwk} \
+        chop_tree --out_nwk {output.nwk} --in_nwk {input.nwk} \
         --min_tips {mint} --max_tips {maxt} 
         
         cp {input.log} {output.log}

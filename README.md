@@ -79,7 +79,7 @@ For each of the 8 BDEISS-CT nested models, we will assess whether the tree resem
 We will then make estimates with each model.
 
 ```bash
-for model in BD EI SS CT BDSS BDEI BDEISS BDEISSCT
+for model in BD BDEI BDSS BDCT BDEISS BDEICT BDSSCT BDEISSCT
 do
     bdeissct_check --nwk wave3.days.nwk --p 0.238 --model_name ${model} --log wave3.days.ss_${model}.tab
     bdeissct_infer --nwk wave3.days.nwk --p 0.238 --model_name ${model} --log wave3.days.est_${model}.tab

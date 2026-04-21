@@ -112,10 +112,10 @@ To see an example of how to use bdext in Python, see the [example/main.py](examp
 ### Run with apptainer
 
 Once [apptainer](https://apptainer.org/docs/user/latest/quick_start.html#installation) is installed, 
-run the following command:
+run the following command (update the version as needed, here v0.1.97 is used as an example):
 
 ```bash
-apptainer run docker://evolbioinfo/bdext
+apptainer run docker://evolbioinfo/bdext:v0.1.97
 ```
 
 This will launch a terminal session within the container, 

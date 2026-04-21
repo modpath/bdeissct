@@ -51,7 +51,7 @@ rule simulate_trees:
         name='sim.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.96"
+    singularity: "docker://evolbioinfo/bdext:v0.1.97"
     shell:
         """         
         bdeissct_simulate --log {output.log} --nwk {output.nwk} \

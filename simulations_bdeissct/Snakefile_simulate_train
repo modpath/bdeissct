@@ -3,7 +3,7 @@ import os
 # To run locally:
 # snakemake --snakefile Snakefile_simulate_train --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 # To run on maestro:
-# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
+# source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/simulations
 # snakemake --snakefile Snakefile_simulate_train --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log --mem={params.mem} -p common,dedicated --qos=fast  -J {params.name}" --jobs 8000 --config sf=train3 model=BDEI mint=2000 maxt=5000
 
 
@@ -51,7 +51,7 @@ rule simulate_trees:
         name='sim.{model}',
         qos='fast',
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """         
         bdeissct_simulate --log {output.log} --nwk {output.nwk} \

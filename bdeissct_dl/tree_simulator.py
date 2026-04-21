@@ -201,7 +201,7 @@ def main():
     parser.add_argument('--max_xss', default=25., type=float, help="max superspreading rate ratio (excluded)")
     parser.add_argument('--min_tips', default=200, type=int, help="min tips (included)")
     parser.add_argument('--max_tips', default=500, type=int, help="max tips (included)")
-    parser.add_argument('--model', choices=MODELS, type=str, help='tree model to use for generation')
+    parser.add_argument('--model_name', choices=MODELS, type=str, help='tree model to use for generation')
     parser.add_argument('--n', default=1, type=int, help="number of trees to generate")
     parser.add_argument('--time_per_tree', default=TIMEOUT, type=int,
                         help="maximum time in seconds to wait for each tree to be generated "

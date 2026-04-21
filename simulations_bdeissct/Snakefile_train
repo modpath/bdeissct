@@ -55,7 +55,7 @@ rule train_pure_model_8:
         qos='fast',
         path = os.path.join(folder, model_folder, 'pure_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """        
         bdeissct_train --model_name {wildcards.model} --train_data {input.train_trees} --val_data {input.val_trees} \
@@ -77,7 +77,7 @@ rule train_model_BDCT_8:
         qos='fast',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """        
         bdeissct_train --model_name BDCT --train_data {input.train_trees} \
@@ -100,7 +100,7 @@ rule train_model_BDEI_8:
         qos='fast',
         path = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE))
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """        
         bdeissct_train --model_name BDEI --train_data {input.train_trees} \
@@ -123,7 +123,7 @@ rule train_model_BDSS_8:
         qos='fast',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """        
         bdeissct_train --model_name BDSS --train_data {input.train_trees} \
@@ -146,7 +146,7 @@ rule train_model_BDEICT_8:
         qos='normal',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """        
         bdeissct_train --model_name BDEICT --train_data {input.train_trees} \
@@ -170,7 +170,7 @@ rule train_model_BDSSCT_8:
         qos='normal',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """        
         bdeissct_train --model_name BDSSCT  --train_data {input.train_trees} \
@@ -193,7 +193,7 @@ rule train_model_BDEISS_8:
         qos='normal',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """        
         bdeissct_train --model_name BDEISS --train_data {input.train_trees} \
@@ -216,7 +216,7 @@ rule train_model_BDEISSCT_8:
         qos='normal',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.98"
+    singularity: "docker://evolbioinfo/bdext:v0.1.99"
     shell:
         """        
         bdeissct_train --model_name BDEISSCT --train_data {input.train_trees} \

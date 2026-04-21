@@ -209,7 +209,7 @@ def main():
     train_main(**vars(params))
 
 
-def train_main(model_name, train_data, val_data, model_path, epochs=EPOCHS, seed=RANDOM_SEED, per_target=False):
+def train_main(model_name, train_data, val_data, model_path, epochs=EPOCHS, seed=RANDOM_SEED):
     os.makedirs(model_path, exist_ok=True)
 
     target_columns = MODEL2TARGET_COLUMNS[model_name]
@@ -222,9 +222,9 @@ def train_main(model_name, train_data, val_data, model_path, epochs=EPOCHS, seed
     x_indices, y_col2index = get_data_characteristics(paths=train_data, target_columns=target_columns)
     y_indices = [y_col2index[_] for _ in target_columns]
 
-    scaler_x, scaler_y = get_scalers(model_name==model_name, train_data=train_data, 
+    scaler_x, scaler_y = get_scalers(model_name=model_name, train_data=train_data,
                                      x_indices=x_indices, y_indices=y_indices, model_path=model_path,
-                                     scale_y=not per_target)
+                                     scale_y=True)
 
     print(f'Training a {model_name} estimator...')
     if seed and seed > 0:

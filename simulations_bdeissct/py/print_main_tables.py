@@ -6,12 +6,9 @@ import pandas as pd
 
 MODELS = ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
 
-PARAMETERS = ['f_E', 'f_S', 'upsilon', 'X_S', 'X_C']
-p2latex = {'R': '$R$', 'd': '$d$', 'd_E': '$d_{inc}$', 'f_E': '$f_E$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
-           'upsilon': '$\\upsilon$', 'X_C': '$X_C$'}
-p2name = {'R': 'average reproduction number', 'd': 'average infection time', \
-          'd_E': 'incubation period', 'f_E': 'incubation fraction', 'f_S': 'superspreader fraction', 'X_S': 'superspreading transmission increase',  \
-          'upsilon': 'contact-tracing probability', 'X_C': 'contact-traced removal speed up'}
+PARAMETERS = ['f_E', 'f_S', 'upsilon']
+p2latex = {'f_E': '$f_E$', 'f_S': '$f_S$', 'upsilon': '$\\upsilon$'}
+p2name = {'f_E': 'incubation fraction', 'f_S': 'super-spreader fraction', 'upsilon': 'contact-tracing probability'}
 
 BDEISSCT_ESTS = [None, 'mixed.BDEISSCT.8']
 BDEISS_ESTS = [None, 'mixed.BDEISS.8']
@@ -34,56 +31,28 @@ for est_group in EST_ORDER:
             index2estimator[num_estimators] = estimator
             num_estimators += 1
 
-HEADER0 = """
+HEADER = """
 \\begin{{table}}[!t]
 \\begin{{center}}
 \\tiny
-\\caption{{Estimation errors for the {param_name} {param_latex} for 2\\,000-5\\,000-tip transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-errors}}}}
+\\caption{{Estimation metrics (errors, biases, CI coverage and width) for the {param_name} {param_latex} for 2\\,000-5\\,000-tip transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-errors}}}}
 \\tabcolsep=2pt
-\\begin{{tabular*}}{{\\textwidth}}{{@{{\\extracolsep{{\\fill}}}}|c|{rl}|@{{\\extracolsep{{\\fill}}}}}}
+\\begin{{tabular*}}{{\\columnwidth}}{{@{{\\extracolsep{{\\fill}}}}c{rl}@{{\\extracolsep{{\\fill}}}}}}
 \\toprule"""
 
-HEADER1 = """
-\\begin{{table}}[!t]
-\\begin{{center}}
-\\tiny
-\\caption{{Estimation errors for the {param_name} {param_latex} for 2\\,000-5\\,000-tip transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-errors}}}}
-\\tabcolsep=2pt
-\\begin{{tabular*}}{{\\columnwidth}}{{@{{\\extracolsep{{\\fill}}}}|c|{rl}|@{{\\extracolsep{{\\fill}}}}}}
-\\toprule"""
 
-FOOTER0 = """\\botrule
+FOOTER = """\\botrule
 \\end{{tabular*}}
 \\begin{{tablenotes}}%
-\\item Mean absolute percentage errors, $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|/{{{param_latex}}}_{{true}}$, 
-and in parenthesis the corresponding biases, $100({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})/{{{param_latex}}}_{{true}}$, 
-are reported for 1\\,000 trees generated under each dataset for each estimator.
+\\item The top half of the table reports mean absolute errors multiplied by 100 -- $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|$ -- 
+and in parenthesis the corresponding biases -- $100 ({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})$ -- 
+estimated on 1\\,000 trees generated under each dataset for each estimator.
+\\item The bottom half of the table reports CI coverage -- percentage of trees for which the real parameter value was within the estimated CI --
+and in parenthesis the corresponding mean CI width -- $100({{{param_latex}}}_{{97.5\\%}} - {{{param_latex}}}_{{2.5\\%}})$ -- 
+estimated on 1\\,000 trees generated under each dataset for each estimator.
 \\item The errors and biases of the estimators corresponding to or generalizing the model that generated the data are shown in bold.
-\\end{{tablenotes}}
-\\end{{center}}
-\\end{{table}}
-"""
-
-FOOTER1 = """\\botrule
-\\end{{tabular*}}
-\\begin{{tablenotes}}%
-\\item Mean absolute percentage errors, $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|/{{{param_latex}}}_{{true}}$, 
-and in parenthesis the corresponding biases, $100({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})/{{{param_latex}}}_{{true}}$, 
-are reported for 1\\,000 trees generated under each dataset for each estimator.
-\\item The errors and biases of the estimators corresponding to or generalizing the model that generated the data are shown in bold.
-\\end{{tablenotes}}
-\\end{{center}}
-\\end{{table}}
-"""
-
-FOOTER2 = """\\botrule
-\\end{{tabular*}}
-\\begin{{tablenotes}}%
-\\item Mean absolute errors multiplied by 100, $100|{{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}}|$, 
-and in parenthesis the corresponding biases, $100 ({{{param_latex}}}_{{estimated}} - {{{param_latex}}}_{{true}})$, 
-are reported for 1\\,000 trees generated under each dataset for each estimator.
-\\item The errors and biases of the estimators corresponding to or generalizing the model that generated the data are shown in bold.
-\\item The upper group of rows contains data-generating models with ${param_latex}=0$, the bottom group of rows contains those with ${param_latex}\\geq0$.
+\\item The first and third groups of rows contain data-generating models with ${param_latex}=0$, 
+the second and fourth groups of rows contain those with ${param_latex}\\geq0$.
 \\end{{tablenotes}}
 \\end{{center}}
 \\end{{table}}
@@ -128,6 +97,10 @@ if __name__ == "__main__":
     biases = np.zeros(shape=(len(MODELS), len(PARAMETERS), num_estimators), dtype=float)
 
 
+    coverage = np.zeros(shape=(len(MODELS), len(PARAMETERS), num_estimators), dtype=float)
+    width = np.zeros(shape=(len(MODELS), len(PARAMETERS), num_estimators), dtype=float)
+
+
 
 
     for num_model, estimate in enumerate(params.estimates):
@@ -144,13 +117,23 @@ if __name__ == "__main__":
             for par in PARAMETERS:
                 if need_to_skip(par, estimator_type):
                     continue
+                df.loc[mask, f'{par}_within'] = (df.loc[mask, f'{par}_lower'] <= real_df.loc[idx, par]) & (
+                        df.loc[mask, f'{par}_upper'] >= real_df.loc[idx, par])
                 df.loc[mask, f'{par}_error'] = df.loc[mask, par] - real_df.loc[idx, par]
+                df.loc[mask, f'{par}_width'] = df.loc[mask, f'{par}_upper'] - df.loc[mask, f'{par}_lower']
+
                 if par != 'upsilon' and par != 'f_S' and par != 'f_E' and np.all(real_df.loc[idx, par] > 1e-6):
                     df.loc[mask, f'{par}_error'] /= real_df.loc[idx, par]
+                    df.loc[mask, f'{par}_width'] /= real_df.loc[idx, par]
 
         data = []
         par2type2avg_error = defaultdict(lambda: dict())
         par2type2bias = defaultdict(lambda: dict())
+
+        data_within = []
+        data_width = []
+        par2type2avg_within = defaultdict(lambda: dict())
+        par2type2avg_width = defaultdict(lambda: dict())
 
         for estimator_type in estimator2index.keys():
             for num_par, par in enumerate(PARAMETERS):
@@ -164,6 +147,10 @@ if __name__ == "__main__":
                     errors[num_model, num_par, num_est] = 100 * np.mean(np.abs(df.loc[cur_mask, f"{par}_error"]))
                     biases[num_model, num_par, num_est] = 100 * np.mean(df.loc[cur_mask, f"{par}_error"])
 
+                    coverage[num_model, num_par, num_est] = 100 * np.sum(
+                        df.loc[cur_mask, f"{par}_within"].astype(int)) / len(df.loc[cur_mask, :])
+                    width[num_model, num_par, num_est] = 100 * np.mean(df.loc[cur_mask, f"{par}_width"])
+
     def format_bias(b):
         return f'{b:+3.0f}'.replace(' ', '~').replace('-', '~-')
 
@@ -176,23 +163,33 @@ if __name__ == "__main__":
             if not same \
             else f' \\textbf{{{errors[m_i, p_i, e_i]:.0f}}}&\\textbf{{({format_bias(biases[m_i, p_i, e_i])})}}'
 
+    def format_width(b):
+        return f'{b:3.0f}'.replace(' ', '~').replace('-', '~-')
+
+    def format_coverage(m_i, p_i, e_i, same=False, multirow=True):
+        if multirow:
+            return f'\\multirow{{2}}{{*}}{{{coverage[m_i, p_i, e_i]:.0f}}}&\\multirow{{2}}{{*}}{{({format_width(width[m_i, p_i, e_i])})}}' \
+                if not same \
+                else f'\\multirow{{2}}{{*}}{{\\textbf{{{coverage[m_i, p_i, e_i]:.0f}}}}}&\\multirow{{2}}{{*}}{{\\textbf{{({format_width(width[m_i, p_i, e_i])})}}}}'
+        return f'{coverage[m_i, p_i, e_i]:.0f} & ({format_width(width[m_i, p_i, e_i])})' \
+            if not same \
+            else f' \\textbf{{{coverage[m_i, p_i, e_i]:.0f}}}&\\textbf{{({format_width(width[m_i, p_i, e_i])})}}'
+
     def latex_estimator_first_row(estimator_group):
         n = sum(1 for _ in estimator_group if _ is not None)
         model = estimator_group[1].split('.')[1].replace('CT', '-CT')
-        return f'\\multicolumn{{ {2 * n} }}{{c|}}{{ {model} }}'
+        return f'\\multicolumn{{ {2 * n} }}{{c}}{{ {model} }}'
 
     def latex_estimator_second_row(estimator_group):
         n = sum(1 for _ in estimator_group if _ is not None)
         if 2 == n:
-            return '\\multicolumn{2}{c|}{ML} & \\multicolumn{2}{c|}{DL}'
+            return '\\multicolumn{2}{c}{ML} & \\multicolumn{2}{c}{DL}'
         if estimator_group[0] is not None:
-            return '\\multicolumn{2}{c|}{ML}'
-        return '\\multicolumn{2}{c|}{DL}'
+            return '\\multicolumn{2}{c}{ML}'
+        return '\\multicolumn{2}{c}{DL}'
 
     with open(params.latex, 'w') as f:
         for p_i, p in enumerate(PARAMETERS):
-            # if p in ['R', 'd']:
-            #     continue
 
             pertinent_groups = []
             pertinent_ids = []
@@ -210,9 +207,9 @@ if __name__ == "__main__":
             ml_is_present = estimator2index['bd'] in pertinent_ids
 
 
-            f.write((HEADER0 if p in {'R', 'd'} else HEADER1)\
+            f.write(HEADER\
                     .format(param_name=p2name[p], param_latex=p2latex[p], param=p,
-                            rl='|'.join(['rl'] * num_pertinent_estimators), width_fraction=0.08 * (num_pertinent_estimators + 1),
+                            rl=''.join(['rl'] * num_pertinent_estimators), width_fraction=0.08 * (num_pertinent_estimators + 1),
                             ml_expl=' The estimator type, maximum-likelihood (ML) or deep-learning-based (DL), '
                                     'is specified below its model.' if ml_is_present else '')
                     )
@@ -222,31 +219,41 @@ if __name__ == "__main__":
             if ml_is_present:
                 f.write(' & {}\\\\\n'.format(' & '.join([latex_estimator_second_row(_) for _ in pertinent_groups])))
 
-            model_groups = [[], MODELS]
+            for label in ('Error (bias)', 'CI coverage (width)'):
+                model_groups = [[], MODELS]
 
-            if 'f_E' == p:
-                model_groups = [['BD', 'BDSS', 'BDCT', 'BDSSCT'], ['BDEI', 'BDEISS', 'BDEICT', 'BDEISSCT']]
+                f.write('\\toprule\n')
+                f.write(f'& \\multicolumn{{ {2 * num_pertinent_estimators} }}{{c}}{{ {label} }}\\\\\n')
 
-            if 'f_S' == p:
-                model_groups = [['BD', 'BDEI', 'BDCT', 'BDEICT'], ['BDSS', 'BDEISS', 'BDSSCT', 'BDEISSCT']]
 
-            if 'upsilon' == p:
-                model_groups = [['BD', 'BDEI', 'BDSS', 'BDEISS'], ['BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
+                if 'f_E' == p:
+                    model_groups = [['BD', 'BDSS', 'BDCT', 'BDSSCT'], ['BDEI', 'BDEISS', 'BDEICT', 'BDEISSCT']]
 
-            for model_group in model_groups:
-                if model_group:
-                    f.write('\\midrule\n')
-                for model in model_group:
-                    if p in {'X_C'} and 'CT' not in model:
-                        continue
-                    if p in {'X_S'} and 'SS' not in model:
-                        continue
-                    m_i = model2id[model]
-                    model = model.replace('CT', '-CT')
-                    f.write('{{{}}} & {}\\\\\n'.format(model, ' & '.join(
-                        format_value(m_i, p_i, e_i, same=is_compatible(model, get_model(index2estimator[e_i])), multirow=False)
-                        for e_i in pertinent_ids)))
+                if 'f_S' == p:
+                    model_groups = [['BD', 'BDEI', 'BDCT', 'BDEICT'], ['BDSS', 'BDEISS', 'BDSSCT', 'BDEISSCT']]
 
-            f.write((FOOTER0 if p in {'R', 'd'} else FOOTER1  if p in {'d_E', 'X_C', 'X_S'} else FOOTER2)\
-                    .format(param_latex=p2latex[p].replace('$', '')))
+                if 'upsilon' == p:
+                    model_groups = [['BD', 'BDEI', 'BDSS', 'BDEISS'], ['BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
+
+                for model_group in model_groups:
+                    if model_group:
+                        f.write('\\midrule\n')
+                    for model in model_group:
+                        if p in {'X_C'} and 'CT' not in model:
+                            continue
+                        if p in {'X_S'} and 'SS' not in model:
+                            continue
+                        m_i = model2id[model]
+                        model = model.replace('CT', '-CT')
+                        if label == 'Error (bias)':
+                            f.write('{{{}}} & {}\\\\\n'.format(model, ' & '.join(
+                                format_value(m_i, p_i, e_i, same=is_compatible(model, get_model(index2estimator[e_i])), multirow=False)
+                                for e_i in pertinent_ids)))
+                        else:
+                            f.write('{{{}}} & {}\\\\\n'.format(model, ' & '.join(
+                                format_coverage(m_i, p_i, e_i, same=is_compatible(model, get_model(index2estimator[e_i])), multirow=False)
+                                for e_i in pertinent_ids)))
+
+
+            f.write(FOOTER.format(param_latex=p2latex[p].replace('$', '')))
             f.write('\n\n')

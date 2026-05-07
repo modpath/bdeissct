@@ -117,6 +117,12 @@ def enforce_BDEISSCT_bounds(result):
         elif col.startswith(F_S):
             result[col] = np.minimum(result[col], 0.5)
 
+    cols = {_.split('_')[0] for _ in result.columns}
+    for col in cols:
+        if col in result.columns and f'{col}_lower' in result.columns and f'{col}_upper' in result.columns:
+            result[f'{col}_lower'] = np.minimum(result[f'{col}_lower'], result[f'{col}_upper'])
+            result[col] = np.minimum(np.maximum(result[col], result[f'{col}_lower']), result[f'{col}_upper'])
+
 
 if '__main__' == __name__:
     main()

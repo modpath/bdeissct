@@ -16,7 +16,7 @@ NWKS = [os.path.join(FOLDER, 'wave3.days.nwk'),
 RHOS = [0.238, 0.25]
 
 HEADER_SC2 = \
-"""
+"""f'{col}_upper'
 \\begin{table*}[!t]
 \\begin{center}
 \\tiny
@@ -42,9 +42,6 @@ HEADER_HIV = \
 
 FOOTER_SC2 = \
 """
-\\midrule
-BDSS (Xie \\textit{et al.}~\\cite{xie_integrating_2024}) & 1.59 (1.33 - 1.99) &	4.64 (3.37 - 8.24) & & 0.09 (0.05 - 0.17) & 	8.08 (3.91 - 17.73) & & \\\\
-Epi (Xie \\textit{et al.}~\\cite{xie_integrating_2024}) &	1.69 (1.65 - 1.74) & & & & & & \\\\
 \\botrule
 \\end{tabular*}
 \\begin{tablenotes}%
@@ -59,10 +56,6 @@ Epi (Xie \\textit{et al.}~\\cite{xie_integrating_2024}) &	1.69 (1.65 - 1.74) & &
 
 FOOTER_HIV = \
 """
-\\midrule
-BDSS (FFNN-SS, Voznica \\textit{et al.}~\\cite{Voznica2021}) & 1.60 (1.34 - 1.97) &	10.2 (8.3 - 12.8) & & 0.07 (0.05 - 0.12) & 	8.8 (6.0 - 10.0) & & \\\\
-BDSS (CNN-CBLV, Voznica \\textit{et al.}~\\cite{Voznica2021}) & 1.69 (1.40 - 2.08) &	9.8 (8.1 - 12.3) & & 0.08 (0.05 - 0.13) & 	9.3 (6.7 - 10.0) & & \\\\
-BDSS (BEAST2, Voznica \\textit{et al.}~\\cite{Voznica2021}) & 1.41 (1.14 - 1.72) &	9.4 (7.6 - 11.7) & & 0.11 (0.05 - 0.17) & 	14.5 (8.0 - 26.1) & & \\\\
 \\botrule
 \\end{tabular*}
 \\begin{tablenotes}%
@@ -122,7 +115,25 @@ for nwk, rho, header, footer in zip(NWKS, RHOS, HEADERS, FOOTERS):
         predictions.index = [f'{model}']
         result_df = pd.concat((result_df, predictions))
 
-    result_df.to_csv(nwk.replace('.nwk', '.estimates'))
+    if 'wave3' in nwk:
+        result_df.loc['BDSS-Xie', ['R', 'd', 'f_S', 'X_S', 'R_lower', 'd_lower', 'f_S_lower', 'X_S_lower', 'R_upper', 'd_upper', 'f_S_upper', 'X_S_upper']] \
+            = [1.59, 4.64, 0.09, 8.08, 1.33, 3.37, 0.05, 3.91, 1.99, 8.24, 0.17, 17.73]
+        result_df.loc['Epi-Xie', ['R', 'R_lower', 'R_upper']] \
+            = [1.69, 1.65, 1.74]
+    elif 'HIV' in nwk:
+        result_df.loc['BDSS-Voznica-FFNN-SS', ['R', 'd', 'f_S', 'X_S', 'R_lower', 'd_lower', 'f_S_lower', 'X_S_lower', 'R_upper', 'd_upper', 'f_S_upper', 'X_S_upper']] \
+            = [1.60, 10.2, 0.07, 8.8, 1.34, 8.3, 0.05, 6.0, 1.97, 12.8, 0.12, 10.0]
+        result_df.loc['BDSS-Voznica-CNN-CBLV', ['R', 'd', 'f_S', 'X_S', 'R_lower', 'd_lower', 'f_S_lower', 'X_S_lower', 'R_upper', 'd_upper', 'f_S_upper', 'X_S_upper']] \
+            = [1.69, 9.8, 0.08, 9.3, 1.40, 8.1, 0.05, 6.7, 2.08, 12.3, 0.13, 10.0]
+        result_df.loc['BDSS-Voznica-BEAST2', ['R', 'd', 'f_S', 'X_S', 'R_lower', 'd_lower', 'f_S_lower', 'X_S_lower', 'R_upper', 'd_upper', 'f_S_upper', 'X_S_upper']] \
+            = [1.41, 9.4, 0.11, 14.5, 1.14, 7.6, 0.05, 8.0, 1.72, 11.7, 0.17, 26.1]
+        result_df.loc['BDSS-Perez-FFNN-SS', ['R', 'd', 'f_S', 'X_S', 'R_lower', 'd_lower', 'f_S_lower', 'X_S_lower', 'R_upper', 'd_upper', 'f_S_upper', 'X_S_upper']] \
+            = [1.98, 11.8, 0.13, 15.8, 1.57, 8.9, 0.08, 8.5, 2.72, 15.5, 0.17, 23.4]
+        result_df.loc['BDSS-Perez-PhyloCNN', ['R', 'd', 'f_S', 'X_S', 'R_lower', 'd_lower', 'f_S_lower', 'X_S_lower', 'R_upper', 'd_upper', 'f_S_upper', 'X_S_upper']] \
+            = [1.41, 11.3, 0.13, 20.4, 1.16, 8.8, 0.08, 10.6, 1.74, 14.3, 0.17, 26.2]
+
+
+    result_df.to_csv(nwk.replace('.nwk', '.estimates.csv'))
     latexify_table(result_df, nwk.replace('.nwk', '.tex'), header, footer)
 
 

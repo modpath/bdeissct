@@ -36,7 +36,7 @@ The other parameters are estimated from a time-scaled phylogenetic tree.
 
 ## Example data 
 
-In the examples below we will use the [wave3.days.nwk][real_data/wave3.days.nwk] tree as an example to show how to run the commands.
+In the examples below we will use the (wave3.days.nwk)[real_data/wave3.days.nwk] tree as an example to show how to run the commands.
 This tree is a time-scaled phylogenetic tree of SARS-CoV-2 sequences sampled in Hong-Kong during the third wave of the pandemic, resolved with contact-tracing data and rescaled to days. 
 It was reconstructed by [Xie _et al._ 2024](https://doi.org/10.1093/molbev/msae232). 
 The estimated sampling probability for this tree is ρ=0.238.

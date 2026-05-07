@@ -1,4 +1,4 @@
-This folder contains the pipelines needed for training and test dataset simulation and analysis.
+This folder contains the (Snakemake)[https://snakemake.readthedocs.io/en/stable/] pipelines needed for training and test dataset simulation and analysis.
 
 ## Test set simulation and ML analysis from scratch
 To simulate a test set of 1000 trees for BDEISSCT and its 7 nested models

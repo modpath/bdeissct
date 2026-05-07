@@ -122,4 +122,10 @@ This will launch a terminal session within the container,
 in which you can run bdext commands following the instructions for the command line ("Basic usage in a command line") above.
 
 
+# Training the models from scratch
+The (simulations_bdeissct)[simulations_bdeissct] in folder contains the explanations and command-line pipelines 
+for generation of training and test datasets, and deep-learning-based BD(EI)(SS)(-CT) model training. 
+
+The (example)[example] folder contains the explanations and a python file with code needed for generation of training and test datasets, 
+and deep-learning-based BD(EI)(SS)(-CT) model training directly in python.
 

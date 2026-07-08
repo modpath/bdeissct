@@ -13,11 +13,6 @@ p2name = {'R': 'average reproduction number', 'd': 'average infection time', \
           'd_E': 'incubation period', 'f_E': 'incubation fraction', 'f_S': 'superspreader fraction', 'X_S': 'superspreading transmission increase',  \
           'upsilon': 'contact-tracing probability', 'X_C': 'contact-traced removal speed up'}
 
-EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl', None, 'bdssdl', None, 'bdeissdl', None, 'bdctdl', None, 'bdeictdl', None, 'bdssctdl', None, 'bdeissctdl']
-EST_ORDER = ['bd', 'bddl', 'bdei', 'bdeidl_pure', None, 'bdssdl_pure', None, 'bdeissdl_pure', None, 'bdctdl_pure',
-                  None, 'bdeictdl_pure', None, 'bdssctdl_pure', None, 'bdeissctdl_pure']
-
-
 # BDEISSCT_ESTS = ['pure.BDEISSCT.1', 'pure.BDEISSCT.2', 'pure.BDEISSCT.4', 'pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
 BDEISSCT_ESTS = [None, 'pure.BDEISSCT.8', 'mixed.BDEISSCT.8']
 # BDEISSCT_ESTS = ['pure.BDEISSCT.8']
@@ -48,7 +43,7 @@ BD_ESTS = ['bd', 'pure.BD.8', None]
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.2', 'mixed.BDEI.2', 'pure.BDEI.4', 'mixed.BDEI.4', 'pure.BDEI.8', 'mixed.BDEI.8']
 # BDEI_ESTS = ['bdei', 'pure.BDEI.8', 'mixed.BDEI.8']
 # BDEI_ESTS = ['bdei', 'pure.BDEI.1', 'pure.BDEI.8', 'mixed.BDEI.8']
-BDEI_ESTS = ['pure.BDEI.8', 'mixed.BDEI.8']
+BDEI_ESTS = [None, 'pure.BDEI.8', 'mixed.BDEI.8']
 
 EST_ORDER = [BD_ESTS, BDEI_ESTS, BDSS_ESTS, BDEISS_ESTS, BDCT_ESTS, BDEICT_ESTS, BDSSCT_ESTS, BDEISSCT_ESTS]
 
@@ -77,7 +72,7 @@ HEADER1 = """
 \\tiny
 \\caption{{Estimation errors for the {param_name} {param_latex} for transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-errors-{mint}-{maxt}}}}}
 \\tabcolsep=2pt
-\\begin{{tabular*}}{{\\columnwidth}}{{@{{\\extracolsep{{\\fill}}}}c{rl}@{{\\extracolsep{{\\fill}}}}}}
+\\begin{{tabular*}}{{0.75\\columnwidth}}{{@{{\\extracolsep{{\\fill}}}}c{rl}@{{\\extracolsep{{\\fill}}}}}}
 \\toprule"""
 
 FOOTER0 = """\\botrule
@@ -248,10 +243,10 @@ with open(latex, 'w') as f:
         f.write((HEADER0 if p in {'R', 'd'} else HEADER1)\
                 .format(param_name=p2name[p], param_latex=p2latex[p], param=p,
                         rl=''.join(['rl'] * num_pertinent_estimators), width_fraction=0.08 * (num_pertinent_estimators + 1),
-                        ml_expl=' The estimator type, maximum-likelihood (ML) or deep-learning-based (DL): pure if the estimator was trained on the corresponding model, '
-                                'or mixed if it was trained on the corresponding and its nested models, is specified below its model.' if ml_is_present \
-                            else ' The deep-learning (DL) estimator type: pure if the estimator was trained on the corresponding model, '
-                                'or mixed if it was trained on the corresponding and its nested models, is specified below its model.',
+                        ml_expl=' The estimator type -- maximum-likelihood (ML) or deep-learning-based (DL); pure if the estimator was trained on the corresponding model, '
+                                'or mixed if it was trained on the corresponding and its nested models -- is specified below its model.' if ml_is_present \
+                            else ' The deep-learning (DL) estimator type -- pure if the estimator was trained on the corresponding model, '
+                                'or mixed if it was trained on the corresponding and its nested models -- is specified below its model.',
                         mint=mint, maxt=maxt)
                 )
         f.write('\n')

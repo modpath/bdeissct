@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-par2greek = {'R': r"$R$", 'd': r"$d$", 'f_E': r"$f_{\mathrm{E}}$", 'f_S': r"$f_{\mathrm{S}}$",
+par2greek = {'R': r"$R_e$", 'd': r"$d$", 'f_E': r"$f_{\mathrm{E}}$", 'f_S': r"$f_{\mathrm{S}}$",
              'X_S': r"$X_{\mathrm{S}}$", 'X_C': r"$X_{\mathrm{C}}$",
              'upsilon': r"$\mathrm{\upsilon}$"}
 
@@ -135,19 +135,22 @@ for param, ax in axes_dict.items():
     y_min, y_max = ax.get_ylim()
     ax.set_ylim(1 if 'X_S' == param \
                     else 1 if 'R' == param \
-                    else 2 if 'd' == param \
-                    else 20 if 'X_C' == param \
+                    else 3 if 'd' == param \
+                    else 10 if 'X_C' == param \
                     else 0.5 if 'f_E' == param \
-                    else 0, y_max if param in {'R', 'd', 'X_C', 'X_S'} else 1.01 if param != 'f_S' else 0.51)
+                    else 0,
+                2.85 if 'R' == param \
+                    else y_max if param in {'d', 'X_C', 'X_S'} else (1.01 if param != 'f_S' else 0.51))
     if 'R' == param:
-        ticks = np.arange(1, int(y_max) + .01, .125)
+        print(y_max)
+        ticks = np.arange(1, 2.85, .125)
         ax.set_yticks(ticks)
         ax.set_yticklabels([f'{_:.1f}' if f'{_:.3f}'[-2:] == '00' else '' for _ in ticks])
         ax.set_yticks(ticks)
     if 'd' == param:
-        ticks = np.arange(2, int(y_max) + 1, .5)
+        ticks = np.arange(3, int(y_max) + .5, .5)
         ax.set_yticks(ticks)
-        ax.set_yticklabels([f'{_:.0f}' if not (_ % 2) else '' for _ in ticks])
+        ax.set_yticklabels([f'{_:.0f}' if not (_ % 1) else '' for _ in ticks])
         ax.set_yticks(ticks)
     if 'X_S' == param:
         ticks = np.arange(1, int(y_max) + 1)
@@ -155,7 +158,7 @@ for param, ax in axes_dict.items():
         ax.set_yticklabels([f'{_}' if not (_ % 5) or 1 == _ else '' for _ in ticks])
         ax.set_yticks(ticks)
     if 'X_C' == param:
-        ticks = np.arange(20, 120, 5)
+        ticks = np.arange(10, 120, 5)
         ax.set_yticks(ticks)
         ax.set_yticklabels([f'{_}' if f'{_}'[-1] != '5' else '' for _ in ticks])
     if 'f_S' == param:

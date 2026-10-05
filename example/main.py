@@ -4,9 +4,9 @@ from bdeissct_dl.estimator import estimate_main
 from bdeissct_dl.sumstat_checker import check_sumstats
 from bdeissct_dl.tree_encoder import save_forests_as_sumstats
 from bdeissct_dl.tree_simulator import simulate_main
-from model_serializer import RANDOM_SEED
-from training import train_main
-from tree_cutter import chop_main
+from bdeissct_dl.training import train_main
+from bdeissct_dl.tree_cutter import chop_main
+from bdeissct_dl.model_serializer import RANDOM_SEEDS
 
 FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data')
 
@@ -28,6 +28,7 @@ nested_models = [f'BD{ei}{ss}{ct}' \
 train_data = []
 for n_model in nested_models:
     nwks, logs = [], []
+    # 50 tree files containing n=500 trees each are simulated for each model, and then encoded as sumstats.
     for i in range(50):
         train_nwk = os.path.join(FOLDER, 'train', f'train_trees.{n_model}.{i}.nwk')
         train_log = os.path.join(FOLDER, 'train', f'train_trees.{n_model}.{i}.log')
@@ -63,10 +64,11 @@ for n_model in nested_models:
     val_data.append(val_ss)
     print('Finished simulating and encoding validation data for model', n_model)
 
-# Train the model on the training+validation data
-if not os.path.exists(os.path.join(FOLDER, 'models', f'{model}.{RANDOM_SEED}.keras')):
-    train_main(model_name=model, train_data=train_data, val_data=val_data,
-               model_path=os.path.join(FOLDER, 'models'))
+# Train the models on the training+validation data for different random seeds to account for stochasticity in the training process.
+for seed in RANDOM_SEEDS:
+    if not os.path.exists(os.path.join(FOLDER, 'models', f'{model}.{seed}.keras')):
+        train_main(model_name=model, train_data=train_data, val_data=val_data,
+                   model_path=os.path.join(FOLDER, 'models'), seed=seed)
 
 # Simulate a test tree, encode it as sumstats, check whether the sumstat values are within the distribution of the training data values,
 # and estimate parameters with the trained model.
@@ -80,7 +82,7 @@ simulate_main(nwk, log, model_name=model, min_tips=110, max_tips=120, n=1,
               min_d_inc=0.5)
 save_forests_as_sumstats(ss, nwks=[nwk], logs=[log])
 check_sumstats(sumstats=ss, model_name=model, log=log_ss, model_path=os.path.join(FOLDER, 'models'))
-estimate_main(log=est, model_name=model, sumstats=ss, model_path=os.path.join(FOLDER, 'models'))
+estimate_main(log=est, model_name=model, sumstats=ss, model_path=os.path.join(FOLDER, 'models'), seed=RANDOM_SEEDS)
 
 
 # ==== PART 2: SIMULATE TRAINING AND VALIDATION DATA BY CHOPPING LARGER TREES, ENCODE AS SUMSTATS, AND TRAIN A MODEL FOR SMALLER TREES ====
@@ -117,9 +119,11 @@ for model in nested_models:
     val_data.append(val_ss)
     print('Finished chopping and encoding validation data for model', n_model)
 
-# Train the model on the training+validation data
-train_main(model_name=model, train_data=train_data, val_data=val_data,
-           model_path=os.path.join(FOLDER, 'chopped_models'))
+# Train the models on the training+validation data for different random seeds to account for stochasticity in the training process.
+for seed in RANDOM_SEEDS:
+    if not os.path.exists(os.path.join(FOLDER, 'chopped_models', f'{model}.{seed}.keras')):
+        train_main(model_name=model, train_data=train_data, val_data=val_data,
+                   model_path=os.path.join(FOLDER, 'chopped_models'), seed=seed)
 
 
 # Apply to the test tree.
@@ -127,4 +131,4 @@ ss = os.path.join(FOLDER, 'test', f'test_tree.{model}.csv')
 log_ss = os.path.join(FOLDER, 'test', f'test_tree.{model}.chopped_ss')
 est = os.path.join(FOLDER, 'test', f'test_tree.{model}.chopped_est')
 check_sumstats(sumstats=ss, model_name=model, log=log_ss, model_path=os.path.join(FOLDER, 'chopped_models'))
-estimate_main(log=est, model_name=model, sumstats=ss, model_path=os.path.join(FOLDER, 'chopped_models'))
+estimate_main(log=est, model_name=model, sumstats=ss, model_path=os.path.join(FOLDER, 'chopped_models'), seed=RANDOM_SEEDS)

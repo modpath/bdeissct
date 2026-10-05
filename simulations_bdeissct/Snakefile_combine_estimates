@@ -16,7 +16,9 @@ MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT'
 
 mint = int(config.get("mint", 2000))
 maxt = int(config.get("maxt", 5000))
+seed = int(config.get("seed", -1))
 SIZE = '{}_{}'.format(mint, maxt)
+SEEDS = [seed] if seed != -1 else [30, 45, 239, 533, 566]
 
 
 
@@ -26,10 +28,35 @@ snakemake_settings = "  --rerun-triggers mtime --keep-going --cores 1 --jobs 500
 
 rule all:
     input:
+        expand(os.path.join(sim_folder, '{size}', '{model}', 'estimates.{seed}.tab'), model=MODELS, size=[SIZE], seed=SEEDS),
         expand(os.path.join(sim_folder, '{size}', '{model}', 'estimates.tab'), model=MODELS, size=[SIZE]),
 
 
 rule combine_estimates:
+    '''
+    Combine estimates.
+    '''
+    input:
+        tree_stats = os.path.join(sim_folder, '{size}', '{model}', 'trees.csv.xz'),
+        est_dl_pure = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_pure.{model}.{{seed}}.{x}.csv.xz'), model=MODELS, x=[8]),
+        est_dl_mixed = expand(os.path.join(sim_folder, '{{size}}', '{{model}}', 'trees.estimates_mixed.{model}.{{seed}}.{x}.csv.xz'), model=[m for m in MODELS if 'BD' != m], x=[8]),
+    output:
+        tab = os.path.join(sim_folder, '{size}', '{model,[BDEISCT]+}', 'estimates.{seed}.tab'),
+    params:
+        mem = 2000,
+        name = 'estimates',
+        qos = 'fast',
+    threads: 1
+    singularity: "docker://evolbioinfo/python-evol:v3.8.2b"
+    shell:
+        """
+        python3 py/summary_table.py --real {input.tree_stats} \
+        --estimates_bd {sim_folder}/{wildcards.size}/{wildcards.model}/tree.*.est_bd \
+        --tab {output.tab} \
+        --estimates_dl {input.est_dl_pure}  {input.est_dl_mixed} 
+        """
+
+rule combine_estimates_no_seed:
     '''
     Combine estimates.
     '''

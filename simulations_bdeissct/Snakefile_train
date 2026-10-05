@@ -6,7 +6,7 @@ import os
 # snakemake --snakefile Snakefile_train --keep-going --cores 1 --use-singularity --singularity-prefix ~/.singularity --singularity-args "--home ~"
 # To run on maestro:
 # source ~/.bashrc && conda activate snakemake && module load apptainer && cd /pasteur/helix/projects/mPath/anna/projects/bdext/sim_bdeiss
-# snakemake --snakefile Snakefile_train --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log -p common,dedicated --mem={params.mem} --qos=fast  -J {params.name}" --jobs 300 --config mint=500 maxt=1000
+# snakemake --snakefile Snakefile_train --keep-going --cores 1 --use-singularity --singularity-prefix $HOME/.singularity --singularity-args "-B /pasteur" --cluster "sbatch -c {threads} -o {folder}/logs/{params.name}.log -e {folder}/logs/{params.name}.log -p common,dedicated --mem={params.mem} --qos=fast  -J {params.name}" --jobs 300 --config mint=2000 maxt=5000 seed=566
 # needs 4000MB of mem per 256-file dataset (so 32000 for BDEISSCT)
 
 localrules: all
@@ -16,10 +16,14 @@ folder = os.path.abspath(config.get("folder", '.'))
 
 os.makedirs('logs', exist_ok=True)
 
+train = config.get("train", 'train')
 test = train.replace('train', 'test')
 
-mint = int(config.get("mint", 200))
-maxt = int(config.get("maxt", 500))
+mint = int(config.get("mint", 2000))
+maxt = int(config.get("maxt", 5000))
+seed = int(config.get("seed", -1))
+SEEDS = [seed] if seed != -1 else [30, 45, 239, 533, 566]
+
 SIZE = '{}_{}'.format(mint, maxt)
 
 MODELS = ['BD', 'BDCT', 'BDEI', 'BDEICT', 'BDSS', 'BDSSCT', 'BDEISS', 'BDEISSCT']
@@ -32,12 +36,12 @@ model_folder = 'models'
 
 rule all:
     input:
-        expand(os.path.join(folder, model_folder, 'pure_models_8', SIZE, '{model}.{seed}.keras'), model=MODELS, seed=[239]),
-        expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, '{model}.{seed}.keras'), model=[m for m in MODELS if 'BD' != m], seed=[239]),
+        expand(os.path.join(folder, model_folder, 'pure_models_8', SIZE, '{model}.{seed}.keras'), model=MODELS, seed=SEEDS),
+        expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE, '{model}.{seed}.keras'), model=[m for m in MODELS if 'BD' != m], seed=SEEDS),
     shell:
         """
-        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} sf={test} {snakemake_settings} --unlock
-        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} sf={test} {snakemake_settings}
+        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} sf={test} seed={seed} {snakemake_settings} --unlock
+        snakemake --snakefile Snakefile_estimate --config mint={mint} maxt={maxt} sf={test} seed={seed} {snakemake_settings}
         """
 
 rule train_pure_model_8:
@@ -55,7 +59,7 @@ rule train_pure_model_8:
         qos='fast',
         path = os.path.join(folder, model_folder, 'pure_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.99"
+    singularity: "docker://evolbioinfo/bdext:v0.2.9"
     shell:
         """        
         bdeissct_train --model_name {wildcards.model} --train_data {input.train_trees} --val_data {input.val_trees} \
@@ -77,7 +81,7 @@ rule train_model_BDCT_8:
         qos='fast',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.99"
+    singularity: "docker://evolbioinfo/bdext:v0.2.9"
     shell:
         """        
         bdeissct_train --model_name BDCT --train_data {input.train_trees} \
@@ -100,7 +104,7 @@ rule train_model_BDEI_8:
         qos='fast',
         path = expand(os.path.join(folder, model_folder, 'mixed_models_8', SIZE))
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.99"
+    singularity: "docker://evolbioinfo/bdext:v0.2.9"
     shell:
         """        
         bdeissct_train --model_name BDEI --train_data {input.train_trees} \
@@ -123,7 +127,7 @@ rule train_model_BDSS_8:
         qos='fast',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.99"
+    singularity: "docker://evolbioinfo/bdext:v0.2.9"
     shell:
         """        
         bdeissct_train --model_name BDSS --train_data {input.train_trees} \
@@ -146,7 +150,7 @@ rule train_model_BDEICT_8:
         qos='normal',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.99"
+    singularity: "docker://evolbioinfo/bdext:v0.2.9"
     shell:
         """        
         bdeissct_train --model_name BDEICT --train_data {input.train_trees} \
@@ -170,7 +174,7 @@ rule train_model_BDSSCT_8:
         qos='normal',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.99"
+    singularity: "docker://evolbioinfo/bdext:v0.2.9"
     shell:
         """        
         bdeissct_train --model_name BDSSCT  --train_data {input.train_trees} \
@@ -193,7 +197,7 @@ rule train_model_BDEISS_8:
         qos='normal',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.99"
+    singularity: "docker://evolbioinfo/bdext:v0.2.9"
     shell:
         """        
         bdeissct_train --model_name BDEISS --train_data {input.train_trees} \
@@ -216,7 +220,7 @@ rule train_model_BDEISSCT_8:
         qos='normal',
         path = os.path.join(folder, model_folder, 'mixed_models_8', SIZE)
     threads: 1
-    singularity: "docker://evolbioinfo/bdext:v0.1.99"
+    singularity: "docker://evolbioinfo/bdext:v0.2.9"
     shell:
         """        
         bdeissct_train --model_name BDEISSCT --train_data {input.train_trees} \

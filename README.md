@@ -6,11 +6,16 @@ from dated phylogenetic trees.
 
 
 
-[//]: # ([![DOI:10.1093/sysbio/syad059]&#40;https://zenodo.org/badge/DOI/10.1093/sysbio/syad059.svg&#41;]&#40;https://doi.org/10.1093/sysbio/syad059&#41;)
-[//]: # ([![GitHub release]&#40;https://img.shields.io/github/v/release/evolbioinfo/bdext.svg&#41;]&#40;https://github.com/evolbioinfo/bdext/releases&#41;)
+[![DOI:10.64898/2026.05.07.26352661](https://zenodo.org/badge/DOI/10.64898/2026.05.07.26352661.svg)](https://doi.org/10.64898/2026.05.07.26352661)
 [![PyPI version](https://badge.fury.io/py/bdext.svg)](https://pypi.org/project/bdext/)
 [![PyPI downloads](https://shields.io/pypi/dm/bdext)](https://pypi.org/project/bdext)
 [![Docker pulls](https://img.shields.io/docker/pulls/evolbioinfo/bdext)](https://hub.docker.com/r/evolbioinfo/bdext/tags)
+
+
+## Preprint
+
+Ruopeng Xie, Olivier Gascuel, Anna Zhukova (2026) __Simpler is not always better: Phylodynamic misspecification and deep-learning corrections__
+[_medRxiv_ 2026.05.07.26352661](https://doi.org/10.64898/2026.05.07.26352661)
 
 ## BDEISS-CT model
 

@@ -7,7 +7,8 @@ from sklearn.preprocessing import StandardScaler
 
 from bdeissct_dl.dl_model import pinball_loss
 
-RANDOM_SEED = 239
+RANDOM_SEEDS = [30, 45, 239, 533, 566]
+RANDOM_SEED_LINE = ', '.join(map(str, RANDOM_SEEDS))
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models')
 
 

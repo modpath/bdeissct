@@ -1,0 +1,1 @@
+R_loss: 0.02128, d_loss: 0.02078, loss: 0.04613, val_R_loss: 0.02125, val_d_loss: 0.02073, val_loss: 0.04603, learning_rate: 0.00030

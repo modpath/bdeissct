@@ -4,13 +4,14 @@ import numpy as np
 import pandas as pd
 
 from bdeissct_dl.bdeissct_model import (MODEL2TARGET_COLUMNS, BD, INCUBATION_FRACTION, F_S, X_S, UPSILON, X_C)
-from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy, get_model_dir, RANDOM_SEED
+from bdeissct_dl.model_serializer import load_model_keras, load_scaler_numpy, get_model_dir, RANDOM_SEED_LINE
 from bdeissct_dl.training import get_test_data
 from bdeissct_dl.tree_encoder import forest2sumstat_df, scale_back
 from bdeissct_dl.tree_manager import read_forest
+from bdeissct_dl.model_serializer import RANDOM_SEEDS
 
 
-def predict_parameters(forest_sumstats, model_name=BD, model_path=None, seed=RANDOM_SEED):
+def predict_parameters(forest_sumstats, model_name=BD, model_path=None, seeds=RANDOM_SEEDS):
     if model_path is None:
         min_tips = int(forest_sumstats['n_tips'].min())
         max_tips = int(forest_sumstats['n_tips'].max())
@@ -22,34 +23,47 @@ def predict_parameters(forest_sumstats, model_name=BD, model_path=None, seed=RAN
 
 
     target_columns = MODEL2TARGET_COLUMNS[model_name]
-    seed = '' if seed <= 0 else f'.{seed}'
-    model = load_model_keras(os.path.join(model_path, f'{model_name}{seed}.keras'))
-    Y_pred = model.predict(X)
-    quantiles=False
-    for col in target_columns:
-        if len(Y_pred[col].shape) == 2:
-            if Y_pred[col].shape[1] == 1:
-                Y_pred[col] = Y_pred[col].squeeze(axis=1)
-            else:
-                quantiles = True
-    if not quantiles:
-        Y_pred = np.column_stack([Y_pred[col] for col in target_columns])
-        if scaler_y is not None:
-            Y_pred = scaler_y.inverse_transform(Y_pred)
-        Y_pred = pd.DataFrame(Y_pred, columns=target_columns)
-    else:
-        Y_pred_min = np.column_stack([Y_pred[col][:, 0] for col in target_columns])
-        Y_pred_median = np.column_stack([Y_pred[col][:, 1] for col in target_columns])
-        Y_pred_max = np.column_stack([Y_pred[col][:, 2] for col in target_columns])
-        if scaler_y is not None:
-            Y_pred_min = scaler_y.inverse_transform(Y_pred_min)
-            Y_pred_median = scaler_y.inverse_transform(Y_pred_median)
-            Y_pred_max = scaler_y.inverse_transform(Y_pred_max)
-        Y_pred = pd.concat([pd.DataFrame(Y_pred_median, columns=target_columns),
-                            pd.DataFrame(Y_pred_min, columns=[f'{col}_lower' for col in target_columns]),
-                            pd.DataFrame(Y_pred_max, columns=[f'{col}_upper' for col in target_columns])], axis=1)
+    if seeds is None or len(seeds) == 0:
+        seeds = [-1]
 
-    scale_back(Y_pred, SF)
+    Y_preds = []
+    for seed in seeds:
+        seed = '' if seed <= 0 else f'.{seed}'
+        model = load_model_keras(os.path.join(model_path, f'{model_name}{seed}.keras'))
+        Y_pred = model.predict(X)
+        quantiles=False
+        for col in target_columns:
+            if len(Y_pred[col].shape) == 2:
+                if Y_pred[col].shape[1] == 1:
+                    Y_pred[col] = Y_pred[col].squeeze(axis=1)
+                else:
+                    quantiles = True
+        if not quantiles:
+            Y_pred = np.column_stack([Y_pred[col] for col in target_columns])
+            if scaler_y is not None:
+                Y_pred = scaler_y.inverse_transform(Y_pred)
+            Y_pred = pd.DataFrame(Y_pred, columns=target_columns)
+        else:
+            Y_pred_min = np.column_stack([Y_pred[col][:, 0] for col in target_columns])
+            Y_pred_median = np.column_stack([Y_pred[col][:, 1] for col in target_columns])
+            Y_pred_max = np.column_stack([Y_pred[col][:, 2] for col in target_columns])
+            if scaler_y is not None:
+                Y_pred_min = scaler_y.inverse_transform(Y_pred_min)
+                Y_pred_median = scaler_y.inverse_transform(Y_pred_median)
+                Y_pred_max = scaler_y.inverse_transform(Y_pred_max)
+            Y_pred = pd.concat([pd.DataFrame(Y_pred_median, columns=target_columns),
+                                pd.DataFrame(Y_pred_min, columns=[f'{col}_lower' for col in target_columns]),
+                                pd.DataFrame(Y_pred_max, columns=[f'{col}_upper' for col in target_columns])], axis=1)
+
+        scale_back(Y_pred, SF)
+        Y_preds.append(Y_pred)
+
+    if len(Y_preds) == 1:
+        Y_pred = Y_preds[0]
+    else:
+        Y_pred = pd.DataFrame(columns=Y_preds[0].columns)
+        for col in Y_pred.columns:
+            Y_pred[col] = np.median([Y_pred_i[col] for Y_pred_i in Y_preds], axis=0)
 
     enforce_BDEISSCT_bounds(Y_pred)
     return Y_pred
@@ -67,7 +81,7 @@ def main():
     parser.add_argument('--model_name', default=BD, type=str,
                         help=f'BDEISSCT model flavour')
     parser.add_argument('--model_path', default=None, type=str,
-                        help=f'By default our pretrained BD(EI)(SS)(CT) models are used (with seed {RANDOM_SEED}), '
+                        help=f'By default an ensemble of our five pretrained BD(EI)(SS)(CT) models are used (with seeds {RANDOM_SEED_LINE}), '
                              'but it is possible to specify a path to a custom folder here, '
                              'containing scaler-related files to rescale the input data X and output data Y and the model file(s). '
                              'For the X scaler the files should be named '
@@ -79,10 +93,15 @@ def main():
                              'For the Y scaler replace x with y in the filenames above. '
                              'The model file can be either "<model_name>.keras" (containing a model with a random seed value set randomly), '
                              'or "<model_name>.<seed>.keras" '
-                             '(containing a model with a random seed value set to seed specified as --seed).'
+                             '(containing a model with a random seed value set to seed specified among the values of --seed).'
                         )
-    parser.add_argument('--seed', type=int, default=RANDOM_SEED, help='if a non-negative number is given, '
-                                                             'it will be searched for in the model name.')
+    parser.add_argument('--seed', type=int, nargs='*', default=RANDOM_SEEDS,
+                        help='if (a) non-negative number(s) is(are) given, it(they) will be searched for in the model name. '
+                             'If several numbers are given, we would expect that several models with the same model_name '
+                             'but different seeds are present in the model_path folder, '
+                             'and we will use all of them to make predictions and then take the median of the predictions. '
+                             'If no non-negative number is given, '
+                             'we will search for a model with a random seed value set randomly (with no seed in its name).')
     parser.add_argument('--p', default=-1, type=float, help='sampling probability')
     parser.add_argument('--log', default=None, type=str, help="output log file")
     parser.add_argument('--nwk', default=None, type=str, help="input tree file")
@@ -92,7 +111,7 @@ def main():
     estimate_main(**vars(params))
 
 
-def estimate_main(log, model_name, sumstats=None, p=-1, nwk=None, model_path=None, seed=RANDOM_SEED):
+def estimate_main(log, model_name, sumstats=None, p=-1, nwk=None, model_path=None, seed=RANDOM_SEEDS):
     if not sumstats:
         if p <= 0 or p > 1:
             raise ValueError('The sampling probability must be between 0 (exclusive) and 1 (inclusive).')
@@ -103,7 +122,7 @@ def estimate_main(log, model_name, sumstats=None, p=-1, nwk=None, model_path=Non
     else:
         forest_df = pd.read_csv(sumstats)
 
-    result = predict_parameters(forest_df, model_name=model_name, model_path=model_path, seed=seed)
+    result = predict_parameters(forest_df, model_name=model_name, model_path=model_path, seeds=seed)
     result.to_csv(log, header=True)
 
 

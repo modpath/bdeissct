@@ -28,14 +28,25 @@ def get_model_layers(n_x):
     """
 
     inputs = tf.keras.Input(shape=(n_x,))
-    x = inputs
+    # 1. Normalize raw input features
+    # (though they should already be normalized when calculating sum-stats)
+    x = tf.keras.layers.Normalization(name="input_norm")(inputs)
 
-    x = tf.keras.layers.Dense(64, activation='elu', name=f'layer1_dense64_elu')(x)
-    x = tf.keras.layers.Dropout(0.1)(x)
-    x = tf.keras.layers.Dense(64, activation='elu', name=f'layer2_dense64_elu')(x)
-    x = tf.keras.layers.Dropout(0.05)(x)
-    x = tf.keras.layers.Dense(8, activation='elu', name=f'layer3_dense8_elu')(x)
-    x = tf.keras.layers.Dense(8, activation='elu', name=f'layer4_dense8_elu')(x)
+    # 2. Block 1 (64 units + LayerNorm)
+    x = tf.keras.layers.Dense(64, kernel_regularizer=tf.keras.regularizers.l2(1e-4), name='layer1_dense')(x)
+    x = tf.keras.layers.LayerNormalization(name='layer1_norm')(x)
+    x = tf.keras.layers.Activation('elu', name='layer1_elu')(x)
+
+    # 3. Block 2 (64 units)
+    x = tf.keras.layers.Dense(64, kernel_regularizer=tf.keras.regularizers.l2(1e-4), name='layer2_dense')(x)
+    x = tf.keras.layers.LayerNormalization(name='layer2_norm')(x)
+    x = tf.keras.layers.Activation('elu', name='layer2_elu')(x)
+
+    # 4. Block 3 (32 units)
+    x = tf.keras.layers.Dense(32, name='layer3_dense')(x)
+    x = tf.keras.layers.LayerNormalization(name='layer3_norm')(x)
+    x = tf.keras.layers.Activation('elu', name='layer3_elu')(x)
+
     return inputs, x
 
 

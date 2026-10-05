@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from bdeissct_dl.bdeissct_model import MODEL2TARGET_COLUMNS, UPSILON, X_C, KAPPA, INCUBATION_FRACTION, F_S, \
     X_S, TARGET_COLUMNS_BDCT, REPRODUCTIVE_NUMBER, INFECTION_DURATION
 from bdeissct_dl.dl_model import get_model_layers, get_outputs_pinball, pinball_loss, QUANTILES
-from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, save_scaler_numpy, RANDOM_SEED
+from bdeissct_dl.model_serializer import save_model_keras, load_scaler_numpy, save_scaler_numpy
 from bdeissct_dl.tree_encoder import SCALING_FACTOR, STATS
 
 FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes', 'len_forest',
@@ -21,9 +21,30 @@ FEATURE_COLUMNS = [_ for _ in STATS if _ not in {#'n_trees', 'n_tips', 'n_inodes
                                                  SCALING_FACTOR}]
 
 
-LEARNING_RATE = 0.01
+LEARNING_RATE = 3e-4
 EPOCHS = 1000
 BATCH_SIZE = 8192
+
+
+class LinearWarmupCallback(tf.keras.callbacks.Callback):
+    def __init__(self, warmup_epochs=5, target_lr=LEARNING_RATE):
+        super().__init__()
+        self.warmup_epochs = warmup_epochs
+        self.target_lr = target_lr
+
+    def on_epoch_begin(self, epoch, logs=None):
+        if epoch < self.warmup_epochs:
+            # Linearly scale LR from near 0 up to target_lr
+            lr = self.target_lr * ((epoch + 1) / self.warmup_epochs)
+
+            # Modern Keras 3 & TF 2.x assignment:
+            try:
+                self.model.optimizer.learning_rate.assign(lr)
+            except AttributeError:
+                # Fallback for direct variable setting
+                self.model.optimizer.learning_rate = lr
+
+            print(f"\n[Warmup] Epoch {epoch + 1}/{self.warmup_epochs}: Learning rate set to {lr:.6f}")
 
 def fit_scalers(paths, x_indices, scaler_x=None, y_indices=None, scaler_y=None):
    for path in paths:
@@ -124,23 +145,16 @@ def get_data_characteristics(paths, target_columns=TARGET_COLUMNS_BDCT, feature_
     return [col2index_x[_] for _ in feature_columns], col2index_y
 
 
-def plot_losses(pdf, history, model, train_ds, val_ds, best_epoch: int):
-    train_loss = model.evaluate(train_ds, verbose=0)
-    val_loss = model.evaluate(val_ds, verbose=0)
-
-    loss_names = model.metrics_names  # ['loss', 'R_loss', 'X_C_loss', ...]
+def plot_losses(pdf, history, best_epoch: int):
+    loss_names = history.history.keys()  # ['loss', 'R_loss', 'X_C_loss', ...]
 
     # Format with labels
-    if len(loss_names) > 1:
-        train_str = ', '.join([f'{name}: {loss:.3f}' for name, loss in zip(loss_names, train_loss)])
-        val_str = ', '.join([f'{name}: {loss:.3f}' for name, loss in zip(loss_names, val_loss)])
-    else:
-        train_str = f'{train_loss:.3f}'
-        val_str = f'{val_loss:.3f}'
+    title = ', '.join([f'{name}: {history.history[name][best_epoch]:.5f}' for name in loss_names])
+    short_title = f'Loss {history.history["loss"][best_epoch]:.3f} vs Val Loss {history.history["val_loss"][best_epoch]:.3f} at epoch {best_epoch + 1}'
+    print(title)
 
-    print(f"Training Loss: {train_str}")
-    print(f"Validation Loss: {val_str}")
-
+    with open(pdf.replace('.pdf', '.txt'), 'w') as f:
+        f.write(f"{title}\n")
 
     # Plot training & validation loss
     epochs_to_skip = 5  # so the initial loss is not shown, as it is usually very high and makes the plot less readable
@@ -159,7 +173,7 @@ def plot_losses(pdf, history, model, train_ds, val_ds, best_epoch: int):
 
     plt.legend()
 
-    plt.title(f'Train {train_str} vs Val {val_str}')
+    plt.title(short_title)
     plt.savefig(pdf, dpi=100)
 
 
@@ -169,7 +183,8 @@ def get_early_stopping() -> tf.keras.callbacks.EarlyStopping:
         patience=15,  # Number of epochs with no improvement after which training will be stopped
         restore_best_weights=True,  # Important! Restore best weights
         min_delta=1e-3,  # Minimum change to qualify as improvement
-        verbose=1  # See when it triggers
+        verbose=1,  # See when it triggers
+        start_from_epoch = 10,  # Ignore early stopping during first N epochs
     )
 
 
@@ -197,7 +212,7 @@ def main():
                         help="path to the files where the encoded validation data are stored")
 
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='number of epochs to train the model')
-    parser.add_argument('--seed', type=int, default=RANDOM_SEED, help='if a non-negative number is given, '
+    parser.add_argument('--seed', type=int, default=-1, help='if a non-negative number is given, '
                                                              'it will be set as a random seed.')
     parser.add_argument('--model_name', type=str, help="model name")
     parser.add_argument('--model_path', type=str,
@@ -209,7 +224,7 @@ def main():
     train_main(**vars(params))
 
 
-def train_main(model_name, train_data, val_data, model_path, epochs=EPOCHS, seed=RANDOM_SEED):
+def train_main(model_name, train_data, val_data, model_path, epochs=EPOCHS, seed=-1):
     os.makedirs(model_path, exist_ok=True)
 
     target_columns = MODEL2TARGET_COLUMNS[model_name]
@@ -229,13 +244,13 @@ def train_main(model_name, train_data, val_data, model_path, epochs=EPOCHS, seed
     print(f'Training a {model_name} estimator...')
     if seed and seed > 0:
         print(f'Fixed the random seed to {seed}.')
-        np.random.seed(239)
-        tf.random.set_seed(239)
+        np.random.seed(seed)
+        tf.random.set_seed(seed)
 
     inputs, x = get_model_layers(n_x=len(x_indices))
     outputs = get_outputs_pinball(target_columns, x, quantiles=QUANTILES)
     model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE, clipnorm=0.1),
                   loss={col: pinball_loss for col in target_columns})
 
     print(f'Building a model from scratch with {len(x_indices)} input features and {len(target_columns)} as output.')
@@ -255,12 +270,11 @@ def train_main(model_name, train_data, val_data, model_path, epochs=EPOCHS, seed
 
     # Training of the Network, with an independent validation set
     history = model.fit(ds_train, verbose=1, epochs=epochs, validation_data=ds_val,
-                        callbacks=[early_stop, reduce_lr])
+                        callbacks=[LinearWarmupCallback(warmup_epochs=5, target_lr=LEARNING_RATE), early_stop, reduce_lr])
 
     model_name = f'{model_name}.{seed}' if seed and seed > 0 else f'{model_name}'
 
-    plot_losses(os.path.join(model_path, f'{model_name}.pdf'), history, model, ds_train, ds_val,
-                best_epoch=early_stop.best_epoch)
+    plot_losses(pdf=os.path.join(model_path, f'{model_name}.pdf'), history=history, best_epoch=early_stop.best_epoch)
 
     print(f'Saving the trained model {model_name} to {model_path}...')
     save_model_keras(model, path=model_path, model_name=f'{model_name}')

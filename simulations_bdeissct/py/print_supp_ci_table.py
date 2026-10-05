@@ -7,7 +7,7 @@ import pandas as pd
 MODELS = ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']
 
 PARAMETERS = ['R', 'd', 'f_E', 'f_S', 'upsilon', 'X_S', 'X_C']
-p2latex = {'R': '$R$', 'd': '$d$', 'd_E': '$d_{inc}$', 'f_E': '$f_E$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
+p2latex = {'R': '$R_e$', 'd': '$d$', 'd_E': '$d_{inc}$', 'f_E': '$f_E$', 'f_S': '$f_S$', 'X_S': '$X_S$',  \
            'upsilon': '$\\upsilon$', 'X_C': '$X_C$'}
 p2name = {'R': 'average reproduction number', 'd': 'average infection time', \
           'd_E': 'incubation period', 'f_E': 'incubation fraction', 'f_S': 'superspreader fraction', 'X_S': 'superspreading transmission increase',  \
@@ -62,7 +62,7 @@ HEADER0 = """
 \\begin{{table*}}[!h]
 \\begin{{center}}
 \\tiny
-\\caption{{CI coverage for the {param_name} {param_latex} for transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-cis-{mint}-{maxt}}}}}
+\\supptable{{CI coverage for the {param_name} {param_latex}}}{{CI coverage for the {param_name} {param_latex} for transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-cis-{mint}-{maxt}}}}}
 \\tabcolsep=2pt
 \\begin{{tabular*}}{{\\textwidth}}{{@{{\\extracolsep{{\\fill}}}}c{rl}@{{\\extracolsep{{\\fill}}}}}}
 \\toprule"""
@@ -71,7 +71,7 @@ HEADER1 = """
 \\begin{{table}}[!h]
 \\begin{{center}}
 \\tiny
-\\caption{{CI coverage for the {param_name} {param_latex} for transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-cis-{mint}-{maxt}}}}}
+\\supptable{{CI coverage for the {param_name} {param_latex}}}{{CI coverage for the {param_name} {param_latex} for transmission trees generated under different models (rows) and different estimators (columns).{ml_expl}\\label{{tbl:{param}-cis-{mint}-{maxt}}}}}
 \\tabcolsep=2pt
 \\begin{{tabular*}}{{0.75\\columnwidth}}{{@{{\\extracolsep{{\\fill}}}}c{rl}@{{\\extracolsep{{\\fill}}}}}}
 \\toprule"""
@@ -153,21 +153,38 @@ def latex_estimator_first_row(estimator_group):
     model = estimator_group[1].split('.')[1].replace('CT', '-CT')
     return f'\\multicolumn{{ {2 * n} }}{{c}}{{ {model} }}'
 
+
 def latex_estimator_second_row(estimator_group):
     n = sum(1 for _ in estimator_group if _ is not None)
     if 3 == n:
-        return '\\multicolumn{2}{c}{ML} & \\multicolumn{2}{c}{DL (pure)} & \\multicolumn{2}{c}{DL (mixed)}'
+        return '\\multicolumn{2}{c}{ML} & \\multicolumn{2}{c}{DL} & \\multicolumn{2}{c}{DL}'
     if 2 == n:
         if estimator_group[0] is None:
-            return '\\multicolumn{2}{c}{DL (pure)} & \\multicolumn{2}{c}{DL (mixed)}'
+            return '\\multicolumn{2}{c}{DL} & \\multicolumn{2}{c}{DL}'
         if estimator_group[1] is None:
-            return '\\multicolumn{2}{c}{ML} & \\multicolumn{2}{c}{DL (mixed)}'
-        return '\\multicolumn{2}{c}{ML} & \\multicolumn{2}{c}{DL (pure)}'
+            return '\\multicolumn{2}{c}{ML} & \\multicolumn{2}{c}{DL}'
+        return '\\multicolumn{2}{c}{ML} & \\multicolumn{2}{c}{DL}'
     if estimator_group[0] is not None:
         return '\\multicolumn{2}{c}{ML}'
     if estimator_group[1] is None:
-        return '\\multicolumn{2}{c}{DL (pure)}'
-    return '\\multicolumn{2}{c}{DL (mixed)}'
+        return '\\multicolumn{2}{c}{DL}'
+    return '\\multicolumn{2}{c}{DL}'
+
+def latex_estimator_third_row(estimator_group):
+    n = sum(1 for _ in estimator_group if _ is not None)
+    if 3 == n:
+        return '\\multicolumn{2}{c}{} & \\multicolumn{2}{c}{(pure)} & \\multicolumn{2}{c}{(mixed)}'
+    if 2 == n:
+        if estimator_group[0] is None:
+            return '\\multicolumn{2}{c}{(pure)} & \\multicolumn{2}{c}{(mixed)}'
+        if estimator_group[1] is None:
+            return '\\multicolumn{2}{c}{} & \\multicolumn{2}{c}{(mixed)}'
+        return '\\multicolumn{2}{c}{} & \\multicolumn{2}{c}{(pure)}'
+    if estimator_group[0] is not None:
+        return '\\multicolumn{2}{c}{}'
+    if estimator_group[1] is None:
+        return '\\multicolumn{2}{c}{(pure)}'
+    return '\\multicolumn{2}{c}{(mixed)}'
 
 
 model2id = {m: m_id for (m_id, m) in enumerate(MODELS)}
@@ -260,6 +277,7 @@ with open(latex, 'w') as f:
 
         f.write(' & {}\\\\\n'.format(' & '.join([latex_estimator_first_row(_) for _ in pertinent_groups])))
         f.write(' & {}\\\\\n'.format(' & '.join([latex_estimator_second_row(_) for _ in pertinent_groups])))
+        f.write(' & {}\\\\\n'.format(' & '.join([latex_estimator_third_row(_) for _ in pertinent_groups])))
 
         model_groups = [[], MODELS]
 

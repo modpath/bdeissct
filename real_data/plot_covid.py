@@ -11,7 +11,8 @@ par2greek = {'R': r"$R_e$", 'd': r"$d$", 'f_E': r"$f_{\mathrm{E}}$", 'f_S': r"$f
 
 FOLDER = os.path.abspath(os.path.dirname(__file__))
 csv = os.path.join(FOLDER, 'wave3.days.estimates.csv')
-svg = os.path.join(FOLDER, 'Fig_covid.eps')
+svg = os.path.join(FOLDER, 'Fig_covid.svg')
+eps = os.path.join(FOLDER, 'Fig_covid.eps')
 df = pd.read_csv(csv, index_col=0)
 
 # -----------------------------------------------------------------------------
@@ -189,4 +190,5 @@ fig.subplots_adjust(
 
 
 plt.savefig(svg, dpi=100)
+plt.savefig(eps, dpi=100)
 

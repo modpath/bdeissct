@@ -15,8 +15,7 @@ NWKS = [os.path.join(FOLDER, 'wave3.days.nwk')]
 RHOS = [0.238]
 
 HEADER_SC2 = \
-"""f'{col}_upper'
-\\begin{table*}[!t]
+"""\\begin{table*}[!t]
 \\begin{center}
 \\tiny
 \\caption{Hong Kong SARS-CoV-2 wave 3 epidemiological parameters and their CIs (columns) estimated with different models (rows).\\label{tbl:covid}}

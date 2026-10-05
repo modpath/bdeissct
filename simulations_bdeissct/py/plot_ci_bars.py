@@ -58,8 +58,8 @@ def need_to_skip(par, estimator_type, model):
         return True
     return False
 
-folder = '/home/azhukova/projects/bdeissct_dl/simulations_bdeissct/test/200_500'
-estimate_files = [f'{folder}/{model}/estimates.tab' for model in ['BD', 'BDEI', 'BDSS', 'BDEISS', 'BDCT', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
+folder = '../test/2000_5000'
+estimate_files = [f'{folder}/{model}/estimates.tab' for model in ['BD', 'BDEI', 'BDSS', 'BDCT', 'BDEISS', 'BDEICT', 'BDSSCT', 'BDEISSCT']]
 
 
 if __name__ == "__main__":
@@ -115,8 +115,8 @@ if __name__ == "__main__":
 
                 for par in PARAMETERS:
                     if need_to_skip(par, estimator_type, model):
-                        par2type2avg_within[par][estimator_type_label] = '___'
-                        par2type2avg_width[par][estimator_type_label] = '___'
+                        par2type2avg_within[par][estimator_type_label] = '\u00A0\u00A0\u00A0'
+                        par2type2avg_width[par][estimator_type_label] = '\u00A0\u00A0\u00A0'
                     else:
                         cur_mask = (df['type'] == estimator_type)
                         if 'X_C' in par:
@@ -134,13 +134,15 @@ if __name__ == "__main__":
                         if 'X_C' in par:
                             cur_mask &= df['upsilon'] > 0.001
                         if cur_mask.sum() == 0:
-                            par2type2avg_within[par][estimator_type_label] = '___'
-                            par2type2avg_width[par][estimator_type_label] = '___'
+                            par2type2avg_within[par][estimator_type_label] = '\u00A0\u00A0\u00A0'
+                            par2type2avg_width[par][estimator_type_label] = '\u00A0\u00A0\u00A0'
                         else:
                             par2type2avg_within[par][estimator_type_label] = \
-                                (f'{100 * np.sum(df.loc[cur_mask, f"{par}_within"].astype(int)) / len(df.loc[cur_mask,:]):2.0f}').replace(' ', '_')
+                                (f'{100 * np.sum(df.loc[cur_mask, f"{par}_within"].astype(int)) / len(df.loc[cur_mask,:]):3.0f}')\
+                                    .replace(' ', '\u2007')
                             par2type2avg_width[par][estimator_type_label] = \
-                                (f'{100 * np.mean(df.loc[cur_mask, f"{par}_width"]):2.0f}').replace(' ', '_')
+                                (f'{100 * np.mean(df.loc[cur_mask, f"{par}_width"]):3.0f}')\
+                                    .replace(' ', '\u2007')
 
         plot_df_within = pd.DataFrame(data_within, columns=['parameter', 'value', 'config'])
         plot_df_width = pd.DataFrame(data_width, columns=['parameter', 'value', 'config'])
@@ -219,11 +221,11 @@ if __name__ == "__main__":
 
                 return HPacker(children=[get_ta(color, text)
                                          for (text, color) in zip(texts, total_palette)],
-                               align="center", pad=2, sep=10)
+                               align="center", pad=0, sep=0)
 
             xbox = get_xbox(par)
             anchored_xbox = AnchoredOffsetbox(loc=3, child=xbox, pad=0, frameon=False,
-                                              bbox_to_anchor=(0.01, -0.15),
+                                              bbox_to_anchor=(0.0, -0.15),
                                               bbox_transform=ax.transAxes, borderpad=0.)
             ax.set_xlabel('')
             ax.set_ylabel('')

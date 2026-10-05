@@ -13,6 +13,7 @@ if __name__ == "__main__":
     parser.add_argument('--estimates_bdct', nargs='*', default=[], type=str, help="estimated parameters")
     parser.add_argument('--estimates_dl', nargs='*', default=[], type=str, help="estimated DL parameters")
     parser.add_argument('--real', nargs='*', type=str, help="real parameters")
+    parser.add_argument('--seed', type=int, default=None, help="seed for DL estimator")
     parser.add_argument('--tab', type=str, help="estimate table")
     params = parser.parse_args()
 
@@ -100,6 +101,8 @@ if __name__ == "__main__":
     for est in params.estimates_dl:
         ddf = pd.read_csv(est, index_col=0)
         est_label = est[est.find('estimates_') + len('estimates_'):est.find('.csv')]
+        if params.seed is not None:
+            est_label = est_label.replace(f'.{params.seed}', '')
         ddf.index = ddf.index.map(lambda i: f'{i}.{est_label}')
         ddf['p'] = np.array(df.loc[ddf.index.map(lambda _: _.replace(est_label, 'real')), ['p']], dtype=float)
         ddf['type'] = est_label
